@@ -1,38 +1,71 @@
-// bridge.js - Puente entre GitHub Pages y Google Apps Script Web App
+// bridge.js - Puente con técnica de Formulario Oculto (evita CORS)
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyLTl982nl7Wun_yX1JHtE948InXJVttya8zV05GAMvLYoUGeLhoxNFLKE5HK15ekgN/exec';
 
+const pendingCalls = [];
+
 async function callGAS(functionName, ...args) {
+  // Si no hay red, guardamos en cola (como ya tenías)
   if (!navigator.onLine) {
     return new Promise((resolve, reject) => {
       pendingCalls.push({ functionName, args, resolve, reject });
     });
   }
 
-  try {
-    // Enviamos los datos como TEXTO PLANO para evitar el bloqueo CORS de Google
-    const payload = {
-      action: functionName,
-      args: args
+  return new Promise((resolve, reject) => {
+    // Creamos un iframe invisible y un formulario para enviar los datos
+    const iframeName = 'gas_iframe_' + Date.now();
+    const iframe = document.createElement('iframe');
+    iframe.name = iframeName;
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = GAS_URL;
+    form.target = iframeName;
+    form.style.display = 'none';
+
+    // Metemos los datos en inputs ocultos
+    const actionInput = document.createElement('input');
+    actionInput.type = 'hidden';
+    actionInput.name = 'action';
+    actionInput.value = functionName;
+    form.appendChild(actionInput);
+
+    const argsInput = document.createElement('input');
+    argsInput.type = 'hidden';
+    argsInput.name = 'args';
+    argsInput.value = JSON.stringify(args); // Enviamos los argumentos como texto
+    form.appendChild(argsInput);
+
+    document.body.appendChild(form);
+
+    // Escuchamos cuando el iframe termine de cargar (es decir, cuando Google responda)
+    iframe.onload = () => {
+      try {
+        // Leemos la respuesta que Google dejó dentro del iframe
+        const responseText = iframe.contentDocument.body.innerText;
+        const result = JSON.parse(responseText);
+        
+        // Limpiamos el DOM
+        document.body.removeChild(form);
+        document.body.removeChild(iframe);
+        
+        resolve(result);
+      } catch (err) {
+        // Si falla la lectura, limpiamos y rechazamos
+        document.body.removeChild(form);
+        document.body.removeChild(iframe);
+        reject(err);
+      }
     };
 
-    const response = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8' // <-- ESTO ES LA CLAVE
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const result = await response.json();
-    return result;
-  } catch (error) {
-    console.error('Error llamando a GAS:', error);
-    throw error;
-  }
+    // Enviamos el formulario
+    form.submit();
+  });
 }
 
-const pendingCalls = [];
-
+// Reintentar cola cuando vuelva la conexión
 window.addEventListener('online', async () => {
   while (pendingCalls.length > 0) {
     const call = pendingCalls.shift();
