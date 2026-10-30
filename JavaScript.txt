@@ -1,4 +1,3 @@
-    <script>
         // --- INDEXEDDB & OFFLINE PWA MANAGER ---
         const DB_NAME = 'FincaSaucesOfflineDB';
         const DB_VERSION = 1;
@@ -7126,7 +7125,6 @@
             initApp();
         }
 
-</script>
 
   
  
