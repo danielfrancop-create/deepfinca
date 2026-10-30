@@ -208,8 +208,8 @@
             initThemeIcon();
         }
 
-        document.getElementById('currentYear').textContent = new Date().getFullYear();
-
+        const yearEl = document.getElementById('currentYear');
+if (yearEl) yearEl.textContent = new Date().getFullYear();
         let rawData = null;
         let barChartInstance = null;
         let doughnutChartInstance = null;
@@ -7110,7 +7110,7 @@
             if (modal) modal.classList.add("hidden");
         }
 
-        function initApp() {
+               function initApp() {
             applyViewOnlyPermissions();
             populateLoteDropdowns();
             fetchData();
@@ -7119,10 +7119,8 @@
             checkCurrentUserRole();
         }
 
-        if (document.readyState === 'loading') {
-            window.addEventListener('DOMContentLoaded', initApp);
-        } else {
-            initApp();
+        // Exponer initApp globalmente para que index.html lo llame
+        window.initApp = initApp;
         }
 
 
