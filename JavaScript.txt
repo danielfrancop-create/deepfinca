@@ -446,7 +446,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                         stopSpin();
                         showError("Error conectando a Google Sheets: " + err.toString());
                     });
-                return;
+                return; // Muy importante para detener la ejecución aquí y esperar
             }
             google.script.run
                 .withSuccessHandler(function(response) {
