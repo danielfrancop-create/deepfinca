@@ -1,0 +1,1876 @@
+/**
+ * Finca Los Sauces - Sistema de Control Operativo, Técnico y Financiero
+ * Código del Servidor (Google Apps Script - Código.gs)
+ */
+
+var HOJA_GASTOS_INICIALES = "gastosIniciales";
+var HOJA_GASTOS_DESARROLLO = "gastosDesarrollo";
+var HOJA_VENTAS = "ventas";
+var HOJA_CONFIGURACION = "configuracion";
+var HOJA_PRESTAMOS = "prestamos";
+var HOJA_CICLOS = "ciclos";
+var HOJA_GASTOS_PERSONALES = "gastosPersonales";
+var HOJA_FOTOS_LOTES = "fotosLotes";
+var HOJA_INGRESOS_EXTERNOS = "ingresosExternos";
+var HOJA_METAS_RECOLECCION = "metasRecoleccion";
+var HOJA_APORTES_METAS = "aportesMetas";
+
+function doGet(e) {
+  var providedEmail = (e && e.parameter && e.parameter.email) ? e.parameter.email : "";
+  var authCheck = verificarAccesoUsuario(providedEmail);
+
+  if (!authCheck || !authCheck.autorizado || !authCheck.email) {
+    var userEmailDisplay = (authCheck && authCheck.email) ? authCheck.email : "";
+    var errorMsg = (authCheck && authCheck.error) ? authCheck.error : "Ingresa tu correo electrónico registrado para verificar tu autorización.";
+
+    var htmlIdentificationScreen = '<!DOCTYPE html>' +
+      '<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+      '<title>Verificación de Acceso - Finca Los Sauces</title>' +
+      '<script src="https://cdn.tailwindcss.com"></script>' +
+      '<style>body { font-family: system-ui, -apple-system, sans-serif; background-color: #0f172a; color: #f8fafc; }</style>' +
+      '</head><body class="min-h-screen flex items-center justify-center p-4">' +
+      '<div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl text-center space-y-6">' +
+      '<div class="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto border border-emerald-500/20">' +
+      '<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0H10m0-6h4m-2 0V7m0 0a5 5 0 00-5 5v3a5 5 0 005 5h4a5 5 0 005-5v-3a5 5 0 00-5-5h-4z"></path></svg>' +
+      '</div>' +
+      '<div>' +
+      '<span class="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold uppercase tracking-wider rounded-full border border-emerald-500/20">Control de Acceso</span>' +
+      '<h1 class="text-2xl font-black mt-3 text-white">Finca Los Sauces</h1>' +
+      '<p class="text-xs text-slate-400 mt-2">Ingresa tu correo registrado para validar tus permisos en la lista blanca de la finca.</p>' +
+      '</div>' +
+      (userEmailDisplay && !authCheck.autorizado ?
+        '<div class="bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 text-xs font-bold text-rose-300">' + errorMsg + '</div>' : '') +
+      '<form onsubmit="handleAuthSubmit(event)" class="space-y-4 text-left">' +
+      '<div>' +
+      '<label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Correo Electrónico Autorizado *</label>' +
+      '<input type="email" id="inputAuthEmail" required value="' + userEmailDisplay + '" placeholder="p.ej. santiagofrancop1959@gmail.com" class="w-full rounded-xl bg-slate-800 border border-slate-700 py-3 px-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold">' +
+      '</div>' +
+      '<button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg text-sm transition cursor-pointer flex justify-center items-center gap-2">' +
+      '<span>🔓 Validar e Ingresar</span>' +
+      '</button>' +
+      '</form>' +
+      '<script>' +
+      'function handleAuthSubmit(e) {' +
+      '  e.preventDefault();' +
+      '  var email = document.getElementById("inputAuthEmail").value.trim().toLowerCase();' +
+      '  if(!email) return;' +
+      '  localStorage.setItem("finca_user_email", email);' +
+      '  var currentUrl = new URL(window.location.href);' +
+      '  currentUrl.searchParams.set("email", email);' +
+      '  window.location.href = currentUrl.toString();' +
+      '}' +
+      '</script>' +
+      '</div>' +
+      '</body></html>';
+
+    return HtmlService.createHtmlOutput(htmlIdentificationScreen)
+      .setTitle("Verificación de Acceso - Finca Los Sauces")
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
+  return HtmlService.createTemplateFromFile("index")
+    .evaluate()
+    .setTitle("Finca Los Sauces - Dashboard de Control Operativo")
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+function generarCodigoSeguimiento(loteCompleto, cultivo, fecha) {
+  var lClean = String(loteCompleto || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  var cClean = String(cultivo || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  var yClean = '2026';
+  if (fecha) {
+    var parts = String(fecha).split('-');
+    if (parts.length >= 1 && parts[0].length === 4) yClean = parts[0];
+  }
+  if (!lClean) lClean = 'LOTE';
+  if (!cClean) cClean = 'CULTIVO';
+  return 'INI-' + lClean + '-' + cClean + '-' + yClean;
+}
+
+function calcularEtapaCultivo(fechaInicio, duracionDias, cultivo) {
+  var duracion = Number(duracionDias) || 0;
+  if (!duracion) {
+    var cultLower = String(cultivo || '').toLowerCase();
+    if (cultLower.indexOf('cilantro') !== -1) duracion = 60;
+    else if (cultLower.indexOf('arveja') !== -1) duracion = 120;
+    else if (cultLower.indexOf('cebolla cabezona') !== -1) duracion = 140;
+    else if (cultLower.indexOf('cebolla') !== -1) duracion = 150;
+    else if (cultLower.indexOf('café') !== -1 || cultLower.indexOf('cafe') !== -1) duracion = 300;
+    else if (cultLower.indexOf('aguacate') !== -1) duracion = 365;
+    else if (cultLower.indexOf('cacao') !== -1) duracion = 300;
+    else if (cultLower.indexOf('plátano') !== -1 || cultLower.indexOf('platano') !== -1) duracion = 270;
+    else duracion = 150;
+  }
+
+  if (!fechaInicio || fechaInicio === "-" || fechaInicio === "") {
+    return {
+      diasTranscurridos: 0,
+      duracionEstimadaDias: duracion,
+      porcentajeAvance: 0,
+      etapaNombre: "Sin Ciclo Activo (Barbecho / Descanso)",
+      etapaNumero: 0,
+      colorHex: "#64748b",
+      colorStatus: "gris",
+      estadoTexto: "LIBRE"
+    };
+  }
+
+  var hoy = new Date();
+  var inicio = new Date(fechaInicio);
+  var diffTime = Math.max(0, hoy.getTime() - inicio.getTime());
+  var diasTranscurridos = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  var porcentajeAvance = Math.min(100, Math.round((diasTranscurridos / duracion) * 100));
+
+  var etapaNombre = "";
+  var etapaNumero = 1;
+  var colorHex = "#10b981";
+  var colorStatus = "verde";
+
+  if (porcentajeAvance <= 20) {
+    etapaNombre = "Etapa 1: Germinación y Arraigo / Preparación";
+    etapaNumero = 1;
+    colorHex = "#f97316";
+    colorStatus = "naranja";
+  } else if (porcentajeAvance <= 60) {
+    etapaNombre = "Etapa 2: Desarrollo Vegetativo y Crecimiento";
+    etapaNumero = 2;
+    colorHex = "#10b981";
+    colorStatus = "verde";
+  } else if (porcentajeAvance <= 85) {
+    etapaNombre = "Etapa 3: Llenado de Cabezas / Bulbo / Floración";
+    etapaNumero = 3;
+    colorHex = "#10b981";
+    colorStatus = "verde";
+  } else {
+    etapaNombre = "Etapa 4: Cosecha y Recolección";
+    etapaNumero = 4;
+    colorHex = "#eab308";
+    colorStatus = "amarillo";
+  }
+
+  return {
+    diasTranscurridos: diasTranscurridos,
+    duracionEstimadaDias: duracion,
+    porcentajeAvance: porcentajeAvance,
+    etapaNombre: etapaNombre,
+    etapaNumero: etapaNumero,
+    colorHex: colorHex,
+    colorStatus: colorStatus,
+    estadoTexto: "EN PROCESO"
+  };
+}
+
+function getDashboardData() {
+  try {
+    var authCheck = verificarAccesoUsuario();
+    if (!authCheck.autorizado) {
+      return { success: false, error: authCheck.error || "Acceso No Autorizado." };
+    }
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    var data = {
+      gastosIniciales: getSheetData(ss, HOJA_GASTOS_INICIALES),
+      gastosDesarrollo: getSheetData(ss, HOJA_GASTOS_DESARROLLO),
+      ventas: getSheetData(ss, HOJA_VENTAS),
+      configuracion: getSheetData(ss, HOJA_CONFIGURACION),
+      prestamos: getSheetData(ss, HOJA_PRESTAMOS),
+      ciclos: getSheetData(ss, HOJA_CICLOS),
+      gastosPersonales: getSheetData(ss, HOJA_GASTOS_PERSONALES),
+      fotosLotes: getSheetData(ss, HOJA_FOTOS_LOTES),
+      ingresosExternos: getSheetData(ss, HOJA_INGRESOS_EXTERNOS),
+      metasRecoleccion: getSheetData(ss, HOJA_METAS_RECOLECCION),
+      aportesMetas: getSheetData(ss, HOJA_APORTES_METAS)
+    };
+
+    return { success: true, data: data };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
+ * Tareas de Desarrollo por Capas: API Lote Summary
+ * Retorna resumen financiero, costo unitario de producción y rentabilidad real/esperada.
+ */
+function getLoteSummary(loteId, precioMercadoRef) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var loteTarget = String(loteId || "Lote 1").trim();
+    var precioMercado = Number(precioMercadoRef) || 0;
+
+    var gIni = getSheetData(ss, HOJA_GASTOS_INICIALES);
+    var gDes = getSheetData(ss, HOJA_GASTOS_DESARROLLO);
+    var vts = getSheetData(ss, HOJA_VENTAS);
+
+    // Filter transactions by lote
+    var filterLoteFn = function(item) {
+      var itemLote = String(item.Lote || item.lote || item.Lote_Principal || '').trim();
+      return itemLote === loteTarget || itemLote.indexOf(loteTarget + " ") === 0 || itemLote.indexOf(loteTarget) === 0;
+    };
+
+    var iniFiltered = gIni.filter(filterLoteFn);
+    var desFiltered = gDes.filter(filterLoteFn);
+    var vtsFiltered = vts.filter(filterLoteFn);
+
+    // Costos Acumulados ($C_acumulado)
+    var costoTotalAcumulado = iniFiltered.concat(desFiltered).reduce(function(sum, x) {
+      return sum + (Number(x.Costo_Total_COP || x.costo_total_cop) || 0);
+    }, 0);
+
+    // Unidades / Semillas e Insumos (Detección dinámica de unidad de cultivo ej. Atados, Bultos, Kg)
+    var unidadMedida = "Atados";
+    if (vtsFiltered.length > 0 && (vtsFiltered[0].Unidad_Medida || vtsFiltered[0].unidad_medida)) {
+      unidadMedida = String(vtsFiltered[0].Unidad_Medida || vtsFiltered[0].unidad_medida).trim();
+    } else if (iniFiltered.length > 0 && (iniFiltered[0].Unidad_Medida || iniFiltered[0].unidad_medida)) {
+      unidadMedida = String(iniFiltered[0].Unidad_Medida || iniFiltered[0].unidad_medida).trim();
+    }
+
+    // Producción Real y Estimada
+    var produccionReal = vtsFiltered.reduce(function(sum, x) {
+      return sum + (Number(x.Cantidad || x.cantidad || x.Unidades_Cosechadas || x.unidades_cosechadas) || 0);
+    }, 0);
+
+    var semillasCantidad = iniFiltered.reduce(function(sum, x) {
+      return sum + (Number(x.Cantidad || x.cantidad) || 0);
+    }, 0);
+
+    var produccionEstimada = semillasCantidad > 0 ? (semillasCantidad * 2.8) : 2800; // Factor 2.8x default
+
+    var cantidadEfectiva = 0;
+    var tipoProduccion = "ESTIMADO";
+
+    if (produccionReal > 0) {
+      cantidadEfectiva = produccionReal;
+      tipoProduccion = "REAL";
+    } else {
+      cantidadEfectiva = produccionEstimada;
+      tipoProduccion = "ESTIMADO";
+    }
+
+    // Formulas Financieras
+    var costoUnitario = cantidadEfectiva > 0 ? (costoTotalAcumulado / cantidadEfectiva) : 0;
+    var margenUnitario = precioMercado - costoUnitario;
+    var porcentajeRentabilidad = precioMercado > 0 ? ((precioMercado - costoUnitario) / precioMercado) * 100 : 0;
+
+    var estadoRentabilidad = "NEUTRO";
+    if (porcentajeRentabilidad > 0) {
+      estadoRentabilidad = "POSITIVO";
+    } else if (porcentajeRentabilidad < 0) {
+      estadoRentabilidad = "CRITICO";
+    }
+
+    return {
+      success: true,
+      lote_id: loteTarget,
+      costo_total_acumulado: Math.round(costoTotalAcumulado * 100) / 100,
+      unidad_medida: unidadMedida,
+      produccion: {
+        cantidad_efectiva: Math.round(cantidadEfectiva * 100) / 100,
+        tipo: tipoProduccion,
+        produccion_estimada: Math.round(produccionEstimada * 100) / 100,
+        produccion_real: Math.round(produccionReal * 100) / 100
+      },
+      indicadores_rentabilidad: {
+        costo_unitario: Math.round(costoUnitario * 100) / 100,
+        precio_mercado: Math.round(precioMercado * 100) / 100,
+        margen_unitario: Math.round(margenUnitario * 100) / 100,
+        porcentaje_rentabilidad: Math.round(porcentajeRentabilidad * 100) / 100,
+        estado_rentabilidad: estadoRentabilidad
+      }
+    };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
+ * Funciones independientes para Gestión de Ingresos Externos y Metas de Recolección
+ */
+function registrarIngresoExterno(datos) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(HOJA_INGRESOS_EXTERNOS);
+    var columnsNeeded = ["ID_Ingreso_Externo", "Fecha", "Fuente_Origen", "Monto_COP", "Metodo_Pago", "Notas"];
+
+    if (!sheet) {
+      sheet = ss.insertSheet(HOJA_INGRESOS_EXTERNOS);
+      sheet.appendRow(columnsNeeded);
+    }
+    asegurarColumnas(sheet, columnsNeeded);
+
+    var lastRow = sheet.getLastRow();
+    var nextId = "IE-" + String(lastRow < 2 ? 1 : lastRow).padStart(3, '0');
+
+    var fecha = datos.Fecha || datos.fecha || formatDateNative(new Date());
+    var fuente = datos.Fuente_Origen || datos.fuente_origen || datos.Fuente || datos.fuente || "Trabajo Externo";
+    var monto = Number(datos.Monto_COP || datos.monto_cop || datos.Monto || datos.monto) || 0;
+    var metodo = datos.Metodo_Pago || datos.metodo_pago || "Transferencia";
+    var notas = datos.Notas || datos.notas || "";
+
+    sheet.appendRow([nextId, fecha, fuente, monto, metodo, notas]);
+    return { success: true, idGenerado: nextId, message: "Ingreso externo registrado correctamente." };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function crearMetaRecoleccion(datos) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(HOJA_METAS_RECOLECCION);
+    var columnsNeeded = ["ID_Meta", "Nombre_Meta", "Monto_Objetivo_COP", "Fecha_Creacion", "Fecha_Limite", "Categoria", "Estado", "Notas"];
+
+    if (!sheet) {
+      sheet = ss.insertSheet(HOJA_METAS_RECOLECCION);
+      sheet.appendRow(columnsNeeded);
+    }
+    asegurarColumnas(sheet, columnsNeeded);
+
+    var lastRow = sheet.getLastRow();
+    var nextId = "META-" + String(lastRow < 2 ? 1 : lastRow).padStart(3, '0');
+
+    var nombre = datos.Nombre_Meta || datos.nombre_meta || datos.Nombre || datos.nombre || "Meta Ahorro";
+    var montoObj = Number(datos.Monto_Objetivo_COP || datos.monto_objetivo_cop || datos.Monto_Objetivo || datos.monto_objetivo) || 0;
+    var fechaCreacion = datos.Fecha_Creacion || datos.fecha_creacion || formatDateNative(new Date());
+    var fechaLimite = datos.Fecha_Limite || datos.fecha_limite || "";
+    var categoria = datos.Categoria || datos.categoria || "Otros";
+    var estado = datos.Estado || datos.estado || "EN PROCESO";
+    var notas = datos.Notas || datos.notas || "";
+
+    sheet.appendRow([nextId, nombre, montoObj, fechaCreacion, fechaLimite, categoria, estado, notas]);
+    return { success: true, idGenerado: nextId, message: "Meta de recolección creada correctamente." };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function aportarAMetaRecoleccion(datos) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(HOJA_APORTES_METAS);
+    var columnsNeeded = ["ID_Aporte", "ID_Meta", "Nombre_Meta", "Fecha", "Monto_Aporte_COP", "Origen_Fondos", "Notas"];
+
+    if (!sheet) {
+      sheet = ss.insertSheet(HOJA_APORTES_METAS);
+      sheet.appendRow(columnsNeeded);
+    }
+    asegurarColumnas(sheet, columnsNeeded);
+
+    var lastRow = sheet.getLastRow();
+    var nextId = "APORTE-" + String(lastRow < 2 ? 1 : lastRow).padStart(3, '0');
+
+    var idMeta = datos.ID_Meta || datos.id_meta || "";
+    var nombreMeta = datos.Nombre_Meta || datos.nombre_meta || "";
+    var fecha = datos.Fecha || datos.fecha || formatDateNative(new Date());
+    var monto = Number(datos.Monto_Aporte_COP || datos.monto_aporte_cop || datos.Monto || datos.monto) || 0;
+    var origen = datos.Origen_Fondos || datos.origen_fondos || "Ingreso Externo";
+    var notas = datos.Notas || datos.notas || "";
+
+    sheet.appendRow([nextId, idMeta, nombreMeta, fecha, monto, origen, notas]);
+    return { success: true, idGenerado: nextId, message: "Aporte registrado correctamente." };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
+ * Función para crear un backup diario automático del documento actual
+ * en la carpeta especificada de Google Drive (ID: 1B7Um_1m_dcuq9r85qV6TcW1LG0QXnRzu).
+ */
+function crearBackupDiario() {
+  return runDailyBackup();
+}
+
+/**
+ * Función de Respaldo Diario Automatizado (runDailyBackup)
+ * Captura el estado actual de las fuentes de datos (Google Sheets / JSON consolidado),
+ * genera un respaldo espejo con marca de tiempo (YYYY-MM-DD) y lo almacena en Google Drive.
+ */
+function runDailyBackup() {
+  try {
+    var folderId = "1B7Um_1m_dcuq9r85qV6TcW1LG0QXnRzu";
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var timeZone = ss.getSpreadsheetTimeZone() || "America/Bogota";
+    var dateFormatted = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd_HH-mm");
+    var backupName = "Backup_" + ss.getName() + "_" + dateFormatted;
+
+    var folder;
+    try {
+      folder = DriveApp.getFolderById(folderId);
+    } catch (fErr) {
+      // Si la carpeta designada no existe o no tiene permisos, crear carpeta por defecto en Drive
+      var folderName = "Finca Los Sauces - Backups Automatizados";
+      var folders = DriveApp.getFoldersByName(folderName);
+      folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+    }
+
+    // 1. Generar copia espejo del libro de cálculo
+    var file = DriveApp.getFileById(ss.getId());
+    var backupFile = file.makeCopy(backupName, folder);
+
+    // 2. Generar respaldo estructurado consolidado en formato JSON
+    var consolidatedData = getDashboardData();
+    if (consolidatedData && consolidatedData.success) {
+      var jsonContent = JSON.stringify(consolidatedData.data, null, 2);
+      var jsonBlob = Utilities.newBlob(jsonContent, "application/json", backupName + ".json");
+      folder.createFile(jsonBlob);
+    }
+
+    Logger.log("Backup diario ejecutado con éxito: " + backupName);
+    return { success: true, backupName: backupName, fileUrl: backupFile.getUrl() };
+  } catch (err) {
+    Logger.log("ERROR CRÍTICO EN BACKUP DIARIO: " + err.toString());
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
+ * Disparador Automático (setupDailyTrigger / configurarActivadorBackupDiario)
+ * Programa automáticamente el activador time-driven diariamente a las 00:00 h.
+ */
+function setupDailyTrigger() {
+  try {
+    var triggers = ScriptApp.getProjectTriggers();
+    for (var i = 0; i < triggers.length; i++) {
+      var funcName = triggers[i].getHandlerFunction();
+      if (funcName === "runDailyBackup" || funcName === "crearBackupDiario") {
+        ScriptApp.deleteTrigger(triggers[i]);
+      }
+    }
+
+    ScriptApp.newTrigger("runDailyBackup")
+      .timeBased()
+      .everyDays(1)
+      .atHour(0)
+      .create();
+
+    Logger.log("Activador de backup diario a las 00:00 h configurado correctamente.");
+    return { success: true, message: "Activador automático diario configurado a medianoche." };
+  } catch (err) {
+    Logger.log("Error al configurar activador diario: " + err.toString());
+    return { success: false, error: err.toString() };
+  }
+}
+
+function configurarActivadorBackupDiario() {
+  return setupDailyTrigger();
+}
+
+/**
+ * Función de Consolidación para Exportación a Excel (exportToExcelData)
+ * Compila y estandariza todas las tablas de datos activas (gastos, ventas,
+ * ingresos externos, metas, aportes y bitácora) con encabezados normalizados en UTF-8.
+ */
+function exportToExcelData() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var data = {
+      gastosIniciales: getSheetData(ss, HOJA_GASTOS_INICIALES),
+      gastosDesarrollo: getSheetData(ss, HOJA_GASTOS_DESARROLLO),
+      ventas: getSheetData(ss, HOJA_VENTAS),
+      gastosPersonales: getSheetData(ss, HOJA_GASTOS_PERSONALES),
+      ingresosExternos: getSheetData(ss, HOJA_INGRESOS_EXTERNOS),
+      metasRecoleccion: getSheetData(ss, HOJA_METAS_RECOLECCION),
+      aportesMetas: getSheetData(ss, HOJA_APORTES_METAS),
+      fotosLotes: getSheetData(ss, HOJA_FOTOS_LOTES)
+    };
+
+    var csvContent = "\uFEFF"; // UTF-8 BOM
+    csvContent += "FINCA LOS SAUCES - CONSOLIDADO GENERAL DE INFORMACIÓN\n";
+    csvContent += "Fecha de Exportación:;" + formatDateNative(new Date()) + "\n\n";
+
+    // 1. SECCIÓN: GASTOS Y VENTAS AGRÍCOLAS
+    csvContent += "--- TRANSACCIONES AGRÍCOLAS Y LOTES ---\n";
+    csvContent += "Tipo_Registro;Lote;Cultivo_Insumo_Producto;Cantidad;Monto_COP;Estado_Pago;Fecha;Detalles_Notas;Codigo_Seguimiento\n";
+
+    (data.gastosIniciales || []).forEach(function(item) {
+      csvContent += ["Gasto Inicial", item.Lote || item.lote || "", item.Cultivo_Semilla || item.cultivo_semilla || "", item.Cantidad || 1, item.Costo_Total_COP || 0, item.Estado_Pago || "PAGADO", item.Fecha || "", item.Notas || "", item.Codigo_Seguimiento || ""].map(function(v) { return String(v).replace(/;/g, ","); }).join(";") + "\n";
+    });
+
+    (data.gastosDesarrollo || []).forEach(function(item) {
+      csvContent += ["Gasto Desarrollo", item.Lote || item.lote || "", item.Tipo_Insumo || item.tipo_insumo || "", item.Cantidad || 1, item.Costo_Total_COP || 0, item.Estado_Pago || "PAGADO", item.Fecha || "", item.Detalle || "", item.Codigo_Seguimiento || ""].map(function(v) { return String(v).replace(/;/g, ","); }).join(";") + "\n";
+    });
+
+    (data.ventas || []).forEach(function(item) {
+      csvContent += ["Venta Cosecha", item.Lote || item.lote || "", item.Producto_Vendido || item.producto_vendido || "", item.Cantidad || 1, item.Ingreso_Total_COP || 0, item.Estado_Pago || "PAGADO", item.Fecha || "", item.Comprador || "", item.Codigo_Seguimiento || ""].map(function(v) { return String(v).replace(/;/g, ","); }).join(";") + "\n";
+    });
+
+    // 2. SECCIÓN: INGRESOS EXTERNOS Y METAS DE RECOLECCIÓN
+    csvContent += "\n--- INGRESOS EXTERNOS Y METAS DE RECOLECCIÓN ---\n";
+    csvContent += "Tipo_Registro;ID;Fuente_Nombre;Monto_COP;Fecha;Categoria_Metodo;Notas\n";
+
+    (data.ingresosExternos || []).forEach(function(item) {
+      csvContent += ["Ingreso Externo", item.ID_Ingreso_Externo || "", item.Fuente_Origen || "", item.Monto_COP || 0, item.Fecha || "", item.Metodo_Pago || "", item.Notas || ""].map(function(v) { return String(v).replace(/;/g, ","); }).join(";") + "\n";
+    });
+
+    (data.metasRecoleccion || []).forEach(function(item) {
+      csvContent += ["Meta Recoleccion", item.ID_Meta || "", item.Nombre_Meta || "", item.Monto_Objetivo_COP || 0, item.Fecha_Limite || "", item.Categoria || "", item.Estado || ""].map(function(v) { return String(v).replace(/;/g, ","); }).join(";") + "\n";
+    });
+
+    (data.aportesMetas || []).forEach(function(item) {
+      csvContent += ["Aporte a Meta", item.ID_Aporte || "", item.Nombre_Meta || "", item.Monto_Aporte_COP || 0, item.Fecha || "", item.Origen_Fondos || "", item.Notas || ""].map(function(v) { return String(v).replace(/;/g, ","); }).join(";") + "\n";
+    });
+
+    return { success: true, csvContent: csvContent, filename: "Consolidado_General_Finca_Los_Sauces_" + formatDateNative(new Date()) + ".csv" };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function guardarFotoLote(datos) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(HOJA_FOTOS_LOTES);
+    var headersNeeded = ["ID_Foto", "Lote", "Fecha", "Titulo", "Descripcion", "Url_Foto_Drive", "Base64_Data"];
+
+    if (!sheet) {
+      sheet = ss.insertSheet(HOJA_FOTOS_LOTES);
+      sheet.appendRow(headersNeeded);
+    }
+    asegurarColumnas(sheet, headersNeeded);
+
+    var lastRow = sheet.getLastRow();
+    var lote = datos.Lote || datos.lote || "Lote 1A";
+    var fecha = datos.Fecha || datos.fecha || formatDateNative(new Date());
+    var idFoto = "FOTO-" + lote.replace(/\s+/g, "").toUpperCase() + "-" + fecha.replace(/-/g, "") + "-" + String(lastRow < 2 ? 1 : lastRow).padStart(2, '0');
+
+    var titulo = datos.Titulo || datos.titulo || "Avance de cultivo";
+    var descripcion = datos.Descripcion || datos.descripcion || "";
+    var urlDrive = datos.Url_Foto_Drive || datos.url_foto_drive || "";
+    var base64Data = datos.Base64_Data || datos.base64_data || "";
+
+    // Upload to Google Drive if base64 file data is present
+    if (base64Data && typeof DriveApp !== 'undefined') {
+      try {
+        var folderName = "Finca Los Sauces - Fotos Lotes";
+        var folders = DriveApp.getFoldersByName(folderName);
+        var targetFolder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+
+        var mimeType = "image/jpeg";
+        var base64Clean = base64Data;
+        if (base64Data.indexOf("data:") === 0) {
+          var parts = base64Data.split(",");
+          base64Clean = parts[1];
+          var mimeMatch = parts[0].match(/data:(.*?);/);
+          if (mimeMatch && mimeMatch[1]) mimeType = mimeMatch[1];
+        }
+
+        var bytes = Utilities.base64Decode(base64Clean);
+        var blob = Utilities.newBlob(bytes, mimeType, idFoto + "_" + lote.replace(/\s+/g, "") + ".jpg");
+        var driveFile = targetFolder.createFile(blob);
+        driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        urlDrive = driveFile.getUrl();
+      } catch (driveErr) {
+        Logger.log("Error subiendo foto a Drive: " + driveErr.toString());
+      }
+    }
+
+    sheet.appendRow([idFoto, lote, fecha, titulo, descripcion, urlDrive, base64Data]);
+    return { success: true, idFoto: idFoto, urlDrive: urlDrive, message: "Fotografía guardada con éxito." };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function obtenerFotosLote(lote) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var fotos = getSheetData(ss, HOJA_FOTOS_LOTES);
+    if (!lote || lote === "Todos") return { success: true, data: fotos };
+
+    var filtered = fotos.filter(function(f) {
+      var itemLote = String(f.Lote || f.lote || '').trim();
+      return itemLote === lote || itemLote.indexOf(lote) === 0;
+    });
+    return { success: true, data: filtered };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function obtenerLotesActivosMapa() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ciclos = getSheetData(ss, HOJA_CICLOS);
+    var gIniciales = getSheetData(ss, HOJA_GASTOS_INICIALES);
+    var gDesarrollo = getSheetData(ss, HOJA_GASTOS_DESARROLLO);
+    var ventas = getSheetData(ss, HOJA_VENTAS);
+    var fotos = getSheetData(ss, HOJA_FOTOS_LOTES);
+
+    var lotesMap = {};
+
+    for (var m = 1; m <= 16; m++) {
+      var loteName = "Lote " + m;
+
+      var activeCycle = ciclos.find(function(c) {
+        var cLote = String(c.Lote || c.lote || c.Lote_Principal || '').trim();
+        return (cLote === loteName || cLote.indexOf(loteName + " ") === 0) && String(c.Estado || c.estado || '').toUpperCase() === 'EN PROCESO';
+      });
+
+      var iniRow = gIniciales.find(function(ini) {
+        var iLote = String(ini.Lote || ini.lote || ini.Lote_Principal || '').trim();
+        return iLote === loteName || iLote.indexOf(loteName + " ") === 0;
+      });
+
+      var cultivoName = "Barbecho / Descanso";
+      var fechaInicio = "";
+
+      if (activeCycle) {
+        cultivoName = activeCycle.Cultivo || activeCycle.cultivo || "Cultivo Activo";
+        fechaInicio = activeCycle.Fecha_Inicio || activeCycle.fecha_inicio || "";
+      }
+
+      var stageInfo = calcularEtapaCultivo(fechaInicio, 0, cultivoName);
+
+      var totalGastosIni = gIniciales
+        .filter(function(x) {
+          var xLote = String(x.Lote || x.lote || x.Lote_Principal || '').trim();
+          return xLote === loteName || xLote.indexOf(loteName + " ") === 0;
+        })
+        .reduce(function(sum, x) { return sum + (Number(x.Costo_Total_COP || x.costo_total_cop) || 0); }, 0);
+
+      var totalGastosDes = gDesarrollo
+        .filter(function(x) {
+          var xLote = String(x.Lote || x.lote || x.Lote_Principal || '').trim();
+          return xLote === loteName || xLote.indexOf(loteName + " ") === 0;
+        })
+        .reduce(function(sum, x) { return sum + (Number(x.Costo_Total_COP || x.costo_total_cop) || 0); }, 0);
+
+      var totalVentas = ventas
+        .filter(function(x) {
+          var xLote = String(x.Lote || x.lote || x.Lote_Principal || '').trim();
+          return xLote === loteName || xLote.indexOf(loteName + " ") === 0;
+        })
+        .reduce(function(sum, x) { return sum + (Number(x.Ingreso_Total_COP || x.ingreso_total_cop) || 0); }, 0);
+
+      var countFotos = fotos
+        .filter(function(x) {
+          var xLote = String(x.Lote || x.lote || '').trim();
+          return xLote === loteName || xLote.indexOf(loteName + " ") === 0;
+        })
+        .length;
+
+      lotesMap[loteName] = {
+        lote: loteName,
+        mainLot: loteName,
+        subLot: "",
+        cultivo: cultivoName,
+        fechaInicio: fechaInicio,
+        activeCycle: activeCycle || null,
+        stageInfo: stageInfo,
+        gastosTotales: totalGastosIni + totalGastosDes,
+        ventasTotales: totalVentas,
+        fotosCount: countFotos
+      };
+    }
+
+    return { success: true, lotesMap: lotesMap };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function guardarNuevoCicloLote(datos) {
+  try {
+    var loteCompleto = datos.Lote || datos.lote || "";
+    var cultivo = datos.Cultivo || datos.cultivo || datos.Cultivo_Semilla || "";
+    var fechaInicio = datos.Fecha_Inicio || datos.fecha_inicio || formatDateNative(new Date());
+
+    if (!loteCompleto || !cultivo) {
+      return { success: false, error: "Especifica lote y cultivo." };
+    }
+
+    var match = loteCompleto.match(/^(Lote\s*\d+)\s*([A-Za-z0-9]+)?$/i);
+    var lp = datos.Lote_Principal || (match ? match[1] : loteCompleto);
+    var sub = datos.Sub_Lote || (match && match[2] ? match[2] : "");
+
+    var trackingCode = generarCodigoSeguimiento(loteCompleto, cultivo, fechaInicio);
+
+    var resCiclo = agregarCiclo(lp, sub, cultivo, trackingCode, trackingCode, trackingCode, trackingCode, "EN PROCESO", fechaInicio, "");
+    if (!resCiclo.success) return resCiclo;
+
+    if (datos.Costo_Inicial && Number(datos.Costo_Inicial) > 0) {
+      guardarRegistro("gastosIniciales", {
+        Lote_Principal: lp,
+        Sub_Lote: sub,
+        Lote: loteCompleto,
+        Cultivo_Semilla: cultivo,
+        Costo_Total_COP: Number(datos.Costo_Inicial),
+        Fecha: fechaInicio,
+        Codigo_Seguimiento: trackingCode,
+        Notas: "Establecimiento inicial de " + cultivo
+      });
+    }
+
+    return {
+      success: true,
+      lote: loteCompleto,
+      codigoGeneral: trackingCode,
+      message: "¡Lote " + loteCompleto + " activado y vinculado dinámicamente al mapa interactivo!"
+    };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function obtenerDatosConsolidados(filtros) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var data = {
+      gastosIniciales: getSheetData(ss, HOJA_GASTOS_INICIALES),
+      gastosDesarrollo: getSheetData(ss, HOJA_GASTOS_DESARROLLO),
+      ventas: getSheetData(ss, HOJA_VENTAS),
+      ciclos: getSheetData(ss, HOJA_CICLOS),
+      prestamos: getSheetData(ss, HOJA_PRESTAMOS)
+    };
+
+    var fechaInicio = filtros ? filtros.fechaInicio : null;
+    var fechaFin = filtros ? filtros.fechaFin : null;
+    var lote = filtros ? filtros.lote : "Todos";
+    var cultivo = filtros ? filtros.cultivo : "Todos";
+
+    var filterFn = function(item, type) {
+      var itemFecha = item.Fecha || item.fecha || "";
+      var itemLote = item.Lote || item.lote || item.Lote_Completo || "";
+      var itemMain = item.Lote_Principal || item.lote_principal || "";
+
+      if (fechaInicio && itemFecha < fechaInicio) return false;
+      if (fechaFin && itemFecha > fechaFin) return false;
+
+      if (lote && lote !== "Todos") {
+        var cleanLote = lote.replace(/\(Consolidado.*?\)/i, "").trim();
+        var isConsolidated = lote.indexOf("Consolidado") !== -1 || cleanLote.match(/^Lote\s*\d+$/i);
+
+        if (isConsolidated) {
+          var matchMain = (itemMain === cleanLote) ||
+                          (itemLote === cleanLote) ||
+                          (itemLote.indexOf(cleanLote + " ") === 0) ||
+                          (itemLote.indexOf(cleanLote) === 0 && (itemLote.length === cleanLote.length || itemLote.charAt(cleanLote.length).match(/[A-Z0-9]/i)));
+          if (!matchMain) return false;
+        } else {
+          if (itemLote !== cleanLote && itemLote !== lote) return false;
+        }
+      }
+
+      if (cultivo && cultivo !== "Todos") {
+        var itemCultivo = "";
+        if (type === "inicial") itemCultivo = item.Cultivo_Semilla || item.cultivo_semilla || "";
+        else if (type === "venta") itemCultivo = item.Producto_Vendido || item.producto_vendido || "";
+
+        if (!itemCultivo && data.ciclos) {
+          var trackingCode = (item.Codigo_General || item.Codigo_Seguimiento || "").toString().trim().toUpperCase();
+          if (trackingCode) {
+            var cycle = data.ciclos.find(function(c) {
+              return (c.Codigo_General || "").toString().trim().toUpperCase() === trackingCode ||
+                     (c.Codigo_Inicial || "").toString().trim().toUpperCase() === trackingCode ||
+                     (c.Codigo_Desarrollo || "").toString().trim().toUpperCase() === trackingCode ||
+                     (c.Codigo_Ventas || "").toString().trim().toUpperCase() === trackingCode;
+            });
+            if (cycle) itemCultivo = cycle.Cultivo || cycle.cultivo || "";
+          }
+        }
+
+        if (!itemCultivo && data.gastosIniciales) {
+          var firstIni = data.gastosIniciales.find(function(ini) {
+            return (ini.Lote || "").toString().trim() === itemLote;
+          });
+          if (firstIni) itemCultivo = firstIni.Cultivo_Semilla || firstIni.cultivo_semilla || "";
+        }
+
+        if (itemCultivo.toLowerCase().indexOf(cultivo.toLowerCase()) === -1) return false;
+      }
+      return true;
+    };
+
+    var filteredIniciales = data.gastosIniciales.filter(function(x) { return filterFn(x, "inicial"); });
+    var filteredDesarrollo = data.gastosDesarrollo.filter(function(x) { return filterFn(x, "desarrollo"); });
+    var filteredVentas = data.ventas.filter(function(x) { return filterFn(x, "venta"); });
+
+    // Cash flow & payment status calculations
+    var cajaReal = filteredVentas
+      .filter(function(x) { return String(x.Estado_Pago || x.estado_pago || 'PAGADO').toUpperCase() === 'PAGADO'; })
+      .reduce(function(sum, x) { return sum + (Number(x.Ingreso_Total_COP || x.ingreso_total_cop) || 0); }, 0);
+
+    var salidaReal = filteredIniciales.concat(filteredDesarrollo)
+      .filter(function(x) { return String(x.Estado_Pago || x.estado_pago || 'PAGADO').toUpperCase() === 'PAGADO'; })
+      .reduce(function(sum, x) { return sum + (Number(x.Costo_Total_COP || x.costo_total_cop) || 0); }, 0);
+
+    var cuentasPorCobrar = filteredVentas
+      .filter(function(x) { return String(x.Estado_Pago || x.estado_pago || '').toUpperCase() === 'PENDIENTE'; })
+      .reduce(function(sum, x) { return sum + (Number(x.Ingreso_Total_COP || x.ingreso_total_cop) || 0); }, 0);
+
+    var cuentasPorPagar = filteredIniciales.concat(filteredDesarrollo)
+      .filter(function(x) { return String(x.Estado_Pago || x.estado_pago || '').toUpperCase() === 'PENDIENTE'; })
+      .reduce(function(sum, x) { return sum + (Number(x.Costo_Total_COP || x.costo_total_cop) || 0); }, 0);
+
+    var saldoDisponible = cajaReal - salidaReal;
+    var saldoProyectado = (cajaReal + cuentasPorCobrar) - cuentasPorPagar;
+
+    var totalGastos = filteredIniciales.concat(filteredDesarrollo)
+      .reduce(function(sum, x) { return sum + (Number(x.Costo_Total_COP || x.costo_total_cop) || 0); }, 0);
+
+    var totalVentas = filteredVentas
+      .reduce(function(sum, x) { return sum + (Number(x.Ingreso_Total_COP || x.ingreso_total_cop) || 0); }, 0);
+
+    var totalUnidades = filteredVentas
+      .reduce(function(sum, x) { return sum + (Number(x.Cantidad || x.cantidad || x.Unidades_Cosechadas || x.unidades_cosechadas) || 0); }, 0);
+
+    var utilidadNeta = totalVentas - totalGastos;
+    var roi = totalGastos > 0 ? (utilidadNeta / totalGastos) * 100 : 0;
+    var costoUnitario = totalUnidades > 0 ? (totalGastos / totalUnidades) : 0;
+    var precioVentaPromedio = totalUnidades > 0 ? (totalVentas / totalUnidades) : 0;
+    var margenUnitario = precioVentaPromedio - costoUnitario;
+
+    var totalDeudaBank = data.prestamos.reduce(function(sum, x) { return sum + (Number(x.Saldo_Por_Pagar || x.saldo_por_pagar) || 0); }, 0);
+
+    return {
+      success: true,
+      metrics: {
+        cajaReal: cajaReal,
+        salidaReal: salidaReal,
+        saldoDisponible: saldoDisponible,
+        cuentasPorCobrar: cuentasPorCobrar,
+        cuentasPorPagar: cuentasPorPagar,
+        saldoProyectado: saldoProyectado,
+        gastosTotales: totalGastos,
+        ingresosTotales: totalVentas,
+        utilidadNeta: utilidadNeta,
+        roiPorcentaje: roi,
+        unidadesCosechadasTotales: totalUnidades,
+        costoUnitarioProduccion: costoUnitario,
+        precioVentaPromedio: precioVentaPromedio,
+        margenUnitario: margenUnitario,
+        deudaTotalActiva: totalDeudaBank
+      },
+      data: {
+        gastosIniciales: filteredIniciales,
+        gastosDesarrollo: filteredDesarrollo,
+        ventas: filteredVentas
+      }
+    };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function getConsolidatedData(fechaInicio, fechaFin, lote, cultivo) {
+  return obtenerDatosConsolidados({ fechaInicio: fechaInicio, fechaFin: fechaFin, lote: lote, cultivo: cultivo });
+}
+
+function obtenerListaLotesActivos(ss) {
+  if (!ss) ss = SpreadsheetApp.getActiveSpreadsheet();
+  var list = [];
+  var ciclosSheet = ss.getSheetByName(HOJA_CICLOS);
+  
+  if (ciclosSheet && ciclosSheet.getLastRow() >= 2) {
+    var ciclosData = leerTablaHoja(HOJA_CICLOS);
+    ciclosData.forEach(function(c) {
+      var estado = String(c.Estado || c.estado || '').toUpperCase();
+      if (estado === 'EN PROCESO' || estado === 'ACTIVO') {
+        var lp = String(c.Lote_Principal || c.lote_principal || c.Lote || c.lote || '').trim();
+        var match = lp.match(/^(Lote\s*\d+)/i);
+        var loteName = match ? match[1] : lp;
+        if (loteName && list.indexOf(loteName) === -1) {
+          list.push(loteName);
+        }
+      }
+    });
+  }
+
+  // Fallback if no active cycles registered: default to all 16 lotes
+  if (list.length === 0) {
+    for (var i = 1; i <= 16; i++) {
+      list.push("Lote " + i);
+    }
+  }
+
+  return list;
+}
+
+function guardarRegistro(tipo, datos) {
+  try {
+    var authCheck = verificarAccesoUsuario();
+    if (!authCheck.autorizado) return { success: false, error: authCheck.error || "Acceso No Autorizado." };
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetName = "";
+    var columnsNeeded = [];
+
+    if (tipo === "gastosIniciales" || tipo === "inicial") {
+      sheetName = HOJA_GASTOS_INICIALES;
+      columnsNeeded = ["Lote_Principal", "Sub_Lote", "Lote", "Cultivo_Semilla", "Cantidad", "Unidad_Medida", "Costo_Unitario_COP", "Costo_Total_COP", "Estado_Pago", "Cliente_Deudor_Proveedor", "Fecha_Vencimiento", "Fecha_Pago_Realizado", "Fecha", "Notas", "Codigo_Seguimiento", "Codigo_General"];
+    } else if (tipo === "gastosDesarrollo" || tipo === "desarrollo") {
+      sheetName = HOJA_GASTOS_DESARROLLO;
+      columnsNeeded = ["Lote_Principal", "Sub_Lote", "Lote", "Tipo_Insumo", "Cantidad", "Unidad_Medida", "Costo_Unitario_COP", "Costo_Total_COP", "Estado_Pago", "Cliente_Deudor_Proveedor", "Fecha_Vencimiento", "Fecha_Pago_Realizado", "Fecha", "Detalle", "Codigo_Seguimiento", "Codigo_General"];
+    } else if (tipo === "ventas" || tipo === "venta") {
+      sheetName = HOJA_VENTAS;
+      columnsNeeded = ["Lote_Principal", "Sub_Lote", "Lote", "Producto_Vendido", "Cantidad", "Unidad_Medida", "Precio_Unitario_COP", "Ingreso_Total_COP", "Estado_Pago", "Cliente_Deudor_Proveedor", "Fecha_Vencimiento", "Fecha_Pago_Realizado", "Fecha", "Comprador", "Codigo_Seguimiento", "Codigo_General"];
+    } else {
+      return { success: false, error: "Tipo de registro no válido." };
+    }
+
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+      sheet.appendRow(columnsNeeded);
+    }
+    asegurarColumnas(sheet, columnsNeeded);
+
+    var cantidad = Number(datos.Cantidad || datos.cantidad) || 1;
+    var unitario = Number(datos.Costo_Unitario_COP || datos.Precio_Unitario_COP || datos.costo_unitario || datos.precio_unitario) || 0;
+    var total = Number(datos.Costo_Total_COP || datos.Ingreso_Total_COP || datos.costo_total || datos.ingreso_total) || 0;
+
+    if (total === 0 && unitario > 0) {
+      total = cantidad * unitario;
+    } else if (unitario === 0 && total > 0 && cantidad > 0) {
+      unitario = total / cantidad;
+    }
+
+    var estadoPago = (datos.Estado_Pago || datos.estado_pago || "PAGADO").toUpperCase();
+    var cliente = datos.Cliente_Deudor_Proveedor || datos.cliente_deudor_proveedor || datos.Comprador || datos.comprador || "";
+    var fechaVenc = datos.Fecha_Vencimiento || datos.fecha_vencimiento || "";
+    var fechaPagoReal = estadoPago === "PAGADO" ? (datos.Fecha_Pago_Realizado || datos.fecha_pago_realizado || datos.Fecha || datos.fecha || formatDateNative(new Date())) : "";
+
+    var tipoInsumo = datos.Tipo_Insumo || datos.tipo_insumo || "";
+    var isProrrateoInsumo = (tipo === "gastosDesarrollo" || tipo === "desarrollo") && (tipoInsumo === "Fertilizantes" || tipoInsumo === "Pesticidas");
+
+    if (isProrrateoInsumo) {
+      var lotesActivos = obtenerListaLotesActivos(ss);
+      var numLotes = lotesActivos.length;
+      var propMonto = numLotes > 0 ? (total / numLotes) : total;
+      var propCantidad = numLotes > 0 ? (cantidad / numLotes) : cantidad;
+      var fechaGasto = datos.Fecha || datos.fecha || formatDateNative(new Date());
+      var detalleBase = datos.Detalle || datos.detalle || "";
+
+      var ciclosData = [];
+      var ciclosSheet = ss.getSheetByName(HOJA_CICLOS);
+      if (ciclosSheet && ciclosSheet.getLastRow() >= 2) {
+        ciclosData = leerTablaHoja(HOJA_CICLOS);
+      }
+
+      var headersInSheet = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+      lotesActivos.forEach(function(loteAct, idx) {
+        var activeCycle = ciclosData.find(function(c) {
+          var cLote = String(c.Lote || c.lote || c.Lote_Principal || '').trim();
+          return (cLote === loteAct || cLote.indexOf(loteAct + " ") === 0) && String(c.Estado || c.estado || '').toUpperCase() === 'EN PROCESO';
+        });
+
+        var loteTrackCode = "";
+        var loteGenCode = "";
+        var loteCultivo = "";
+
+        if (activeCycle) {
+          loteTrackCode = activeCycle.Codigo_Desarrollo || activeCycle.codigo_desarrollo || activeCycle.Codigo_Seguimiento || activeCycle.codigo_seguimiento || activeCycle.Codigo_General || activeCycle.codigo_general || "";
+          loteGenCode = activeCycle.Codigo_General || activeCycle.codigo_general || loteTrackCode;
+          loteCultivo = activeCycle.Cultivo || activeCycle.cultivo || "";
+        }
+
+        if (!loteTrackCode) {
+          loteTrackCode = generarCodigoSeguimiento(loteAct, tipoInsumo, fechaGasto);
+          loteGenCode = loteTrackCode;
+        }
+
+        var rowValues = [];
+        for (var c = 0; c < headersInSheet.length; c++) {
+          var h = headersInSheet[c].toString().trim();
+          var val = "";
+
+          if (h === "Lote_Principal") val = loteAct;
+          else if (h === "Sub_Lote" || h === "Division") val = "";
+          else if (h === "Lote" || h === "Lote_Completo") val = loteAct;
+          else if (h === "Tipo_Insumo") val = tipoInsumo;
+          else if (h === "Cantidad") val = propCantidad;
+          else if (h === "Unidad_Medida") val = datos.Unidad_Medida || datos.unidad_medida || "Unidades";
+          else if (h === "Costo_Unitario_COP" || h === "Precio_Unitario_COP") val = unitario;
+          else if (h === "Costo_Total_COP" || h === "Ingreso_Total_COP") val = propMonto;
+          else if (h === "Estado_Pago") val = estadoPago;
+          else if (h === "Cliente_Deudor_Proveedor") val = cliente;
+          else if (h === "Fecha_Vencimiento") val = fechaVenc;
+          else if (h === "Fecha_Pago_Realizado") val = fechaPagoReal;
+          else if (h === "Fecha") val = fechaGasto;
+          else if (h === "Detalle") val = (detalleBase ? detalleBase + " " : "") + "(Prorrateo general " + (idx + 1) + "/" + numLotes + " entre lotes activos)";
+          else if (h === "Codigo_Seguimiento") val = loteTrackCode;
+          else if (h === "Codigo_General") val = loteGenCode;
+
+          rowValues.push(val);
+        }
+
+        sheet.appendRow(rowValues);
+      });
+
+      return { success: true, prorrateado: true, numLotes: numLotes, totalDistribuido: total };
+    }
+
+    var lotePrincipal = datos.Lote_Principal || datos.lote_principal || datos.Lote || datos.lote || "";
+    var matchMain = lotePrincipal ? lotePrincipal.match(/^(Lote\s*\d+)/i) : null;
+    if (matchMain) {
+      lotePrincipal = matchMain[1];
+    }
+    var subLote = "";
+    var loteCompleto = lotePrincipal;
+
+    var cultivoItem = datos.Cultivo_Semilla || datos.cultivo_semilla || datos.Producto_Vendido || datos.producto_vendido || datos.Cultivo || datos.cultivo || "";
+    var trackingCode = datos.Codigo_Seguimiento || datos.codigo_seguimiento || datos.Codigo_General || datos.codigo_general || "";
+    if (!trackingCode && loteCompleto) {
+      trackingCode = generarCodigoSeguimiento(loteCompleto, cultivoItem, datos.Fecha || datos.fecha);
+    }
+    var codigoGeneral = datos.Codigo_General || datos.codigo_general || trackingCode;
+
+    var headersInSheet = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var rowValues = [];
+
+    for (var c = 0; c < headersInSheet.length; c++) {
+      var h = headersInSheet[c].toString().trim();
+      var val = "";
+
+      if (h === "Lote_Principal") val = lotePrincipal;
+      else if (h === "Sub_Lote" || h === "Division") val = subLote;
+      else if (h === "Lote" || h === "Lote_Completo") val = loteCompleto;
+      else if (h === "Cultivo_Semilla") val = datos.Cultivo_Semilla || datos.cultivo_semilla || "";
+      else if (h === "Tipo_Insumo") val = datos.Tipo_Insumo || datos.tipo_insumo || "";
+      else if (h === "Producto_Vendido") val = datos.Producto_Vendido || datos.producto_vendido || "";
+      else if (h === "Cantidad") val = cantidad;
+      else if (h === "Unidad_Medida") val = datos.Unidad_Medida || datos.unidad_medida || "Unidades";
+      else if (h === "Costo_Unitario_COP" || h === "Precio_Unitario_COP") val = unitario;
+      else if (h === "Costo_Total_COP" || h === "Ingreso_Total_COP") val = total;
+      else if (h === "Estado_Pago") val = estadoPago;
+      else if (h === "Cliente_Deudor_Proveedor") val = cliente;
+      else if (h === "Fecha_Vencimiento") val = fechaVenc;
+      else if (h === "Fecha_Pago_Realizado") val = fechaPagoReal;
+      else if (h === "Fecha") val = datos.Fecha || datos.fecha || "";
+      else if (h === "Notas") val = datos.Notas || datos.notas || "";
+      else if (h === "Detalle") val = datos.Detalle || datos.detalle || "";
+      else if (h === "Comprador") val = cliente;
+      else if (h === "Codigo_Seguimiento") val = trackingCode;
+      else if (h === "Codigo_General") val = codigoGeneral;
+      else if (h === "Unidades_Cosechadas") val = cantidad;
+
+      rowValues.push(val);
+    }
+
+    sheet.appendRow(rowValues);
+
+    // Auto-create active cycle if registering a Gasto Inicial on a lot with no active cycle
+    if ((tipo === "gastosIniciales" || tipo === "inicial") && lotePrincipal) {
+      var cultivo = datos.Cultivo_Semilla || datos.cultivo_semilla || "";
+      var fechaInicio = datos.Fecha || datos.fecha || formatDateNative(new Date());
+      var ciclosSheet = ss.getSheetByName(HOJA_CICLOS);
+      var tieneCicloActivo = false;
+      if (ciclosSheet && ciclosSheet.getLastRow() >= 2) {
+        var ciclosData = leerTablaHoja(HOJA_CICLOS);
+        tieneCicloActivo = ciclosData.some(function(c) {
+          return String(c.Lote || c.Lote_Principal || "").trim() === lotePrincipal && String(c.Estado || "").toUpperCase() === "EN PROCESO";
+        });
+      }
+      if (!tieneCicloActivo && cultivo) {
+        var resCiclo = agregarCiclo(lotePrincipal, "", cultivo, trackingCode, trackingCode, trackingCode, trackingCode, "EN PROCESO", fechaInicio, "");
+      }
+    }
+
+    return { success: true, trackingCode: trackingCode };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function actualizarEstadoPago(tipoTabla, filaId, nuevoEstado, fechaPago) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetName = "";
+    if (tipoTabla === "gastosIniciales" || tipoTabla === "inicial") sheetName = HOJA_GASTOS_INICIALES;
+    else if (tipoTabla === "gastosDesarrollo" || tipoTabla === "desarrollo") sheetName = HOJA_GASTOS_DESARROLLO;
+    else if (tipoTabla === "ventas" || tipoTabla === "venta") sheetName = HOJA_VENTAS;
+    else return { success: false, error: "Tipo de tabla no válido." };
+
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) return { success: false, error: "La hoja no existe." };
+
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: false, error: "No hay registros." };
+
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+    var estadoCol = -1;
+    var fechaPagoCol = -1;
+    var trackingCol = -1;
+
+    for (var c = 0; c < headers.length; c++) {
+      var h = headers[c].toString().trim();
+      if (h === "Estado_Pago") estadoCol = c + 1;
+      if (h === "Fecha_Pago_Realizado") fechaPagoCol = c + 1;
+      if (h === "Codigo_Seguimiento" || h === "Codigo_General") trackingCol = c + 1;
+    }
+
+    var rowToUpdate = -1;
+    if (trackingCol > 0) {
+      var trackingValues = sheet.getRange(2, trackingCol, lastRow - 1, 1).getValues();
+      for (var r = 0; r < trackingValues.length; r++) {
+        if (trackingValues[r][0].toString().trim().toUpperCase() === filaId.toString().trim().toUpperCase()) {
+          rowToUpdate = r + 2;
+          break;
+        }
+      }
+    }
+
+    if (rowToUpdate === -1 && Number(filaId) >= 2 && Number(filaId) <= lastRow) {
+      rowToUpdate = Number(filaId);
+    }
+
+    if (rowToUpdate !== -1) {
+      if (estadoCol > 0) sheet.getRange(rowToUpdate, estadoCol).setValue(nuevoEstado.toUpperCase());
+      if (fechaPagoCol > 0) sheet.getRange(rowToUpdate, fechaPagoCol).setValue(fechaPago || formatDateNative(new Date()));
+      return { success: true };
+    }
+
+    return { success: false, error: "No se encontró la fila especificada." };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function leerTablaHoja(sheetName) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  return getSheetData(ss, sheetName);
+}
+
+function getSheetData(ss, sheetName) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return [];
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+  var result = [];
+  for (var r = 0; r < values.length; r++) {
+    var rowData = {};
+    var hasData = false;
+    for (var c = 0; c < headers.length; c++) {
+      var headerName = headers[c].toString().trim();
+      if (!headerName) continue;
+      var cellVal = values[r][c];
+      if (cellVal instanceof Date) {
+        cellVal = formatDateNative(cellVal);
+      }
+      if (cellVal !== "" && cellVal !== null && cellVal !== undefined) {
+        hasData = true;
+      }
+      rowData[headerName] = cellVal;
+    }
+    if (hasData) {
+      result.push(rowData);
+    }
+  }
+  return result;
+}
+
+function agregarGastoInicial(lote, cultivo, costo, fecha, notas, trackingCode, codigoGeneral) {
+  return guardarRegistro("gastosIniciales", {
+    Lote: lote,
+    Cultivo_Semilla: cultivo,
+    Costo_Total_COP: costo,
+    Fecha: fecha,
+    Notas: notas,
+    Codigo_Seguimiento: trackingCode,
+    Codigo_General: codigoGeneral
+  });
+}
+
+function agregarGastoDesarrollo(lote, insumo, costo, fecha, detalle, trackingCode, codigoGeneral) {
+  return guardarRegistro("gastosDesarrollo", {
+    Lote: lote,
+    Tipo_Insumo: insumo,
+    Costo_Total_COP: costo,
+    Fecha: fecha,
+    Detalle: detalle,
+    Codigo_Seguimiento: trackingCode,
+    Codigo_General: codigoGeneral
+  });
+}
+
+function agregarVenta(lote, producto, ingreso, fecha, comprador, trackingCode, codigoGeneral, unidades) {
+  return guardarRegistro("ventas", {
+    Lote: lote,
+    Producto_Vendido: producto,
+    Cantidad: unidades || 1,
+    Ingreso_Total_COP: ingreso,
+    Fecha: fecha,
+    Comprador: comprador,
+    Codigo_Seguimiento: trackingCode,
+    Codigo_General: codigoGeneral
+  });
+}
+
+function agregarPrestamo(banco, tipo, valor, pago, saldo, notas) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(HOJA_PRESTAMOS);
+    if (!sheet) {
+      sheet = ss.insertSheet(HOJA_PRESTAMOS);
+      sheet.appendRow(["Entidad_Banco", "Tipo_Prestamo", "Valor_Prestado", "Pago_Cuotas", "Saldo_Por_Pagar", "Notas"]);
+    }
+    var rowValues = [banco, tipo, Number(valor), Number(pago), Number(saldo), notas];
+    sheet.appendRow(rowValues);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function agregarCiclo(lotePrincipal, subLote, cultivo, codigoGeneral, codigoInicial, codigoDesarrollo, codigoVentas, estado, fechaInicio, fechaFin) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(HOJA_CICLOS);
+    var columnsNeeded = ["Lote_Principal", "Sub_Lote", "Lote", "Cultivo", "Codigo_General", "Codigo_Inicial", "Codigo_Desarrollo", "Codigo_Ventas", "Estado", "Fecha_Inicio", "Fecha_Fin"];
+    if (!sheet) {
+      sheet = ss.insertSheet(HOJA_CICLOS);
+      sheet.appendRow(columnsNeeded);
+    }
+    asegurarColumnas(sheet, columnsNeeded);
+
+    var lp = lotePrincipal || "";
+    var sub = subLote || "";
+    var cult = cultivo || "";
+    var cg = codigoGeneral || "";
+    var ci = codigoInicial || "";
+    var cd = codigoDesarrollo || "";
+    var cv = codigoVentas || "";
+    var est = estado || "EN PROCESO";
+    var fi = fechaInicio || formatDateNative(new Date());
+    var ff = fechaFin || "";
+
+    var loteComp = "";
+    if (typeof lotePrincipal === 'object' && lotePrincipal !== null) {
+      var obj = lotePrincipal;
+      lp = obj.Lote_Principal || obj.lote_principal || obj.Lote || obj.lote || "";
+      sub = "";
+      loteComp = lp;
+      cult = obj.Cultivo || obj.cultivo || "";
+      cg = obj.Codigo_General || obj.codigo_general || "";
+      ci = obj.Codigo_Inicial || obj.codigo_inicial || "";
+      cd = obj.Codigo_Desarrollo || obj.codigo_desarrollo || "";
+      cv = obj.Codigo_Ventas || obj.codigo_ventas || "";
+      est = obj.Estado || obj.estado || "EN PROCESO";
+      fi = obj.Fecha_Inicio || obj.fecha_inicio || formatDateNative(new Date());
+      ff = obj.Fecha_Fin || obj.fecha_fin || "";
+    } else {
+      sub = "";
+      var matchL = lp ? lp.match(/^(Lote\s*\d+)/i) : null;
+      if (matchL) {
+        lp = matchL[1];
+      }
+      loteComp = lp;
+    }
+
+    if (!cg) cg = generarCodigoSeguimiento(loteComp, cult, fi);
+    if (!ci) ci = cg;
+    if (!cd) cd = cg;
+    if (!cv) cv = cg;
+
+    var rowValues = [lp, sub, loteComp, cult, cg, ci, cd, cv, est, fi, ff];
+    sheet.appendRow(rowValues);
+    return { success: true, codigoGeneral: cg };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function finalizarCiclo(codigoGeneral, fechaFin) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(HOJA_CICLOS);
+    if (!sheet) return { success: false, error: "No existe la hoja de ciclos." };
+
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: false, error: "No hay ciclos registrados." };
+
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var cgCol = -1, estCol = -1, ffCol = -1;
+
+    for (var c = 0; c < headers.length; c++) {
+      var h = headers[c].toString().trim();
+      if (h === "Codigo_General" || h === "Codigo_Inicial" || h === "Codigo_Seguimiento") cgCol = c + 1;
+      if (h === "Estado") estCol = c + 1;
+      if (h === "Fecha_Fin") ffCol = c + 1;
+    }
+
+    if (cgCol === -1) cgCol = 5;
+    if (estCol === -1) estCol = 9;
+    if (ffCol === -1) ffCol = 11;
+
+    var range = sheet.getRange(2, 1, lastRow - 1, lastCol);
+    var values = range.getValues();
+
+    var targetUpper = codigoGeneral ? codigoGeneral.toString().trim().toUpperCase() : "";
+
+    for (var i = 0; i < values.length; i++) {
+      var row = values[i];
+      var match = false;
+
+      for (var colIdx = 0; colIdx < row.length; colIdx++) {
+        var cellStr = row[colIdx] ? row[colIdx].toString().trim().toUpperCase() : "";
+        if (targetUpper && cellStr === targetUpper) {
+          match = true;
+          break;
+        }
+      }
+
+      if (match || (targetUpper === "" && row[estCol - 1].toString().trim().toUpperCase() === "EN PROCESO")) {
+        sheet.getRange(i + 2, estCol).setValue("FINALIZADO");
+        sheet.getRange(i + 2, ffCol).setValue(fechaFin || formatDateNative(new Date()));
+        break;
+      }
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function asegurarColumnas(sheet, headersNeeded) {
+  var lastCol = sheet.getLastColumn();
+  if (lastCol === 0) {
+    sheet.appendRow(headersNeeded);
+    return;
+  }
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var headerMap = {};
+  for (var i = 0; i < headers.length; i++) {
+    headerMap[headers[i].toString().trim()] = true;
+  }
+  for (var j = 0; j < headersNeeded.length; j++) {
+    var h = headersNeeded[j];
+    if (!headerMap[h]) {
+      sheet.getRange(1, sheet.getLastColumn() + 1).setValue(h);
+    }
+  }
+}
+
+function formatDateNative(date) {
+  var d = new Date(date),
+      month = '' + (d.getMonth() + 1),
+      day = '' + d.getDate(),
+      year = d.getFullYear();
+
+  if (month.length < 2) month = '0' + month;
+  if (day.length < 2) day = '0' + day;
+
+  return [year, month, day].join('-');
+}
+
+function inicializarDatosDemo(ss) {
+  // 1. Ciclos
+  crearYPopularHoja(ss, HOJA_CICLOS, ["Lote_Principal", "Sub_Lote", "Lote", "Cultivo", "Codigo_General", "Codigo_Inicial", "Codigo_Desarrollo", "Codigo_Ventas", "Estado", "Fecha_Inicio", "Fecha_Fin"], [
+    ["Lote 1", "1A", "Lote 1A", "Café Castillo", "INI-LOTE1A-CAFE-2023", "INI-LOTE1A-CAFE-2023", "DES-LOTE1A-CAFE-2023", "VEN-LOTE1A-CAFE-2023", "FINALIZADO", "2023-01-10", "2023-11-20"],
+    ["Lote 1", "1A", "Lote 1A", "Aguacate Hass", "INI-LOTE1A-AGUACATEHASS-2024", "INI-LOTE1A-AGUACATEHASS-2024", "DES-LOTE1A-AGUACATEHASS-2024", "VEN-LOTE1A-AGUACATEHASS-2024", "FINALIZADO", "2024-01-15", "2024-12-15"],
+    ["Lote 1", "1A", "Lote 1A", "Cebolla Larga", "INI-LOTE1A-CEBOLLALARGA-2026", "INI-LOTE1A-CEBOLLALARGA-2026", "DES-LOTE1A-CEBOLLALARGA-2026", "VEN-LOTE1A-CEBOLLALARGA-2026", "EN PROCESO", "2026-01-10", ""],
+    ["Lote 1", "1B", "Lote 1B", "Plátano Hartón", "INI-LOTE1B-PLATANOHARTON-2025", "INI-LOTE1B-PLATANOHARTON-2025", "DES-LOTE1B-PLATANOHARTON-2025", "VEN-LOTE1B-PLATANOHARTON-2025", "EN PROCESO", "2025-02-01", ""],
+    ["Lote 2", "2A", "Lote 2A", "Aguacate Hass", "INI-LOTE2A-AGUACATEHASS-2023", "INI-LOTE2A-AGUACATEHASS-2023", "DES-LOTE2A-AGUACATEHASS-2023", "VEN-LOTE2A-AGUACATEHASS-2023", "EN PROCESO", "2023-01-11", ""],
+    ["Lote 2", "2B", "Lote 2B", "Cacao Fino de Aroma", "INI-LOTE2B-CACAOFINO-2023", "INI-LOTE2B-CACAOFINO-2023", "DES-LOTE2B-CACAOFINO-2023", "VEN-LOTE2B-CACAOFINO-2023", "EN PROCESO", "2023-01-12", ""]
+  ]);
+
+  // 2. Gastos Iniciales
+  crearYPopularHoja(ss, HOJA_GASTOS_INICIALES, ["Lote_Principal", "Sub_Lote", "Lote", "Cultivo_Semilla", "Cantidad", "Unidad_Medida", "Costo_Unitario_COP", "Costo_Total_COP", "Estado_Pago", "Cliente_Deudor_Proveedor", "Fecha_Vencimiento", "Fecha_Pago_Realizado", "Fecha", "Notas", "Codigo_Seguimiento", "Codigo_General"], [
+    ["Lote 1", "1A", "Lote 1A", "Café Castillo", 100, "Unidades", 85000, 8500000, "PAGADO", "AgroSemillas Caldas", "", "2023-01-10", "2023-01-10", "Ciclo 1: Establecimiento inicial", "INI-LOTE1A-CAFE-2023", "INI-LOTE1A-CAFE-2023"],
+    ["Lote 1", "1A", "Lote 1A", "Aguacate Hass", 150, "Unidades", 80000, 12000000, "PAGADO", "Vivero El Paraíso", "", "2024-01-15", "2024-01-15", "Ciclo 2: Establecimiento inicial", "INI-LOTE1A-AGUACATEHASS-2024", "INI-LOTE1A-AGUACATEHASS-2024"],
+    ["Lote 1", "1A", "Lote 1A", "Cebolla Larga", 120, "Atados", 35000, 4200000, "PAGADO", "AgroSemillas del Valle", "", "2026-01-10", "2026-01-10", "Ciclo 3: Semilla Cebolla Larga Lote 1A", "INI-LOTE1A-CEBOLLALARGA-2026", "INI-LOTE1A-CEBOLLALARGA-2026"],
+    ["Lote 1", "1B", "Lote 1B", "Plátano Hartón", 90, "Unidades", 50000, 4500000, "PAGADO", "AgroInsumos del Eje", "", "2025-02-01", "2025-02-01", "Ciclo 1: Establecimiento Lote 1B", "INI-LOTE1B-PLATANOHARTON-2025", "INI-LOTE1B-PLATANOHARTON-2025"],
+    ["Lote 2", "2A", "Lote 2A", "Aguacate Hass", 150, "Unidades", 80000, 12000000, "PAGADO", "Vivero El Paraíso", "", "2023-01-11", "2023-01-11", "Establecimiento Lote 2A Aguacate Hass", "INI-LOTE2A-AGUACATEHASS-2023", "INI-LOTE2A-AGUACATEHASS-2023"],
+    ["Lote 2", "2B", "Lote 2B", "Cacao Fino de Aroma", 100, "Unidades", 75000, 7500000, "PENDIENTE", "Contratista Arada y Semilla", "2023-12-15", "", "2023-01-12", "Establecimiento Lote 2B Cacao Fino", "INI-LOTE2B-CACAOFINO-2023", "INI-LOTE2B-CACAOFINO-2023"]
+  ]);
+
+  // 3. Gastos de Desarrollo
+  crearYPopularHoja(ss, HOJA_GASTOS_DESARROLLO, ["Lote_Principal", "Sub_Lote", "Lote", "Tipo_Insumo", "Cantidad", "Unidad_Medida", "Costo_Unitario_COP", "Costo_Total_COP", "Estado_Pago", "Cliente_Deudor_Proveedor", "Fecha_Vencimiento", "Fecha_Pago_Realizado", "Fecha", "Detalle", "Codigo_Seguimiento", "Codigo_General"], [
+    ["Lote 1", "1A", "Lote 1A", "Fertilizantes", 10, "Bultos", 45000, 450000, "PAGADO", "AgroQuímicos Manizales", "", "2023-05-12", "2023-05-12", "Abono orgánico triple 15 Lote 1A", "INI-LOTE1A-CAFE-2023", "INI-LOTE1A-CAFE-2023"],
+    ["Lote 1", "1A", "Lote 1A", "Mano de Obra", 6, "Jornales", 50000, 300000, "PAGADO", "Jornaleros Zona 1", "", "2023-05-13", "2023-05-13", "Limpieza de maleza Lote 1A", "INI-LOTE1A-CAFE-2023", "INI-LOTE1A-CAFE-2023"],
+    ["Lote 1", "1A", "Lote 1A", "Pesticidas", 5, "Canecas", 120000, 600000, "PAGADO", "Distribuidora Sanitaria", "", "2024-06-20", "2024-06-20", "Control preventivo Aguacate Lote 1A", "INI-LOTE1A-AGUACATEHASS-2024", "INI-LOTE1A-AGUACATEHASS-2024"],
+    ["Lote 1", "1A", "Lote 1A", "Fertilizantes", 8, "Bultos", 50000, 400000, "PAGADO", "AgroServicios Manizales", "", "2026-02-15", "2026-02-15", "Abono Cebolla Larga Lote 1A", "INI-LOTE1A-CEBOLLALARGA-2026", "INI-LOTE1A-CEBOLLALARGA-2026"],
+    ["Lote 1", "1B", "Lote 1B", "Riego", 7, "Horas", 50000, 350000, "PAGADO", "Acueducto Veredal", "", "2025-07-15", "2025-07-15", "Mantenimiento de riego Plátano Lote 1B", "INI-LOTE1B-PLATANOHARTON-2025", "INI-LOTE1B-PLATANOHARTON-2025"],
+    ["Lote 2", "2A", "Lote 2A", "Pesticidas", 10, "Litros", 60000, 600000, "PENDIENTE", "AgroServicios de Caldas", "2023-12-20", "", "2023-05-14", "Fungicida preventivo plagas Lote 2A", "INI-LOTE2A-AGUACATEHASS-2023", "INI-LOTE2A-AGUACATEHASS-2023"]
+  ]);
+
+  // 4. Ventas
+  crearYPopularHoja(ss, HOJA_VENTAS, ["Lote_Principal", "Sub_Lote", "Lote", "Producto_Vendido", "Cantidad", "Unidad_Medida", "Precio_Unitario_COP", "Ingreso_Total_COP", "Estado_Pago", "Cliente_Deudor_Proveedor", "Fecha_Vencimiento", "Fecha_Pago_Realizado", "Fecha", "Comprador", "Codigo_Seguimiento", "Codigo_General"], [
+    ["Lote 1", "1A", "Lote 1A", "Café Pergamino Seco", 500, "Cargas", 37000, 18500000, "PAGADO", "Cooperativa Local", "", "2023-11-15", "2023-11-15", "Cooperativa Local", "INI-LOTE1A-CAFE-2023", "INI-LOTE1A-CAFE-2023"],
+    ["Lote 1", "1A", "Lote 1A", "Aguacate Hass Extra", 800, "Bultos", 30000, 24000000, "PAGADO", "Almacenes Éxito", "", "2024-12-10", "2024-12-10", "Almacenes Éxito", "INI-LOTE1A-AGUACATEHASS-2024", "INI-LOTE1A-AGUACATEHASS-2024"],
+    ["Lote 1", "1A", "Lote 1A", "Cebolla Larga Seleccionada", 200, "Atados", 25000, 5000000, "PAGADO", "Plaza de Mercado Central", "", "2026-03-01", "2026-03-01", "Plaza de Mercado Central", "INI-LOTE1A-CEBOLLALARGA-2026", "INI-LOTE1A-CEBOLLALARGA-2026"],
+    ["Lote 1", "1B", "Lote 1B", "Plátano Hartón de Primera", 400, "Atados", 23750, 9500000, "PAGADO", "Central de Abastos", "", "2025-11-30", "2025-11-30", "Central de Abastos", "INI-LOTE1B-PLATANOHARTON-2025", "INI-LOTE1B-PLATANOHARTON-2025"],
+    ["Lote 2", "2A", "Lote 2A", "Aguacate Hass Extra", 800, "Bultos", 30000, 24000000, "PAGADO", "Distribuidor Comercial Mayorista", "", "2023-11-16", "2023-11-16", "Distribuidor Comercial Mayorista", "INI-LOTE2A-AGUACATEHASS-2023", "INI-LOTE2A-AGUACATEHASS-2023"],
+    ["Lote 2", "2B", "Lote 2B", "Cacao en Grano", 250, "Kilos", 28000, 7000000, "PENDIENTE", "Comprador Nacional Cacao", "2023-12-10", "", "2023-11-20", "Comprador Nacional Cacao", "INI-LOTE2B-CACAOFINO-2023", "INI-LOTE2B-CACAOFINO-2023"]
+  ]);
+
+  crearYPopularHoja(ss, HOJA_CONFIGURACION, ["Parametro", "Valor", "Cultivo_Semilla", "Tipo_Insumo", "Producto_Vendido"], [
+    ["Nombre_Finca", "Finca Los Sauces", "Café Castillo", "Fertilizantes", "Café Pergamino Seco"],
+    ["Ubicacion", "Manizales, Caldas, Colombia", "Aguacate Hass", "Mano de Obra", "Aguacate Hass Extra"],
+    ["Fecha_Actualizacion_Dashboard", "2026-03-01", "Cacao Fino de Aroma", "Pesticidas", "Cacao en Grano"],
+    ["", "", "Limón Tahití", "Riego", "Limón Tahití Selección"],
+    ["", "", "Plátano Hartón", "Herramientas", "Plátano Hartón de Primera"],
+    ["", "", "Cebolla Larga", "Otros", "Cebolla Larga Seleccionada"]
+  ]);
+
+  crearYPopularHoja(ss, HOJA_PRESTAMOS, ["Entidad_Banco", "Tipo_Prestamo", "Valor_Prestado", "Pago_Cuotas", "Saldo_Por_Pagar", "Notas"], [
+    ["Banco Agrario de Colombia", "Línea Agropecuaria Finagro", 150000000, 60000000, 90000000, "Tasa DTF + 2.5%, amortización semestral."],
+    ["Bancolombia S.A.", "Crédito de Capital de Trabajo", 80000000, 45000000, 35000000, "Cuota fija mensual para insumos."]
+  ]);
+
+  // 7. Gastos Personales / Hogar
+  crearYPopularHoja(ss, HOJA_GASTOS_PERSONALES, ["ID_Gasto_Personal", "Fecha", "Categoria", "Descripcion_Detalle", "Monto_COP", "Metodo_Pago", "Beneficiario_Tercero", "Notas"], [
+    ["GP-001", "2023-11-05", "Hogar/Mercado", "Compra de mercado mensual", 450000, "Transferencia", "Supermercado Éxito", "Mercado familiar"],
+    ["GP-002", "2023-11-10", "Salud/Medicina", "Pago medicina prepagada", 280000, "Tarjeta", "Sura EPS", "Cuota mensual"],
+    ["GP-003", "2023-11-12", "Servicios Públicos", "Pago recibos agua y luz", 180000, "Efectivo", "Centrales Eléctricas", "Servicios del hogar"],
+    ["GP-004", "2023-11-18", "Educación", "Matrícula escolar", 320000, "Transferencia", "Colegio Veredal", "Pensión del mes"],
+    ["GP-005", "2023-11-22", "Transporte/Vehículo", "Mantenimiento camioneta familiar", 220000, "Efectivo", "Taller Automotriz", "Cambio de aceite"]
+  ]);
+
+  // 8. Fotos de Lotes / Avance
+  crearYPopularHoja(ss, HOJA_FOTOS_LOTES, ["ID_Foto", "Lote", "Fecha", "Titulo", "Descripcion", "Url_Foto_Drive", "Base64_Data"], [
+    ["FOTO-LOTE1A-20260115-01", "Lote 1A", "2026-01-15", "Siembra y Germinación Cebolla Larga", "Emergencia uniforme de plántulas en camas de siembra Lote 1A.", "", "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='250' viewBox='0 0 400 250'><rect width='400' height='250' fill='%2310b981'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold' font-size='18'>Lote 1A - Mes 1 (Siembra)</text></svg>"],
+    ["FOTO-LOTE1A-20260215-02", "Lote 1A", "2026-02-15", "Desarrollo Vegetativo Mes 2", "Aplicación de fertilización foliar y deshierbe manual.", "", "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='250' viewBox='0 0 400 250'><rect width='400' height='250' fill='%23047857'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold' font-size='18'>Lote 1A - Mes 2 (Vegetativo)</text></svg>"],
+    ["FOTO-LOTE1B-20250301-01", "Lote 1B", "2025-03-01", "Establecimiento Plátano Hartón", "Siembra de colinos de plátano con materia orgánica.", "", "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='250' viewBox='0 0 400 250'><rect width='400' height='250' fill='%23059669'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold' font-size='18'>Lote 1B - Plátano Hartón</text></svg>"]
+  ]);
+}
+
+function guardarGastoPersonal(datos) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(HOJA_GASTOS_PERSONALES);
+    var columnsNeeded = ["ID_Gasto_Personal", "Fecha", "Categoria", "Descripcion_Detalle", "Monto_COP", "Metodo_Pago", "Beneficiario_Tercero", "Notas"];
+
+    if (!sheet) {
+      sheet = ss.insertSheet(HOJA_GASTOS_PERSONALES);
+      sheet.appendRow(columnsNeeded);
+    }
+    asegurarColumnas(sheet, columnsNeeded);
+
+    var lastRow = sheet.getLastRow();
+    var nextId = "GP-" + String(lastRow < 2 ? 1 : lastRow).padStart(3, '0');
+
+    var fecha = datos.Fecha || datos.fecha || formatDateNative(new Date());
+    var categoria = datos.Categoria || datos.categoria || "Otros Hogar";
+    var descripcion = datos.Descripcion_Detalle || datos.descripcion_detalle || "";
+    var monto = Number(datos.Monto_COP || datos.monto_cop) || 0;
+    var metodo = datos.Metodo_Pago || datos.metodo_pago || "Efectivo";
+    var beneficiario = datos.Beneficiario_Tercero || datos.beneficiario_tercero || "";
+    var notas = datos.Notas || datos.notas || "";
+
+    sheet.appendRow([nextId, fecha, categoria, descripcion, monto, metodo, beneficiario, notas]);
+    return { success: true, idGenerado: nextId };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function eliminarGastoPersonalSeguro(idRegistro, codigoSeguridad) {
+  return eliminarRegistroSeguro("gastosPersonales", idRegistro, codigoSeguridad);
+}
+
+function obtenerBalanceCajaGeneral(filtros) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var data = {
+      gastosIniciales: getSheetData(ss, HOJA_GASTOS_INICIALES),
+      gastosDesarrollo: getSheetData(ss, HOJA_GASTOS_DESARROLLO),
+      ventas: getSheetData(ss, HOJA_VENTAS),
+      gastosPersonales: getSheetData(ss, HOJA_GASTOS_PERSONALES),
+      ingresosExternos: getSheetData(ss, HOJA_INGRESOS_EXTERNOS)
+    };
+
+    var fechaInicio = filtros ? filtros.fechaInicio : null;
+    var fechaFin = filtros ? filtros.fechaFin : null;
+
+    var isDateOk = function(dateStr) {
+      if (!dateStr) return true;
+      if (fechaInicio && dateStr < fechaInicio) return false;
+      if (fechaFin && dateStr > fechaFin) return false;
+      return true;
+    };
+
+    var ventasCobradas = data.ventas
+      .filter(function(x) { return isDateOk(x.Fecha || x.fecha) && String(x.Estado_Pago || x.estado_pago || 'PAGADO').toUpperCase() === 'PAGADO'; })
+      .reduce(function(sum, x) { return sum + (Number(x.Ingreso_Total_COP || x.ingreso_total_cop) || 0); }, 0);
+
+    var gastosAgricolasPagados = data.gastosIniciales.concat(data.gastosDesarrollo)
+      .filter(function(x) { return isDateOk(x.Fecha || x.fecha) && String(x.Estado_Pago || x.estado_pago || 'PAGADO').toUpperCase() === 'PAGADO'; })
+      .reduce(function(sum, x) { return sum + (Number(x.Costo_Total_COP || x.costo_total_cop) || 0); }, 0);
+
+    var cajaRealAgricola = ventasCobradas - gastosAgricolasPagados;
+
+    var ingresosExternosTotales = data.ingresosExternos
+      .filter(function(x) { return isDateOk(x.Fecha || x.fecha); })
+      .reduce(function(sum, x) { return sum + (Number(x.Monto_COP || x.monto_cop || x.Monto || x.monto) || 0); }, 0);
+
+    var gastosPersonalesTotales = data.gastosPersonales
+      .filter(function(x) { return isDateOk(x.Fecha || x.fecha); })
+      .reduce(function(sum, x) { return sum + (Number(x.Monto_COP || x.monto_cop) || 0); }, 0);
+
+    var saldoLiquidoDisponible = (cajaRealAgricola + ingresosExternosTotales) - gastosPersonalesTotales;
+
+    return {
+      success: true,
+      metrics: {
+        cajaRealAgricola: cajaRealAgricola,
+        ingresosExternosTotales: ingresosExternosTotales,
+        gastosPersonalesTotales: gastosPersonalesTotales,
+        saldoLiquidoDisponible: saldoLiquidoDisponible,
+        ventasCobradas: ventasCobradas,
+        gastosAgricolasPagados: gastosAgricolasPagados
+      }
+    };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function crearYPopularHoja(ss, sheetName, headers, demoData) {
+  if (!ss) {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+  }
+  if (!ss) return;
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+  }
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
+  }
+  if (sheet.getLastRow() < 2) {
+    for (var i = 0; i < demoData.length; i++) {
+      sheet.appendRow(demoData[i]);
+    }
+  }
+}
+
+function agregarItemConfig(columna, nuevoValor) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(HOJA_CONFIGURACION);
+    if (!sheet) {
+      return { success: false, error: "La hoja de configuración no existe." };
+    }
+
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+    var colIndex = -1;
+    for (var i = 0; i < headers.length; i++) {
+      if (headers[i].toString().trim() === columna) {
+        colIndex = i + 1;
+        break;
+      }
+    }
+
+    if (colIndex === -1) {
+      colIndex = lastCol + 1;
+      sheet.getRange(1, colIndex).setValue(columna);
+    }
+
+    var targetRow = 2;
+    if (lastRow >= 2) {
+      var colValues = sheet.getRange(2, colIndex, lastRow - 1, 1).getValues();
+      for (var r = 0; r < colValues.length; r++) {
+        if (colValues[r][0].toString().trim() === "") {
+          targetRow = r + 2;
+          break;
+        }
+        targetRow = r + 3;
+      }
+    }
+
+    sheet.getRange(targetRow, colIndex).setValue(nuevoValor);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function getSecurityCredentials() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(HOJA_CONFIGURACION);
+    if (!sheet) {
+      return { securityCode: "191385", masterUser: "danielfrancop" };
+    }
+
+    var lastRow = sheet.getLastRow();
+    if (lastRow <= 0) {
+      sheet.appendRow(["Parametro", "Valor"]);
+      lastRow = 1;
+    }
+    var values = sheet.getRange(1, 1, lastRow, 2).getValues();
+
+    var securityCode = "";
+    var masterUser = "";
+    var masterKey = "";
+
+    for (var i = 1; i < values.length; i++) {
+      var param = values[i][0].toString().trim();
+      var val = values[i][1].toString().trim();
+      if (param === "Security_Code") securityCode = val;
+      if (param === "Master_User") masterUser = val;
+      if (param === "Master_Key") masterKey = val;
+    }
+
+    if (!securityCode) {
+      securityCode = "191385";
+      sheet.appendRow(["Security_Code", securityCode]);
+    }
+    if (!masterUser) {
+      masterUser = "danielfrancop";
+      sheet.appendRow(["Master_User", masterUser]);
+    }
+    if (!masterKey) {
+      masterKey = "1113619524";
+      sheet.appendRow(["Master_Key", masterKey]);
+    }
+
+    return { securityCode: securityCode, masterUser: masterUser };
+  } catch (err) {
+    return { securityCode: "191385", masterUser: "danielfrancop" };
+  }
+}
+
+function actualizarSecurityCredentials(newCode, user, key) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(HOJA_CONFIGURACION);
+    if (!sheet) {
+      return { success: false, error: "La hoja de configuración no existe." };
+    }
+
+    getSecurityCredentials();
+
+    var lastRow = sheet.getLastRow();
+    var range = sheet.getRange(1, 1, lastRow, 2);
+    var values = range.getValues();
+
+    for (var i = 0; i < values.length; i++) {
+      var param = values[i][0].toString().trim();
+      if (param === "Security_Code") {
+        sheet.getRange(i + 1, 2).setValue(newCode);
+      }
+      if (param === "Master_User") {
+        sheet.getRange(i + 1, 2).setValue(user);
+      }
+      if (param === "Master_Key") {
+        sheet.getRange(i + 1, 2).setValue(key);
+      }
+    }
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+function eliminarRegistroSeguro(tipoTabla, idRegistro, codigoSeguridad) {
+  try {
+    var creds = getSecurityCredentials();
+    if (codigoSeguridad.toString().trim() !== creds.securityCode.toString().trim()) {
+      return { success: false, message: "Código de seguridad incorrecto. Operación cancelada." };
+    }
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetName = "";
+    if (tipoTabla === "gastosIniciales" || tipoTabla === "inicial") sheetName = HOJA_GASTOS_INICIALES;
+    else if (tipoTabla === "gastosDesarrollo" || tipoTabla === "desarrollo") sheetName = HOJA_GASTOS_DESARROLLO;
+    else if (tipoTabla === "ventas" || tipoTabla === "venta") sheetName = HOJA_VENTAS;
+    else if (tipoTabla === "gastosPersonales" || tipoTabla === "personal") sheetName = HOJA_GASTOS_PERSONALES;
+    else if (tipoTabla === "fotosLotes" || tipoTabla === "foto") sheetName = HOJA_FOTOS_LOTES;
+    else if (tipoTabla === "ingresosExternos" || tipoTabla === "ingresoExterno") sheetName = HOJA_INGRESOS_EXTERNOS;
+    else if (tipoTabla === "metasRecoleccion" || tipoTabla === "metaRecoleccion") sheetName = HOJA_METAS_RECOLECCION;
+    else if (tipoTabla === "aportesMetas" || tipoTabla === "aporteMeta") sheetName = HOJA_APORTES_METAS;
+    else return { success: false, message: "Tipo de tabla no válido." };
+
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) return { success: false, message: "La hoja no existe." };
+
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: false, message: "No hay registros en la hoja." };
+
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+    var codeColIdx = -1;
+    for (var c = 0; c < headers.length; c++) {
+      var h = headers[c].toString().trim();
+      if (h === "Codigo_Seguimiento" || h === "Codigo_General" || h === "ID_Gasto_Personal" || h === "ID_Foto" || h === "ID_Ingreso_Externo" || h === "ID_Meta" || h === "ID_Aporte") {
+        codeColIdx = c + 1;
+        break;
+      }
+    }
+
+    var rowToDelete = -1;
+    var values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+    for (var r = 0; r < values.length; r++) {
+      var row = values[r];
+      var match = false;
+
+      if (codeColIdx > 0 && row[codeColIdx - 1].toString().trim().toUpperCase() === idRegistro.toString().trim().toUpperCase()) {
+        match = true;
+      } else if (r + 2 === Number(idRegistro)) {
+        match = true;
+      }
+
+      if (!match) {
+        for (var k = 0; k < row.length; k++) {
+          if (row[k].toString().trim().toUpperCase() === idRegistro.toString().trim().toUpperCase()) {
+            match = true;
+            break;
+          }
+        }
+      }
+
+      if (match) {
+        rowToDelete = r + 2;
+        break;
+      }
+    }
+
+    if (rowToDelete === -1 && Number(idRegistro) >= 2 && Number(idRegistro) <= lastRow) {
+      rowToDelete = Number(idRegistro);
+    }
+
+    if (rowToDelete !== -1) {
+      var trackingCodeFound = "";
+      if (codeColIdx > 0 && values[rowToDelete - 2]) {
+        trackingCodeFound = values[rowToDelete - 2][codeColIdx - 1].toString().trim().toUpperCase();
+      }
+      if (!trackingCodeFound) trackingCodeFound = idRegistro.toString().trim().toUpperCase();
+
+      var loteFound = "";
+      var loteColIdx = -1;
+      for (var lc = 0; lc < headers.length; lc++) {
+        var hName = headers[lc].toString().trim();
+        if (hName === "Lote" || hName === "Lote_Principal") { loteColIdx = lc; break; }
+      }
+      if (loteColIdx >= 0 && values[rowToDelete - 2]) {
+        loteFound = values[rowToDelete - 2][loteColIdx].toString().trim();
+      }
+
+      sheet.deleteRow(rowToDelete);
+
+      // Cascaded deletion: check and sync cycles sheet
+      if (trackingCodeFound || loteFound) {
+        sincronizarEliminacionCiclo(ss, trackingCodeFound, loteFound);
+      }
+
+      return { success: true, idEliminado: idRegistro, tipoTabla: tipoTabla, message: "Registro eliminado correctamente." };
+    }
+
+    return { success: false, message: "No se encontró el registro especificado." };
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  }
+}
+
+function sincronizarEliminacionCiclo(ss, trackingCode, loteName) {
+  try {
+    var codeUpper = (trackingCode || "").toString().trim().toUpperCase();
+    var loteClean = (loteName || "").toString().trim().toUpperCase();
+
+    // Check if any transaction remains in gastosIniciales, gastosDesarrollo or ventas for this trackingCode or Lote
+    var gIni = getSheetData(ss, HOJA_GASTOS_INICIALES);
+    var gDes = getSheetData(ss, HOJA_GASTOS_DESARROLLO);
+    var vts = getSheetData(ss, HOJA_VENTAS);
+
+    var hasRemainingTxForCode = function(arr) {
+      return (arr || []).some(function(item) {
+        var c = (item.Codigo_Seguimiento || item.codigo_seguimiento || item.Codigo_General || item.codigo_general || "").toString().trim().toUpperCase();
+        return codeUpper && c === codeUpper;
+      });
+    };
+
+    var hasRemainingTxForLote = function(arr) {
+      return (arr || []).some(function(item) {
+        var l = (item.Lote || item.lote || item.Lote_Principal || item.lote_principal || "").toString().trim().toUpperCase();
+        return loteClean && (l === loteClean || l.indexOf(loteClean) === 0);
+      });
+    };
+
+    var codeHasRecords = hasRemainingTxForCode(gIni) || hasRemainingTxForCode(gDes) || hasRemainingTxForCode(vts);
+    var loteHasRecords = hasRemainingTxForLote(gIni) || hasRemainingTxForLote(gDes) || hasRemainingTxForLote(vts);
+
+    var ciclosSheet = ss.getSheetByName(HOJA_CICLOS);
+    if (!ciclosSheet) return;
+
+    var lastRow = ciclosSheet.getLastRow();
+    if (lastRow < 2) return;
+
+    var lastCol = ciclosSheet.getLastColumn();
+    var headers = ciclosSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var values = ciclosSheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+    // Delete rows in cycles sheet if no records remain for the code or for the lot
+    for (var i = values.length - 1; i >= 0; i--) {
+      var row = values[i];
+      var rowCode = "";
+      var rowLote = "";
+
+      for (var c = 0; c < headers.length; c++) {
+        var hName = headers[c].toString().trim();
+        if (hName === "Codigo_General" || hName === "Codigo_Inicial" || hName === "Codigo_Seguimiento") {
+          rowCode = (row[c] || "").toString().trim().toUpperCase();
+        }
+        if (hName === "Lote" || hName === "Lote_Principal") {
+          rowLote = (row[c] || "").toString().trim().toUpperCase();
+        }
+      }
+
+      var matchCode = codeUpper && rowCode === codeUpper;
+      var matchLote = loteClean && (rowLote === loteClean || rowLote.indexOf(loteClean) === 0);
+
+      if ((matchCode && !codeHasRecords) || (matchLote && !loteHasRecords)) {
+        ciclosSheet.deleteRow(i + 2);
+      }
+    }
+  } catch (err) {
+    Logger.log("Error en sincronizarEliminacionCiclo: " + err.toString());
+  }
+}
+
+function eliminarRegistroConSeguridad(tipoTabla, codigoSeguridad, idRegistro) {
+  return eliminarRegistroSeguro(tipoTabla, idRegistro, codigoSeguridad);
+}
+
+function vaciarHojasGoogleSheets(securityCode) {
+  try {
+    var creds = getSecurityCredentials();
+    if (securityCode.toString().trim() !== creds.securityCode.toString().trim()) {
+      return { success: false, error: "Código de seguridad incorrecto. No se pudo borrar la información." };
+    }
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hojasABorrar = [HOJA_GASTOS_INICIALES, HOJA_GASTOS_DESARROLLO, HOJA_VENTAS, HOJA_CICLOS, HOJA_PRESTAMOS, HOJA_GASTOS_PERSONALES, HOJA_FOTOS_LOTES];
+
+    for (var h = 0; h < hojasABorrar.length; h++) {
+      var sheet = ss.getSheetByName(hojasABorrar[h]);
+      if (sheet) {
+        var lastRow = sheet.getLastRow();
+        if (lastRow >= 2) {
+          sheet.deleteRows(2, lastRow - 1);
+        }
+      }
+    }
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+
+ 

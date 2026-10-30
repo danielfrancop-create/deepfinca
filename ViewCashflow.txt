@@ -1,0 +1,126 @@
+                <div id="estadoResultadosView" class="hidden max-w-7xl mx-auto space-y-8">
+            <!-- P&L Header -->
+            <div class="bg-sky-900 rounded-2xl shadow-xl border border-slate-100 overflow-hidden text-white p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-extrabold tracking-tight flex items-center gap-2">
+                        <svg class="h-6 w-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path>
+                        </svg>
+                        Módulo de Estado de Resultados y Análisis de Variación
+                    </h2>
+                    <p class="text-xs text-sky-300 mt-1">Análisis financiero consolidado y seguimiento de las fluctuaciones de precios de insumos, cultivos y ventas en el tiempo.</p>
+                </div>
+                <span class="px-3 py-1 bg-sky-800 text-sky-300 text-[11px] font-bold uppercase tracking-wider rounded-full border border-sky-700/50">Análisis Financiero Activo</span>
+            </div>
+
+            <!-- Resumen de Utilidades (Consolidated P&L Cards) -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ventas Totales</span>
+                        <h2 class="text-xl sm:text-2xl font-extrabold text-emerald-600 mt-1" id="plVentas">$0</h2>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-2">Ingresos totales brutos obtenidos.</p>
+                </div>
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Costos Iniciales</span>
+                        <h2 class="text-xl sm:text-2xl font-extrabold text-slate-800 mt-1" id="plCostosIniciales">$0</h2>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-2">Inversión inicial en establecimiento.</p>
+                </div>
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Gastos de Desarrollo</span>
+                        <h2 class="text-xl sm:text-2xl font-extrabold text-slate-800 mt-1" id="plCostosDesarrollo">$0</h2>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-2">Costos operacionales y labores.</p>
+                </div>
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Utilidad Neta General</span>
+                        <h2 class="text-xl sm:text-2xl font-extrabold text-sky-600 mt-1" id="plUtilidad">$0</h2>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-2">Rentabilidad neta global consolidada.</p>
+                </div>
+            </div>
+
+            <!-- Sección: Análisis de Variación de Precios -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/50">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                            <span class="p-1.5 bg-sky-100 text-sky-800 rounded-lg">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                </svg>
+                            </span>
+                            Análisis Cronológico y Variación de Precios por Ítem
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">Selecciona un cultivo, insumo o producto para analizar la variación de sus precios de compra o venta a lo largo del tiempo.</p>
+                    </div>
+
+                    <!-- Selector de Items -->
+                    <div class="w-full md:w-80">
+                        <label for="variationItemSelector" class="sr-only">Seleccionar Ítem</label>
+                        <select id="variationItemSelector" onchange="renderPriceVariationDetail()" class="block w-full rounded-xl border-slate-200 bg-white py-2.5 px-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-xs font-bold cursor-pointer border shadow-sm">
+                            <!-- Se poblará dinámicamente con todos los conceptos únicos -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Metrics Card -->
+                    <div class="lg:col-span-1 space-y-4">
+                        <div class="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-4">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Indicadores de Variación</h4>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-white rounded-xl p-3 border border-slate-100 shadow-sm text-center">
+                                    <span class="text-[10px] text-slate-400 font-bold block uppercase">Mínimo</span>
+                                    <span class="text-sm font-extrabold text-slate-800 block mt-1" id="varMin">$0</span>
+                                </div>
+                                <div class="bg-white rounded-xl p-3 border border-slate-100 shadow-sm text-center">
+                                    <span class="text-[10px] text-slate-400 font-bold block uppercase">Máximo</span>
+                                    <span class="text-sm font-extrabold text-slate-800 block mt-1" id="varMax">$0</span>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-xl p-4 border border-slate-100 shadow-sm text-center">
+                                <span class="text-[10px] text-slate-400 font-bold block uppercase">Promedio General</span>
+                                <span class="text-base font-black text-slate-800 block mt-1" id="varAverage">$0</span>
+                            </div>
+                            <div class="bg-white rounded-xl p-4 border border-slate-100 shadow-sm text-center flex flex-col justify-center items-center">
+                                <span class="text-[10px] text-slate-400 font-bold block uppercase">Variación Porcentual</span>
+                                <span class="text-lg font-black block mt-1 text-slate-900" id="varPct">0%</span>
+                                <span id="varTrendBadge" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold mt-2 bg-slate-100 text-slate-800">Estable</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chronological Table List -->
+                    <div class="lg:col-span-2">
+                        <div class="border border-slate-100 rounded-2xl overflow-hidden">
+                            <div class="overflow-y-auto max-h-[300px]">
+                                <table class="min-w-full divide-y divide-slate-100 text-sm">
+                                    <thead class="bg-slate-50 sticky top-0">
+                                        <tr>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Fecha</th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Lote</th>
+                                            <th scope="col" class="px-4 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Precio / Costo (COP)</th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">Código Seguimiento</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100 bg-white" id="varHistoryTableBody">
+                                        <!-- Se poblará dinámicamente con JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+ 

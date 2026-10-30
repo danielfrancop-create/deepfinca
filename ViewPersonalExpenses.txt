@@ -1,0 +1,243 @@
+<div id="cajaGeneralView" class="hidden max-w-7xl mx-auto space-y-8">
+    <!-- Header -->
+    <div class="bg-teal-900 rounded-3xl shadow-xl border border-slate-100 overflow-hidden text-white p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h2 class="text-xl font-extrabold tracking-tight flex items-center gap-2">
+                <svg class="h-6 w-6 text-teal-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                </svg>
+                Gestión de Caja General, Gastos del Hogar, Ingresos Externos y Metas
+            </h2>
+            <p class="text-xs text-teal-200 mt-1">Cruce directo entre la Caja Real Agrícola de cultivos, Ingresos Externos / Extras y egresos personales/familiares, junto con metas de ahorro con plazo definido.</p>
+        </div>
+        <!-- Botones de Exportación Personal -->
+        <div class="flex flex-wrap gap-2 w-full md:w-auto">
+            <button type="button" onclick="exportPersonalPDF()" class="flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition cursor-pointer border border-rose-500/20">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <span>Descargar Balance PDF</span>
+            </button>
+            <button type="button" onclick="exportPersonalExcel()" class="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition cursor-pointer border border-emerald-500/20">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <span>Exportar Excel</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- A. Tarjetas KPI de Balance General (Suma separada de Ingresos Agrícolas vs Ingresos Externos) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+            <div class="flex justify-between items-start">
+                <div>
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ingresos Agrícolas (Cosechas)</span>
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1" id="kpiCajaRealAgricola">$0</h2>
+                </div>
+                <span class="p-2.5 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 rounded-xl">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </span>
+            </div>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 pt-2 border-t border-slate-50 dark:border-slate-800">
+                Excedente líquido cobrado de cultivos
+            </p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+            <div class="flex justify-between items-start">
+                <div>
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ingresos Externos / Extras</span>
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-1" id="kpiIngresosExternos">$0</h2>
+                </div>
+                <span class="p-2.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 rounded-xl">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </span>
+            </div>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 pt-2 border-t border-slate-50 dark:border-slate-800">
+                Inyecciones de capital ajenas a la finca
+            </p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+            <div class="flex justify-between items-start">
+                <div>
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Gastos Personales / Hogar</span>
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-rose-600 dark:text-rose-400 mt-1" id="kpiGastosPersonales">$0</h2>
+                </div>
+                <span class="p-2.5 bg-rose-50 dark:bg-rose-950 text-rose-600 rounded-xl">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                </span>
+            </div>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 pt-2 border-t border-slate-50 dark:border-slate-800">
+                Egresos no agrícolas
+            </p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+            <div class="flex justify-between items-start">
+                <div>
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Saldo Líquido Disponible</span>
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-sky-600 dark:text-sky-400 mt-1" id="kpiSaldoLiquido">$0</h2>
+                </div>
+                <span id="kpiSaldoLiquidoBadge" class="p-2.5 bg-sky-50 dark:bg-sky-950 text-sky-600 rounded-xl">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </span>
+            </div>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 pt-2 border-t border-slate-50 dark:border-slate-800">
+                (Ingresos Finca + Extras) - Gastos Hogar
+            </p>
+        </div>
+    </div>
+
+    <!-- B. Formulario de Registro de Gastos Personales -->
+    <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden p-6 space-y-6">
+        <div class="border-b border-slate-100 dark:border-slate-800 pb-4">
+            <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span class="p-1.5 bg-rose-100 text-rose-800 rounded-lg">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                </span>
+                Registrar Nuevo Gasto del Hogar / Personal
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Ingresa egresos no relacionados con la producción agrícola de la finca.</p>
+        </div>
+
+        <form id="gastoPersonalForm" onsubmit="handleGuardarGastoPersonal(event)" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider mb-2">Fecha *</label>
+                    <input type="date" id="gastoPersonalFecha" required class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2.5 px-4 text-xs font-semibold focus:ring-2 focus:ring-teal-500 border shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider mb-2">Categoría *</label>
+                    <select id="gastoPersonalCategoria" required class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2.5 px-4 text-xs font-semibold focus:ring-2 focus:ring-teal-500 border shadow-sm cursor-pointer">
+                        <option value="Hogar/Mercado">Hogar / Mercado</option>
+                        <option value="Salud/Medicina">Salud / Medicina</option>
+                        <option value="Servicios Públicos">Servicios Públicos</option>
+                        <option value="Educación">Educación</option>
+                        <option value="Transporte/Vehículo">Transporte / Vehículo</option>
+                        <option value="Entretenimiento">Entretenimiento</option>
+                        <option value="Mantenimiento Hogar">Mantenimiento Hogar</option>
+                        <option value="Imprevistos">Imprevistos</option>
+                        <option value="Varios">Varios</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider mb-2">Monto (COP) *</label>
+                    <div class="relative rounded-xl shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-slate-400 text-xs font-bold">$</span></div>
+                        <input type="number" step="any" id="gastoPersonalMonto" required placeholder="0" min="0" class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2.5 pl-8 pr-4 text-xs font-bold focus:ring-2 focus:ring-teal-500 border shadow-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider mb-2">Método de Pago *</label>
+                    <select id="gastoPersonalMetodo" class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2.5 px-4 text-xs font-semibold focus:ring-2 focus:ring-teal-500 border shadow-sm cursor-pointer">
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="Transferencia">Transferencia</option>
+                        <option value="Tarjeta">Tarjeta</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider mb-2">Descripción / Detalle *</label>
+                    <input type="text" id="gastoPersonalDescripcion" required placeholder="p.ej. Pago de medicina prepagada, Mercado mensual..." class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2.5 px-4 text-xs font-semibold focus:ring-2 focus:ring-teal-500 border shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider mb-2">Beneficiario / Tercero / Familiar</label>
+                    <input type="text" id="gastoPersonalBeneficiario" placeholder="p.ej. Sura EPS, Supermercado Éxito, Colegio Veredal..." class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2.5 px-4 text-xs font-semibold focus:ring-2 focus:ring-teal-500 border shadow-sm">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button type="submit" class="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-6 py-2.5 rounded-xl font-bold text-xs shadow-md transition cursor-pointer">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    <span>Guardar Gasto Personal</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <?!= include('ViewExternalIncome'); ?>
+
+    <!-- C. Gráficos de Consumo del Hogar -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col h-[380px]">
+            <div class="mb-4">
+                <h3 class="text-base font-bold text-slate-900 dark:text-white">Distribución de Gastos del Hogar</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Porcentaje del presupuesto destinado por categoría de consumo.</p>
+            </div>
+            <div class="relative flex-grow min-h-0 w-full flex justify-center items-center">
+                <canvas id="personalDoughnutChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col h-[380px]">
+            <div class="mb-4">
+                <h3 class="text-base font-bold text-slate-900 dark:text-white">Tendencia Mensual: Finca vs. Hogar</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Evolución comparativa entre aportes de la finca y gastos del hogar.</p>
+            </div>
+            <div class="relative flex-grow min-h-0 w-full">
+                <canvas id="personalTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- D. Tabla de Registros Personales -->
+    <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden space-y-4 p-6">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div>
+                <h3 class="text-base font-bold text-slate-900 dark:text-white">Historial de Gastos Personales y del Hogar</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Listado detallado de egresos no agrícolas registrados.</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <select id="filterCategoriaPersonal" onchange="renderCajaGeneralModule()" class="rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-1.5 px-3 text-xs font-bold focus:ring-2 focus:ring-teal-500">
+                    <option value="Todos">Todas las Categorías</option>
+                    <option value="Hogar/Mercado">Hogar / Mercado</option>
+                    <option value="Salud/Medicina">Salud / Medicina</option>
+                    <option value="Servicios Públicos">Servicios Públicos</option>
+                    <option value="Educación">Educación</option>
+                    <option value="Transporte/Vehículo">Transporte / Vehículo</option>
+                    <option value="Entretenimiento">Entretenimiento</option>
+                    <option value="Mantenimiento Hogar">Mantenimiento Hogar</option>
+                    <option value="Imprevistos">Imprevistos</option>
+                    <option value="Varios">Varios</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto w-full">
+            <table class="min-w-full divide-y divide-slate-100 text-sm">
+                <thead class="bg-slate-50 dark:bg-slate-800">
+                    <tr>
+                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase">Fecha</th>
+                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase">Categoría</th>
+                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase">Descripción / Detalle</th>
+                        <th scope="col" class="px-6 py-3.5 text-right text-xs font-bold text-slate-400 uppercase">Monto (COP)</th>
+                        <th scope="col" class="px-6 py-3.5 text-center text-xs font-bold text-slate-400 uppercase">Método</th>
+                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase">Beneficiario / Tercero</th>
+                        <th scope="col" class="px-6 py-3.5 text-center text-xs font-bold text-slate-400 uppercase">Acción</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900" id="gastosPersonalesTableBody">
+                    <!-- Se llena dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+ 

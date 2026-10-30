@@ -1,0 +1,504 @@
+                <div id="dashboardView" class="space-y-8">
+        
+        <!-- BARRA SUPERIOR DE ACCIÓN -->
+        <div class="flex justify-end items-center mb-2">
+            <button onclick="openInformeGeneralModal()" class="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-extrabold text-xs shadow-md transition cursor-pointer border border-indigo-500/20">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Generar Informe General (PDF)
+            </button>
+        </div>
+
+        <!-- BARRA DE CONTEO HISTÓRICO DE REGISTROS POR CATEGORÍA -->
+        <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div onclick="openCounterDetailModal('Inicial')" class="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-3 cursor-pointer hover:shadow-md hover:border-sky-300 transition duration-200 group">
+                <div class="p-3 bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-400 rounded-xl group-hover:scale-110 transition-transform">
+                    📦
+                </div>
+                <div>
+                    <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block group-hover:text-sky-600 transition-colors">Registros Semilla / Iniciales</span>
+                    <div class="text-lg font-extrabold text-slate-900 dark:text-white" id="counterIniciales">0 registros (Total en el filtro)</div>
+                </div>
+            </div>
+            <div onclick="openCounterDetailModal('Desarrollo')" class="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-3 cursor-pointer hover:shadow-md hover:border-amber-300 transition duration-200 group">
+                <div class="p-3 bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 rounded-xl group-hover:scale-110 transition-transform">
+                    🌿
+                </div>
+                <div>
+                    <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block group-hover:text-amber-600 transition-colors">Registros Gastos Desarrollo</span>
+                    <div class="text-lg font-extrabold text-slate-900 dark:text-white" id="counterDesarrollo">0 registros (Total en el filtro)</div>
+                </div>
+            </div>
+            <div onclick="openCounterDetailModal('Venta')" class="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-3 cursor-pointer hover:shadow-md hover:border-emerald-300 transition duration-200 group">
+                <div class="p-3 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-xl group-hover:scale-110 transition-transform">
+                    💰
+                </div>
+                <div>
+                    <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block group-hover:text-emerald-600 transition-colors">Registros de Ventas</span>
+                    <div class="text-lg font-extrabold text-slate-900 dark:text-white" id="counterVentas">0 registros (Total en el filtro)</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            
+            <!-- Tarjeta 1: Utilidad Neta Total (COP) -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition duration-200">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Utilidad Neta</span>
+                        <h2 class="text-xl sm:text-2xl font-extrabold mt-1" id="kpiUtilidadNeta">$0</h2>
+                    </div>
+                    <span id="kpiUtilidadIconContainer" class="p-2.5 rounded-xl">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </span>
+                </div>
+                <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 pt-2 border-t border-slate-50 dark:border-slate-800">
+                    Rentabilidad neta del periodo
+                </div>
+            </div>
+
+            <!-- Tarjeta 2: Resumen de Lote (Costo Unitario vs. Precio de Mercado & Rentabilidad) -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition duration-200 space-y-3">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider" id="kpiResumenLoteTitulo">Resumen de Lote</span>
+                            <span id="kpiTipoProduccionBadge" class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-extrabold uppercase rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                                Basado en Estimación
+                            </span>
+                        </div>
+                        <h2 class="text-xl sm:text-2xl font-extrabold text-slate-950 dark:text-white mt-1" id="kpiCostoUnitario">$0 / Atado</h2>
+                    </div>
+                    <span id="kpiStatusRentabilidadBadge" class="px-2.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-xs flex items-center gap-1">
+                        🟢 +0%
+                    </span>
+                </div>
+
+                <!-- Sección Side-by-Side: Costo / Unidad vs. Precio Mercado / Unidad -->
+                <div class="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 text-[10px]">
+                    <div class="space-y-0.5">
+                        <span class="text-slate-400 font-bold uppercase tracking-wider block">Costo / Unidad</span>
+                        <span id="kpiSideCostoUnitario" class="text-xs font-black text-slate-900 dark:text-white">$0</span>
+                        <span id="kpiUnidadesProyectadasSubtext" class="text-[9px] text-amber-600 dark:text-amber-400 font-bold block mt-0.5">Unidades Proyectadas: 0</span>
+                    </div>
+                    <div class="space-y-0.5 text-right">
+                        <span class="text-slate-400 font-bold uppercase tracking-wider block">Precio Mercado / Unidad</span>
+                        <div class="flex items-center justify-end gap-1">
+                            <input type="number" id="inputPrecioMercadoRef" onchange="updateLoteSummaryMetrics()" placeholder="Ej. 1200" class="w-20 rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white py-0.5 px-1.5 text-right text-xs font-black text-emerald-600 focus:ring-1 focus:ring-emerald-500">
+                            <button type="button" onclick="document.getElementById('inputPrecioMercadoRef').focus()" class="p-1 text-slate-400 hover:text-emerald-600 transition" title="Simular Escenario / Editar Precio">
+                                ✏️
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-[9px] text-slate-500 dark:text-slate-400 font-semibold flex justify-between pt-1 border-t border-slate-50 dark:border-slate-800" id="kpiCostoUnitarioSubtext">
+                    <span>Margen Unitario: <strong id="kpiMargenUnitarioVal" class="text-slate-800 dark:text-white">$0</strong></span>
+                    <span>Rentabilidad (%R): <strong id="kpiPctRentabilidadVal" class="text-emerald-600">0%</strong></span>
+                </div>
+            </div>
+
+            <!-- Tarjeta 3: Margen ROI (%) -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition duration-200">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Margen ROI</span>
+                        <h2 class="text-xl sm:text-2xl font-extrabold text-slate-950 dark:text-white mt-1" id="kpiRoi">0%</h2>
+                    </div>
+                    <span class="p-2.5 bg-teal-50 dark:bg-teal-950 rounded-xl text-teal-600 dark:text-teal-400">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path>
+                        </svg>
+                    </span>
+                </div>
+                <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 pt-2 border-t border-slate-50 dark:border-slate-800">
+                    Retorno sobre inversión
+                </div>
+            </div>
+
+            <!-- Tarjeta 4: Deuda / Pasivos Activos -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition duration-200">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pasivos Activos</span>
+                        <h2 class="text-xl sm:text-2xl font-extrabold text-rose-600 mt-1" id="kpiPasivos">$0</h2>
+                    </div>
+                    <span class="p-2.5 bg-rose-50 dark:bg-rose-950 rounded-xl text-rose-600 dark:text-rose-400">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                        </svg>
+                    </span>
+                </div>
+                <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 pt-2 border-t border-slate-50 dark:border-slate-800">
+                    Total deuda por pagar
+                </div>
+            </div>
+
+            <!-- Tarjeta 5: Total Invertido vs. Total Cosechado -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition duration-200">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Invertido vs Egresado</span>
+                        <h2 class="text-xs sm:text-sm font-extrabold text-slate-950 dark:text-white mt-1" id="kpiInversionVsVentas">$0 vs $0</h2>
+                    </div>
+                    <span class="p-2.5 bg-violet-50 dark:bg-violet-950 rounded-xl text-violet-600 dark:text-violet-400">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path>
+                        </svg>
+                    </span>
+                </div>
+                <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 pt-2 border-t border-slate-50 dark:border-slate-800">
+                    Total Costos vs Ventas
+                </div>
+            </div>
+        </section>
+
+        
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-100 flex flex-col h-[420px] sm:h-[440px]">
+                <div class="mb-4">
+                    <h3 class="text-lg sm:text-base font-bold text-slate-900">Análisis Financiero por Lote</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Comparativa directa de Costo Total acumulado frente a Ventas generadas.</p>
+                </div>
+                <div class="relative flex-grow min-h-0 w-full">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+
+            
+            <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-100 flex flex-col h-[440px] sm:h-[460px]">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                    <div>
+                        <h3 id="doughnutCardTitle" class="text-lg sm:text-base font-bold text-slate-900">Insumos y Gastos de Desarrollo</h3>
+                        <p id="doughnutCardSubtitle" class="text-xs text-slate-400 mt-0.5">Distribución de egresos operacionales agrupados por categoría de insumo.</p>
+                    </div>
+                    <div>
+                        <select id="doughnutTypeSelector" onchange="changeDoughnutType(this.value)" class="block w-full sm:w-auto rounded-xl border-slate-200 bg-slate-50 text-slate-700 py-3 sm:py-1.5 px-3 text-base sm:text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer border shadow-sm min-h-[48px] sm:min-h-0">
+                            <option value="consolidado">📊 Consolidado General (Todos los Módulos)</option>
+                            <option value="gastos_desarrollo" selected>Gastos de Desarrollo</option>
+                            <option value="gastos_iniciales">Gastos Iniciales</option>
+                            <option value="ventas">Ventas</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="relative flex-grow min-h-0 w-full flex justify-center items-center">
+                    <canvas id="doughnutChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        
+
+        <!-- SECCIÓN: REGISTRO DE TRANSACCIONES DETALLADO -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-50/50">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <span class="p-1.5 bg-amber-100 text-amber-800 rounded-lg">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012-2"></path>
+                            </svg>
+                        </span>
+                        Registro de Transacciones Detallado (Código de Seguimiento)
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-1">Historial de todos los movimientos de gastos y ventas con su código de seguimiento correspondiente.</p>
+                </div>
+                
+                <!-- Filtros del Registro -->
+                <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                    <!-- Búsqueda por Código de Seguimiento -->
+                    <div class="relative w-full sm:w-64">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </span>
+                        <input type="text" id="searchTrackingCode" oninput="applyFilters()" placeholder="Buscar Código de Seguimiento..." class="block w-full rounded-xl border-slate-200 bg-white py-2 pl-9 pr-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-xs font-semibold border shadow-sm uppercase">
+                    </div>
+                    <!-- Filtro por Tipo de Movimiento -->
+                    <div class="relative w-full sm:w-40">
+                        <select id="filterMovimiento" onchange="applyFilters()" class="block w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-xs font-semibold cursor-pointer border shadow-sm">
+                            <option value="Todos">Todos los Tipos</option>
+                            <option value="Inicial">Gastos Iniciales</option>
+                            <option value="Desarrollo">Gastos de Desarrollo</option>
+                            <option value="Venta">Ventas</option>
+                        </select>
+                    </div>
+                    <!-- Botón Descargar PDF -->
+                    <button type="button" onclick="exportToPDF()" class="flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white py-2 px-4 rounded-xl font-bold text-xs shadow-sm transition duration-150 ease-in-out cursor-pointer w-full sm:w-auto border border-rose-500/20">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span>Descargar PDF</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabla de Transacciones -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-100 text-sm">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Lote</th>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Tipo Movimiento</th>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Concepto</th>
+                            <th scope="col" class="px-6 py-3.5 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Monto (COP)</th>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Fecha</th>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">Código de Seguimiento</th>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Detalles / Comprador</th>
+                            <th scope="col" class="px-6 py-3.5 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 bg-white" id="transaccionesTableBody">
+                        <!-- Se poblará dinámicamente con JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-400">
+                <span id="transaccionesCount">Mostrando 0 registros</span>
+                
+                <!-- Botón de Expansión / Colapso de Transacciones -->
+                <div id="verTodasTransaccionesContainer" class="hidden">
+                    <button type="button" onclick="toggleShowAllTransactions()" id="verTodasTransaccionesBtn" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-extrabold text-xs hover:bg-emerald-100 dark:hover:bg-emerald-900/80 transition cursor-pointer border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+                        <span id="verTodasTransaccionesTexto">Ver todas las transacciones</span>
+                        <svg id="verTodasTransaccionesIcono" class="h-4 w-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <span class="font-medium text-emerald-600 dark:text-emerald-400">Finca Los Sauces</span>
+            </div>
+        </section>
+
+        <!-- SECCIÓN: MÓDULO DE FLUJO DE CAJA Y LIQUIDEZ POR LOTE -->
+        <section class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/50 dark:bg-slate-800/50">
+                <div>
+                    <h3 class="text-base font-bold text-slate-950 dark:text-white flex items-center gap-2">
+                        <span class="p-1.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 rounded-lg">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </span>
+                        Control de Flujo de Caja por Lote (Caja Real vs. Proyectada)
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Análisis en tiempo real de entradas pagadas, salidas efectivas, saldo líquido disponible y proyección de tesorería.</p>
+                </div>
+                <div class="flex items-center gap-2 w-full md:w-auto">
+                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Filtrar Caja Lote:</label>
+                    <select id="cashflowLoteSelector" onchange="renderCashflowModule()" class="block w-full sm:w-44 rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-1.5 px-3 text-xs font-bold focus:ring-2 focus:ring-emerald-500">
+                        <option value="Todos">Todos los Lotes</option>
+                        <option value="Lote 1">Lote 1</option>
+                        <option value="Lote 2">Lote 2</option>
+                        <option value="Lote 3">Lote 3</option>
+                        <option value="Lote 4">Lote 4</option>
+                        <option value="Lote 5">Lote 5</option>
+                        <option value="Lote 6">Lote 6</option>
+                        <option value="Lote 7">Lote 7</option>
+                        <option value="Lote 8">Lote 8</option>
+                        <option value="Lote 9">Lote 9</option>
+                        <option value="Lote 10">Lote 10</option>
+                        <option value="Lote 11">Lote 11</option>
+                        <option value="Lote 12">Lote 12</option>
+                        <option value="Lote 13">Lote 13</option>
+                        <option value="Lote 14">Lote 14</option>
+                        <option value="Lote 15">Lote 15</option>
+                    </select>
+                </div>
+            </div>
+            <div class="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div class="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900">
+                    <p class="text-[11px] font-extrabold uppercase text-emerald-800 dark:text-emerald-300">Ingresos Cobrados (Caja Real)</p>
+                    <h3 class="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1" id="cfEfectivoIngresado">$0</h3>
+                    <p class="text-[10px] text-emerald-600 dark:text-emerald-500 mt-2">Ventas con Estado PAGADO</p>
+                </div>
+                <div class="p-4 rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900">
+                    <p class="text-[11px] font-extrabold uppercase text-rose-800 dark:text-rose-300">Egresos Pagados (Salida Real)</p>
+                    <h3 class="text-2xl font-extrabold text-rose-700 dark:text-rose-400 mt-1" id="cfEfectivoGastado">$0</h3>
+                    <p class="text-[10px] text-rose-600 dark:text-rose-500 mt-2">Costos con Estado PAGADO</p>
+                </div>
+                <div class="p-4 rounded-2xl bg-sky-50/70 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-900">
+                    <p class="text-[11px] font-extrabold uppercase text-sky-800 dark:text-sky-300">Saldo Disponible en Caja</p>
+                    <h3 class="text-2xl font-extrabold text-sky-700 dark:text-sky-400 mt-1" id="cfSaldoDisponible">$0</h3>
+                    <p class="text-[10px] text-sky-600 dark:text-sky-500 mt-2">Efectivo Ingresado - Salida Real</p>
+                </div>
+                <div class="p-4 rounded-2xl bg-violet-50/70 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-900">
+                    <p class="text-[11px] font-extrabold uppercase text-violet-800 dark:text-violet-300">Saldo Proyectado</p>
+                    <h3 class="text-2xl font-extrabold text-violet-700 dark:text-violet-400 mt-1" id="cfSaldoProyectado">$0</h3>
+                    <p class="text-[10px] text-violet-600 dark:text-violet-500 mt-2">(Caja + Por Cobrar) - Por Pagar</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN: MÓDULO DE GESTIÓN DE CUENTAS PENDIENTES Y ALERTAS -->
+        <section class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden space-y-6">
+            <div class="p-6 border-b border-slate-100 dark:border-slate-800 bg-amber-50/50 dark:bg-amber-950/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h3 class="text-base font-bold text-slate-950 dark:text-white flex items-center gap-2">
+                        <span class="p-1.5 bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 rounded-lg">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </span>
+                        Control de Cuentas Pendientes, Morosidad y Alertas
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Seguimiento de saldos pendientes por cobrar a clientes o por pagar a proveedores y trabajadores.</p>
+                </div>
+                <span class="px-3 py-1 bg-amber-100 text-amber-800 text-[11px] font-bold uppercase rounded-full border border-amber-200" id="pendingAlertsBadge">0 Pendientes</span>
+            </div>
+
+            <!-- Tarjetas de Alertas -->
+            <div class="px-6 grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 dark:bg-rose-950/30 dark:border-rose-900">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold uppercase text-rose-800 dark:text-rose-300">🔴 Cobrar Vencidas</span>
+                        <span class="text-xs font-extrabold bg-rose-200 text-rose-900 px-2 py-0.5 rounded-full" id="countCobrarVencidas">0</span>
+                    </div>
+                    <h3 class="text-xl font-black text-rose-700 dark:text-rose-400 mt-2" id="valCobrarVencidas">$0</h3>
+                    <p class="text-[10px] text-rose-600 dark:text-rose-400 mt-1">Ventas pendientes con fecha vencida</p>
+                </div>
+                <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-900">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold uppercase text-amber-800 dark:text-amber-300">🟡 Total Por Cobrar</span>
+                        <span class="text-xs font-extrabold bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full" id="countPorCobrar">0</span>
+                    </div>
+                    <h3 class="text-xl font-black text-amber-700 dark:text-amber-400 mt-2" id="valPorCobrar">$0</h3>
+                    <p class="text-[10px] text-amber-600 dark:text-amber-400 mt-1">Suma total cuentas por cobrar clientes</p>
+                </div>
+                <div class="p-4 rounded-2xl bg-orange-50 border border-orange-200 dark:bg-orange-950/30 dark:border-orange-900">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold uppercase text-orange-800 dark:text-orange-300">🟠 Total Por Pagar</span>
+                        <span class="text-xs font-extrabold bg-orange-200 text-orange-900 px-2 py-0.5 rounded-full" id="countPorPagar">0</span>
+                    </div>
+                    <h3 class="text-xl font-black text-orange-700 dark:text-orange-400 mt-2" id="valPorPagar">$0</h3>
+                    <p class="text-[10px] text-orange-600 dark:text-orange-400 mt-1">Suma de deudas con proveedores y jornales</p>
+                </div>
+            </div>
+
+            <!-- Tabla Cuentas Pendientes -->
+            <div class="overflow-x-auto w-full pb-4">
+                <table class="min-w-full divide-y divide-slate-100 text-sm">
+                    <thead class="bg-slate-50 dark:bg-slate-800">
+                        <tr>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase">Tipo</th>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase">Lote</th>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase">Cliente / Proveedor</th>
+                            <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase">Concepto</th>
+                            <th scope="col" class="px-6 py-3.5 text-right text-xs font-bold text-slate-400 uppercase">Monto (COP)</th>
+                            <th scope="col" class="px-6 py-3.5 text-center text-xs font-bold text-slate-400 uppercase">Vencimiento</th>
+                            <th scope="col" class="px-6 py-3.5 text-center text-xs font-bold text-slate-400 uppercase">Estado</th>
+                            <th scope="col" class="px-6 py-3.5 text-center text-xs font-bold text-slate-400 uppercase">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900" id="cuentasPendientesTableBody">
+                        <!-- Se llena dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        
+        <section class="border-t-2 border-dashed border-slate-200 pt-8 space-y-6">
+            <div>
+                <h2 class="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                    <span class="p-1.5 bg-violet-100 text-violet-700 rounded-lg">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                        </svg>
+                    </span>
+                    Cartera de Préstamos y Obligaciones Bancarias
+                </h2>
+                <p class="text-xs text-slate-400 mt-1">Monitoreo e historial de créditos de fomento y capital de trabajo vigentes para la finca.</p>
+            </div>
+
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition duration-200">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Prestado</span>
+                            <h3 class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1" id="kpiTotalPrestado">$0</h3>
+                        </div>
+                        <span class="p-2.5 bg-violet-50 rounded-xl text-violet-600">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5a2 2 0 10-2 2h2zm0 10V12a2 2 0 112-2h-2zm0 0v-2a2 2 0 10-2 2h2z"></path>
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-50">
+                        Histórico de financiamiento aprobado
+                    </div>
+                </div>
+
+                
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition duration-200">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Cuotas Pagadas</span>
+                            <h3 class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1" id="kpiTotalPagado">$0</h3>
+                        </div>
+                        <span class="p-2.5 bg-teal-50 rounded-xl text-teal-600">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-50">
+                        Capital retornado y abonos a capital
+                    </div>
+                </div>
+
+                
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition duration-200">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Saldo por Pagar</span>
+                            <h3 class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1" id="kpiTotalSaldo">$0</h3>
+                        </div>
+                        <span class="p-2.5 bg-rose-50 rounded-xl text-rose-600">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-50">
+                        Monto neto pendiente de amortización
+                    </div>
+                </div>
+            </div>
+
+            
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="overflow-x-auto w-full">
+                    <table class="min-w-full divide-y divide-slate-100 text-sm">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Entidad / Banco</th>
+                                <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Tipo / Destino</th>
+                                <th scope="col" class="px-6 py-3.5 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Valor Prestado</th>
+                                <th scope="col" class="px-6 py-3.5 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Cuotas Pagadas</th>
+                                <th scope="col" class="px-6 py-3.5 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Saldo por Pagar</th>
+                                <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Notas / Condiciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 bg-white" id="prestamosTableBody">
+                            
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        </div><!-- Fin de dashboardView -->
+
+
+
+  
+ 

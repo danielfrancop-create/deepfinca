@@ -1,0 +1,74 @@
+                <div id="obligacionesFormView" class="hidden max-w-2xl mx-auto space-y-8">
+            <!-- Header -->
+            <div class="bg-violet-900 rounded-2xl shadow-xl border border-slate-100 overflow-hidden text-white p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-extrabold tracking-tight flex items-center gap-2">
+                        <svg class="h-6 w-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                        </svg>
+                        Registro de Préstamos y Obligaciones Bancarias
+                    </h2>
+                    <p class="text-xs text-violet-200 mt-1">Ingresa la información financiera de tus obligaciones y créditos bancarios de manera detallada.</p>
+                </div>
+                <span class="px-3 py-1 bg-violet-800 text-violet-300 text-[11px] font-bold uppercase tracking-wider rounded-full border border-violet-700/50">Módulo de Créditos</span>
+            </div>
+
+            <!-- Form Card -->
+            <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+                <div id="loanAlert" class="hidden mx-6 mt-4 p-4 rounded-xl flex items-center">
+                    <svg class="h-5 w-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" id="loanAlertIconPath"></path>
+                    </svg>
+                    <span id="loanAlertMsg" class="text-xs font-bold"></span>
+                </div>
+
+                <form id="loanForm" onsubmit="handleObligacionesSubmit(event)" class="p-6 space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">Entidad / Banco *</label>
+                            <input type="text" id="loanBanco" required placeholder="p.ej. Banco Agrario, Bancolombia" class="block w-full rounded-xl border-slate-200 bg-white py-2.5 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm font-semibold border shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">Tipo de Préstamo / Línea *</label>
+                            <input type="text" id="loanTipo" required placeholder="p.ej. Fomento, Capital de Trabajo" class="block w-full rounded-xl border-slate-200 bg-white py-2.5 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm font-semibold border shadow-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <div>
+                            <label class="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">Valor Prestado (COP) *</label>
+                            <input type="number" step="any" id="loanValor" required min="0" placeholder="0" oninput="calculateLoanBalance()" class="block w-full rounded-xl border-slate-200 bg-white py-2.5 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm font-semibold border shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">Pago Cuotas / Abonos (COP) *</label>
+                            <input type="number" step="any" id="loanPago" required min="0" placeholder="0" oninput="calculateLoanBalance()" class="block w-full rounded-xl border-slate-200 bg-white py-2.5 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm font-semibold border shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">Saldo por Pagar (COP)</label>
+                            <input type="text" id="loanSaldo" readonly placeholder="$0" class="block w-full rounded-xl border-slate-100 bg-slate-50 py-2.5 px-4 text-slate-500 font-bold text-sm border shadow-sm outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">Notas / Condiciones del Crédito</label>
+                        <textarea id="loanNotas" rows="3" placeholder="Ingresa detalles sobre tasa de interés, amortización, garantías..." class="block w-full rounded-xl border-slate-200 bg-white py-3 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm font-semibold border shadow-sm"></textarea>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row justify-end items-center gap-3 pt-4 border-t border-slate-100">
+                        <button type="button" onclick="showView('dashboard')" class="w-full sm:w-auto px-5 py-2.5 rounded-xl text-slate-500 hover:bg-slate-100 font-bold text-sm transition duration-150 ease-in-out border border-slate-200 cursor-pointer text-center">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="w-full sm:w-auto flex justify-center items-center gap-2 bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md transition duration-150 ease-in-out cursor-pointer">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Registrar Obligación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+
+
+ 

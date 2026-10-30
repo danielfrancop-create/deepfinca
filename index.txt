@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Finca Los Sauces - Dashboard de Control Operativo</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN (Minified UMD bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- jsPDF & AutoTable (Minified bundles) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- Web App Manifest (Data URI for embedded PWA support) -->
+    <link rel="manifest" href="data:application/manifest+json;utf8,%7B%22name%22%3A%22Finca%20Los%20Sauces%20-%20Control%20Agricola%22%2C%22short_name%22%3A%22FincaLosSauces%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23064e3b%22%2C%22theme_color%22%3A%22%23064e3b%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20512%20512'%3E%3Crect%20width%3D'512'%20height%3D'512'%20rx%3D'100'%20fill%3D'%23064e3b'%2F%3E%3Cpath%20d%3D'M256%20100v312M100%20256h312'%20stroke%3D'%2334d399'%20stroke-width%3D'40'%2F%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+    <meta name="theme-color" content="#064e3b">
+
+    <?!= include('Styles'); ?>
+</head>
+<body class="h-full flex flex-col text-slate-800">
+
+    <?!= include('Header'); ?>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6 sm:space-y-8">
+        <?!= include('ViewDashboard'); ?>
+        <?!= include('ViewPOS'); ?>
+        <?!= include('ViewCashflow'); ?>
+        <?!= include('ViewLoans'); ?>
+        <?!= include('ViewPersonalExpenses'); ?>
+        <?!= include('ViewMap'); ?>
+    </main>
+
+    <?!= include('Modals'); ?>
+
+    <!-- Loader Overlay -->
+    <div id="loader" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex flex-col justify-center items-center z-50" style="display: none;">
+        <div class="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center space-y-4 max-w-xs text-center">
+            <div class="relative w-12 h-12">
+                <div class="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+                <div class="absolute inset-0 rounded-full border-4 border-emerald-600 border-t-transparent animate-spin"></div>
+            </div>
+            <div>
+                <p class="font-bold text-slate-800" id="loaderTitle">Cargando...</p>
+                <p class="text-xs text-slate-500 mt-1" id="loaderMessage">Por favor espere un momento</p>
+            </div>
+        </div>
+    </div>
+
+    <?!= include('JavaScript'); ?>
+
+    <!-- Inline Service Worker Registration for PWA caching & offline support -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                const CACHE_NAME = 'finca-sauces-v1';
+                self.addEventListener('install', (e) => {
+                    self.skipWaiting();
+                });
+                self.addEventListener('activate', (e) => {
+                    e.waitUntil(clients.claim());
+                });
+                self.addEventListener('fetch', (e) => {
+                    if (e.request.method !== 'GET') return;
+                    e.respondWith(
+                        fetch(e.request).then((res) => {
+                            const copy = res.clone();
+                            caches.open(CACHE_NAME).then((cache) => cache.put(e.request, copy));
+                            return res;
+                        }).catch(() => caches.match(e.request))
+                    );
+                });
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(blob);
+            navigator.serviceWorker.register(swUrl).catch((err) => console.log('SW Registration skipped:', err));
+        }
+    </script>
+
+</body>
+</html>
+
+ 

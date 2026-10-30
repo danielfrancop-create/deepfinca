@@ -1,0 +1,502 @@
+    <!-- MODAL DE PARÁMETROS DINÁMICOS PARA INFORME GENERAL (PDF) -->
+    <div id="modalParametrosInformePDF" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center z-50 p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 max-w-full sm:max-w-md w-full overflow-hidden p-5 sm:p-6 space-y-5">
+            <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="p-2 bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 rounded-xl">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                        </svg>
+                    </span>
+                    <div>
+                        <h3 class="font-extrabold text-base text-slate-900 dark:text-white">Parámetros del Informe General</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Ajusta los factores de proyección antes de exportar</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeInformeGeneralModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-2xl font-bold cursor-pointer">&times;</button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 tracking-wider mb-1">
+                        Selección de Lote / Alcance *
+                    </label>
+                    <select id="paramLoteInforme" class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2.5 px-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <option value="Todos">Todos los Lotes (Informe General Consolidado)</option>
+                        <option value="Lote 1">Lote 1</option>
+                        <option value="Lote 2">Lote 2</option>
+                        <option value="Lote 3">Lote 3</option>
+                        <option value="Lote 4">Lote 4</option>
+                        <option value="Lote 5">Lote 5</option>
+                        <option value="Lote 6">Lote 6</option>
+                        <option value="Lote 7">Lote 7</option>
+                        <option value="Lote 8">Lote 8</option>
+                        <option value="Lote 9">Lote 9</option>
+                        <option value="Lote 10">Lote 10</option>
+                        <option value="Lote 11">Lote 11</option>
+                        <option value="Lote 12">Lote 12</option>
+                        <option value="Lote 13">Lote 13</option>
+                        <option value="Lote 14">Lote 14</option>
+                        <option value="Lote 15">Lote 15</option>
+                        <option value="Lote 16">Lote 16</option>
+                    </select>
+                    <p class="text-[11px] text-slate-400 mt-1">Genera el informe de manera individual por lote o de forma consolidada.</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 tracking-wider mb-1">
+                        Factor de Cosecha Proyectada (Multiplicador x) *
+                    </label>
+                    <input type="number" id="paramFactorCosecha" step="0.1" min="0.1" value="2.8" class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2.5 px-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500">
+                    <p class="text-[11px] text-slate-400 mt-1">Estimación de multiplicador sobre siembra (Valor por defecto: 2.8x).</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 tracking-wider mb-1">
+                        Margen de Ganancia Objetivo (%) *
+                    </label>
+                    <div class="relative">
+                        <input type="number" id="paramMargenGanancia" step="1" min="1" max="99" value="35" class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2.5 px-3 pr-8 text-sm font-bold focus:ring-2 focus:ring-indigo-500">
+                        <span class="absolute right-3 top-2.5 text-xs font-extrabold text-slate-400">%</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-1">Margen neto esperado libre de costos (Fórmula: Costo / (1 - Margen%)).</p>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button type="button" onclick="closeInformeGeneralModal()" class="px-4 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs transition cursor-pointer">
+                    Cancelar
+                </button>
+                <button type="button" onclick="submitInformeGeneralPDF()" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-2">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Generar PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+        <!-- MODAL FICHA TÉCNICA DEL LOTE SELECCIONADO -->
+    <div id="mapLotModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center z-50 p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 max-w-full sm:max-w-lg w-full overflow-hidden p-4 sm:p-6 space-y-4 sm:space-y-6">
+            <div class="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div>
+                    <span class="px-2.5 py-0.5 text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 rounded-full" id="modalLotStatusBadge">EN PROCESO</span>
+                    <h3 class="text-xl font-extrabold text-slate-900 dark:text-white mt-1" id="modalLotTitle">Lote 1A</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400" id="modalLotCropSub">Cultivo: Cebolla Larga</p>
+                </div>
+                <button type="button" onclick="closeMapLotModal()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold cursor-pointer">&times;</button>
+            </div>
+
+            <!-- Phenological Progress Bar -->
+            <div class="space-y-2 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div class="flex justify-between items-center text-xs font-bold text-slate-700 dark:text-slate-200">
+                    <span>Progreso del Ciclo</span>
+                    <span id="modalLotProgressPercent" class="text-emerald-600 dark:text-emerald-400 font-extrabold">0%</span>
+                </div>
+                <div class="w-full bg-slate-200 dark:bg-slate-700 h-3 rounded-full overflow-hidden">
+                    <div id="modalLotProgressBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between items-center text-[11px] text-slate-500 dark:text-slate-400 font-semibold pt-1">
+                    <span id="modalLotStageName">Etapa Fenológica</span>
+                    <span id="modalLotDaysText">0 días sembrado</span>
+                </div>
+            </div>
+
+            <!-- Financial Summary Quick Card -->
+            <div class="grid grid-cols-3 gap-3 text-center">
+                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <p class="text-[9px] font-bold uppercase text-slate-400">Gastos Totales</p>
+                    <p id="modalLotGastos" class="text-xs font-extrabold text-rose-600 dark:text-rose-400 mt-1">$0</p>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <p class="text-[9px] font-bold uppercase text-slate-400">Ventas / Recaudo</p>
+                    <p id="modalLotVentas" class="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">$0</p>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <p class="text-[9px] font-bold uppercase text-slate-400">Costo Unit. Est.</p>
+                    <p id="modalLotCostoUnit" class="text-xs font-extrabold text-sky-600 dark:text-sky-400 mt-1">$0</p>
+                </div>
+            </div>
+
+            <!-- Modal Action Buttons -->
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeMapLotModal()" class="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs transition cursor-pointer">
+                    Cerrar
+                </button>
+                <button type="button" id="modalLotGoTransactionsBtn" onclick="goToLotTransactions()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-1.5">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                    Ver Transacciones del Lote
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL LIGHTBOX FOTOGRÁFICO CON LUPA Y ZOOM INTERACTIVO DE HASTA 300% -->
+    <div id="photoLightboxModal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col justify-between z-50 p-4 select-none">
+        <!-- Top Control Bar -->
+        <div class="flex justify-between items-center text-white px-2 py-2 border-b border-slate-800/80">
+            <div class="flex items-center gap-3">
+                <span id="lightboxLotBadge" class="px-3 py-1 bg-emerald-700 text-emerald-200 text-xs font-extrabold uppercase rounded-full border border-emerald-600/60">Lote 1A</span>
+                <div>
+                    <h3 id="lightboxTitle" class="text-base font-extrabold text-white">Título de Fotografía</h3>
+                    <p id="lightboxDate" class="text-xs text-slate-400 font-mono">2026-03-01</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <!-- Zoom Control Buttons -->
+                <button type="button" onclick="lightboxZoomOut()" title="Alejar (-)" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold cursor-pointer transition">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path>
+                    </svg>
+                </button>
+                <span id="lightboxZoomLevelText" class="text-xs font-bold text-emerald-400 font-mono w-12 text-center">100%</span>
+                <button type="button" onclick="lightboxZoomIn()" title="Acercar (+)" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold cursor-pointer transition">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path>
+                    </svg>
+                </button>
+                <button type="button" onclick="resetLightboxZoom()" title="Restablecer" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer transition">
+                    1:1
+                </button>
+                
+                <!-- Close Button -->
+                <button type="button" onclick="closePhotoLightbox()" class="ml-4 text-slate-400 hover:text-white text-3xl font-bold cursor-pointer transition">&times;</button>
+            </div>
+        </div>
+
+        <!-- Main Image Display Viewport with Pan / Drag Container -->
+        <div id="lightboxViewport" class="flex-grow relative flex justify-center items-center overflow-hidden my-2 cursor-grab active:cursor-grabbing">
+            <!-- Prev Arrow -->
+            <button type="button" onclick="lightboxPrevPhoto()" class="absolute left-4 z-20 p-3 rounded-full bg-slate-900/80 hover:bg-slate-800 text-white shadow-xl backdrop-blur-xs transition cursor-pointer border border-slate-700/60">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path>
+                </svg>
+            </button>
+
+            <!-- Image element with transform scale/pan style -->
+            <img id="lightboxImage" src="" alt="Fotografía" class="max-w-full max-h-[75vh] object-contain transition-transform duration-100 ease-out select-none shadow-2xl rounded-lg" style="transform: scale(1) translate(0px, 0px);">
+
+            <!-- Next Arrow -->
+            <button type="button" onclick="lightboxNextPhoto()" class="absolute right-4 z-20 p-3 rounded-full bg-slate-900/80 hover:bg-slate-800 text-white shadow-xl backdrop-blur-xs transition cursor-pointer border border-slate-700/60">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Bottom Description Bar -->
+        <div class="bg-slate-900/80 rounded-2xl p-4 text-slate-300 text-xs flex justify-between items-center border border-slate-800 max-w-4xl mx-auto w-full">
+            <p id="lightboxDescription" class="line-clamp-2 italic text-slate-300">Observaciones del cultivo en campo...</p>
+            <span class="text-[10px] text-slate-500 whitespace-nowrap ml-4">Usa la rueda del ratón o haz zoom para inspeccionar a 300%</span>
+        </div>
+    </div>
+
+    <!-- MODAL SUBIR FOTOGRAFÍA AL DRIVE Y BITÁCORA -->
+    <div id="photoUploadModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center z-50 p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 max-w-full sm:max-w-md w-full overflow-hidden p-4 sm:p-6 space-y-4 sm:space-y-6">
+            <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4">
+                <h3 class="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="p-1.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 rounded-lg">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </span>
+                    Subir Fotografía de Avance
+                </h3>
+                <button type="button" onclick="closePhotoUploadModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold cursor-pointer">&times;</button>
+            </div>
+
+            <form id="photoUploadForm" onsubmit="handlePhotoUploadSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider mb-1">Lote Destino *</label>
+                    <select id="uploadPhotoLote" required class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2.5 px-3 text-xs font-bold">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider mb-1">Fecha de Captura *</label>
+                    <input type="date" id="uploadPhotoFecha" required class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2 px-3 text-xs font-semibold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider mb-1">Título de la Foto *</label>
+                    <input type="text" id="uploadPhotoTitulo" required placeholder="Ej. Germinación Mes 1" class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2 px-3 text-xs font-semibold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider mb-1">Seleccionar Imagen (Archivo) *</label>
+                    <input type="file" id="uploadPhotoFileInput" accept="image/*" required class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider mb-1">Observaciones / Notas</label>
+                    <textarea id="uploadPhotoDescripcion" rows="2" placeholder="Observaciones de campo sobre el estado del cultivo..." class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2 px-3 text-xs font-semibold"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closePhotoUploadModal()" class="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs transition cursor-pointer">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition cursor-pointer">
+                        Guardar Fotografía
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE SEGURIDAD PARA ELIMINACIÓN INDIVIDUAL -->
+    <div id="deleteSecurityModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center z-50 p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 max-w-full sm:max-w-md w-full overflow-hidden space-y-4 sm:space-y-6 p-4 sm:p-6">
+            <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div class="flex items-center gap-3">
+                    <span class="p-2.5 bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 rounded-xl">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </span>
+                    <div>
+                        <h3 class="font-extrabold text-base text-slate-900 dark:text-white">Confirmar Eliminación Segura</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Ingresa tu clave para eliminar el registro</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeDeleteModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold cursor-pointer">&times;</button>
+            </div>
+
+            <div class="space-y-4">
+                <p class="text-xs text-slate-600 dark:text-slate-300">
+                    Estás a punto de eliminar el registro <span id="deleteItemCodeText" class="font-mono font-bold text-rose-600"></span>. Esta acción no se puede deshacer.
+                </p>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider mb-2">Código de Seguridad *</label>
+                    <input type="password" id="deletePasscode" placeholder="Ingresa clave" class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2.5 px-4 text-sm font-semibold focus:ring-2 focus:ring-rose-500 border shadow-sm">
+                </div>
+                <div id="deleteModalAlert" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold"></div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeDeleteModal()" class="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs transition cursor-pointer">
+                    Cancelar
+                </button>
+                <button type="button" onclick="confirmarBorradoRegistro()" class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition cursor-pointer">
+                    Confirmar Borrado
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENEDOR TOAST NOTIFICATION -->
+    <div id="toastNotification" class="hidden fixed top-5 right-5 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900 text-white shadow-2xl border border-slate-800 transition-all duration-400 ease-in-out opacity-0 transform translate-y-[-10px]">
+        <span class="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </span>
+        <p class="text-xs font-bold" id="toastMessage">Registro eliminado correctamente. Métricas y costos unitarios actualizados.</p>
+    </div>
+
+    <!-- MODAL DE GESTIÓN DE USUARIOS Y ROLES (SÓLO ADMINISTRADOR) -->
+    <div id="modalGestionUsuarios" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center z-50 p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden p-4 sm:p-6 space-y-4">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center gap-3">
+                    <span class="p-2.5 rounded-xl text-xl bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
+                        👥
+                    </span>
+                    <div>
+                        <h3 class="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white">Gestión de Usuarios y Permisos</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Registra o modifica correos, nombres y niveles de acceso (Editar / Ver Solo).</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeUsersModal()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold cursor-pointer">&times;</button>
+            </div>
+
+            <!-- Modal Content Body -->
+            <div class="overflow-y-auto space-y-6 pr-1 flex-grow">
+                <!-- Formulario Agregar / Editar Usuario -->
+                <div class="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <span class="text-indigo-600">➕</span> Agregar o Modificar Usuario
+                    </h4>
+                    <form id="formUsuarioAdmin" onsubmit="handleSaveUserSubmit(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Correo Electrónico *</label>
+                                <input type="email" id="userFormEmail" required placeholder="correo@ejemplo.com" class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2 px-3 text-xs font-semibold">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Nombre Usuario</label>
+                                <input type="text" id="userFormNombre" placeholder="Ej. Santi" class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2 px-3 text-xs font-semibold">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Rol *</label>
+                                <select id="userFormRol" required class="block w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white py-2 px-3 text-xs font-semibold cursor-pointer">
+                                    <option value="view">Operador / Solo Ver (view)</option>
+                                    <option value="admin">Administrador Total (admin)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Permisos por Módulo (Usuarios_Autorizados) -->
+                        <div>
+                            <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Permisos Específicos por Módulo</label>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <label class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                    <input type="checkbox" id="userFormModDashboard" checked class="text-indigo-600 rounded"> Dashboard Principal
+                                </label>
+                                <label class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                    <input type="checkbox" id="userFormModPOS" checked class="text-indigo-600 rounded"> Ingresar Info / POS
+                                </label>
+                                <label class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                    <input type="checkbox" id="userFormModEstadoResultados" checked class="text-indigo-600 rounded"> Estado Resultados
+                                </label>
+                                <label class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                    <input type="checkbox" id="userFormModObligaciones" checked class="text-indigo-600 rounded"> Obligaciones
+                                </label>
+                                <label class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                    <input type="checkbox" id="userFormModMapaLotes" checked class="text-indigo-600 rounded"> Mapa Interactivo
+                                </label>
+                                <label class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                    <input type="checkbox" id="userFormModCajaGeneral" checked class="text-indigo-600 rounded"> Caja General & Hogar
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-1">
+                            <button type="submit" class="w-full sm:w-auto py-2.5 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer">
+                                Guardar Usuario y Permisos
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Tabla de Usuarios Registrados -->
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <span class="text-emerald-600">📋</span> Lista de Usuarios Registrados en Google Sheets
+                    </h4>
+                    <div class="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800">
+                        <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                            <thead class="bg-slate-50 dark:bg-slate-800 font-bold text-slate-500 dark:text-slate-400 uppercase">
+                                <tr>
+                                    <th scope="col" class="px-4 py-2.5 text-left">ID</th>
+                                    <th scope="col" class="px-4 py-2.5 text-left">Correo Electrónico</th>
+                                    <th scope="col" class="px-4 py-2.5 text-left">Nombre</th>
+                                    <th scope="col" class="px-4 py-2.5 text-center">Rol</th>
+                                    <th scope="col" class="px-4 py-2.5 text-center">Estado</th>
+                                    <th scope="col" class="px-4 py-2.5 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usuariosTableBody" class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 font-medium">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Close Button -->
+            <div class="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button type="button" onclick="closeUsersModal()" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs shadow-sm transition cursor-pointer">
+                    Cerrar Ventana
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETALLE DE CONTADOR Y CONSOLIDADOR POR REFERENCIA/ÍTEM -->
+    <div id="modalDetalleContador" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center z-50 p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden p-4 sm:p-6 space-y-4">
+            <!-- Header -->
+            <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center gap-3">
+                    <span id="modalContadorIcon" class="p-2.5 rounded-xl text-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        📦
+                    </span>
+                    <div>
+                        <h3 id="modalContadorTitulo" class="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white">Detalle de Registros</h3>
+                        <p id="modalContadorSubtitulo" class="text-xs text-slate-500 dark:text-slate-400">Resumen consolidado y lista completa de transacciones bajo los filtros actuales.</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeCounterDetailModal()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold cursor-pointer">&times;</button>
+            </div>
+
+            <!-- Modal Content (Scrollable) -->
+            <div class="overflow-y-auto space-y-6 pr-1 flex-grow">
+                <!-- 1. Resumen Agrupado (Consolidado por Referencia/Ítem) -->
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <svg class="h-4 w-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path>
+                        </svg>
+                        Consolidado por Ítem / Referencia
+                    </h4>
+                    <div class="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800">
+                        <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                            <thead class="bg-slate-50 dark:bg-slate-800 font-bold text-slate-500 dark:text-slate-400 uppercase">
+                                <tr>
+                                    <th scope="col" class="px-4 py-2.5 text-left">Ítem / Concepto</th>
+                                    <th scope="col" class="px-4 py-2.5 text-center">Registros</th>
+                                    <th scope="col" class="px-4 py-2.5 text-right">Cantidad Acumulada</th>
+                                    <th scope="col" class="px-4 py-2.5 text-right">Monto Total (COP)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="counterConsolidadoTableBody" class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 font-medium">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 2. Tabla Desglosada (Lista Completa) -->
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <svg class="h-4 w-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                        </svg>
+                        Desglose Completo de Transacciones
+                    </h4>
+                    <div class="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800">
+                        <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                            <thead class="bg-slate-50 dark:bg-slate-800 font-bold text-slate-500 dark:text-slate-400 uppercase">
+                                <tr>
+                                    <th scope="col" class="px-4 py-2.5 text-left">Fecha</th>
+                                    <th scope="col" class="px-4 py-2.5 text-left">Lote</th>
+                                    <th scope="col" class="px-4 py-2.5 text-left">Cultivo</th>
+                                    <th scope="col" class="px-4 py-2.5 text-left">Ítem / Concepto</th>
+                                    <th scope="col" class="px-4 py-2.5 text-right">Cantidad</th>
+                                    <th scope="col" class="px-4 py-2.5 text-center">Unidad</th>
+                                    <th scope="col" class="px-4 py-2.5 text-right">Monto Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="counterDesgloseTableBody" class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 font-medium">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Close Button -->
+            <div class="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button type="button" onclick="closeCounterDetailModal()" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs shadow-sm transition cursor-pointer">
+                    Cerrar Ventana
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-slate-900 text-slate-400 border-t border-slate-800 text-center py-6">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs">
+            <p>© <span id="currentYear">2023</span> Finca Los Sauces. Todos los derechos reservados.</p>
+            <p>Soporte Técnico de Alta Gama • Integrado con Google Apps Script</p>
+        </div>
+    </footer>
+
+
+
+ 

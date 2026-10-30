@@ -1,0 +1,177 @@
+    <header class="bg-emerald-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-emerald-800 rounded-lg">
+                    <svg class="h-7 w-7 sm:h-8 sm:w-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.727l.707.707M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight" id="headerTitle">Finca Los Sauces</h1>
+                    <p class="text-[10px] sm:text-xs text-emerald-300 font-medium" id="headerSubtitle">Cargando información...</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- Theme Toggle Button -->
+                <button id="themeToggle" onclick="toggleTheme()" class="flex items-center justify-center p-3 sm:p-2 min-h-[48px] min-w-[48px] sm:min-h-0 sm:min-w-0 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white transition focus:outline-none" aria-label="Cambiar tema">
+                    <span id="themeToggleIcon" class="text-base sm:text-sm">🌙</span>
+                </button>
+
+                <!-- Hamburger Button (Visible on Mobile) -->
+                <button id="hamburgerBtn" onclick="toggleMobileMenu()" class="lg:hidden flex items-center justify-center p-3 sm:p-2 min-h-[48px] min-w-[48px] sm:min-h-0 sm:min-w-0 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white text-2xl sm:text-xl font-bold cursor-pointer transition focus:outline-none" aria-label="Menú principal">
+                    ☰
+                </button>
+
+                <!-- Desktop Navigation Bar (Visible on lg: screens) -->
+                <div class="hidden lg:flex items-center gap-3">
+                    <button id="syncOfflineBtn" onclick="syncOfflineData()" class="hidden flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-900 py-2 px-3.5 rounded-lg font-bold text-xs shadow-md transition cursor-pointer">
+                        <svg class="h-4 w-4 text-slate-900 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <span>Sincronizar (<span id="pendingSyncBadge">0</span>)</span>
+                    </button>
+                    <div class="relative w-48">
+                        <label for="loteSelector" class="sr-only">Seleccionar Lote</label>
+                        <select id="loteSelector" onchange="syncSelectors('header')" class="block w-full rounded-lg border-emerald-700 bg-emerald-800 text-white py-2 px-3 pr-8 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 text-xs font-semibold cursor-pointer">
+                            <option value="Todos">Todos los Lotes</option>
+                            <option value="Lote 1">Lote 1</option>
+                            <option value="Lote 2">Lote 2</option>
+                            <option value="Lote 3">Lote 3</option>
+                            <option value="Lote 4">Lote 4</option>
+                            <option value="Lote 5">Lote 5</option>
+                            <option value="Lote 6">Lote 6</option>
+                            <option value="Lote 7">Lote 7</option>
+                            <option value="Lote 8">Lote 8</option>
+                            <option value="Lote 9">Lote 9</option>
+                            <option value="Lote 10">Lote 10</option>
+                            <option value="Lote 11">Lote 11</option>
+                            <option value="Lote 12">Lote 12</option>
+                            <option value="Lote 13">Lote 13</option>
+                            <option value="Lote 14">Lote 14</option>
+                            <option value="Lote 15">Lote 15</option>
+                            <option value="Lote 16">Lote 16</option>
+                        </select>
+                    </div>
+                    <button id="btnRefrescar" onclick="fetchData(true)" class="flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white py-2 px-3 rounded-lg font-bold text-xs shadow-md transition cursor-pointer">
+                        <svg id="iconRefrescar" class="h-4 w-4 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 12H19M4 20v-5h.581"></path>
+                        </svg>
+                        Refrescar
+                    </button>
+
+                    <!-- Desktop Nav Menu Dropdown -->
+                    <div class="relative inline-block text-left">
+                        <button id="desktopNavDropdownBtn" onclick="toggleDesktopNavDropdown(event)" class="flex items-center justify-center gap-2 bg-emerald-800 hover:bg-emerald-700 active:bg-emerald-950 text-white py-2 px-3.5 rounded-lg font-bold text-xs shadow-md transition cursor-pointer border border-emerald-700 focus:outline-none">
+                            <span>☰ Menú Módulos</span>
+                            <svg class="h-4 w-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        
+                        <div id="desktopNavDropdownMenu" class="hidden absolute right-0 mt-2 w-56 rounded-xl shadow-xl bg-slate-900 border border-emerald-800 ring-1 ring-black ring-opacity-5 z-50 divide-y divide-slate-800 overflow-hidden">
+                            <div class="py-1">
+                                <button id="navBtn_dashboard" data-module="Modulo_Dashboard" onclick="showView('dashboard'); toggleDesktopNavDropdown();" class="module-nav-btn w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-200 hover:bg-emerald-800 hover:text-white flex items-center gap-2 transition cursor-pointer">
+                                    <span>🏠</span> Dashboard Principal
+                                </button>
+                                <button id="toggleViewBtn" data-module="Modulo_POS" onclick="showView('data_entry'); toggleDesktopNavDropdown();" class="module-nav-btn w-full text-left px-4 py-2.5 text-xs font-semibold text-amber-400 hover:bg-amber-500 hover:text-slate-950 flex items-center gap-2 transition cursor-pointer">
+                                    <span>📝</span> Ingresar Información
+                                </button>
+                                <button id="estadoResultadosBtn" data-module="Modulo_EstadoResultados" onclick="showView('estado_resultados'); toggleDesktopNavDropdown();" class="module-nav-btn w-full text-left px-4 py-2.5 text-xs font-semibold text-sky-400 hover:bg-sky-500 hover:text-white flex items-center gap-2 transition cursor-pointer">
+                                    <span>📊</span> Estado de Resultados
+                                </button>
+                                <button id="obligacionesBtn" data-module="Modulo_Obligaciones" onclick="showView('obligaciones'); toggleDesktopNavDropdown();" class="module-nav-btn w-full text-left px-4 py-2.5 text-xs font-semibold text-violet-400 hover:bg-violet-600 hover:text-white flex items-center gap-2 transition cursor-pointer">
+                                    <span>💳</span> Obligaciones / Préstamos
+                                </button>
+                                <button id="mapaLotesBtn" data-module="Modulo_MapaLotes" onclick="showView('mapa_lotes'); toggleDesktopNavDropdown();" class="module-nav-btn w-full text-left px-4 py-2.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-700 hover:text-white flex items-center gap-2 transition cursor-pointer">
+                                    <span>🗺️</span> Mapa Interactivo
+                                </button>
+                                <button id="cajaGeneralBtn" data-module="Modulo_CajaGeneral" onclick="showView('caja_general'); toggleDesktopNavDropdown();" class="module-nav-btn w-full text-left px-4 py-2.5 text-xs font-semibold text-teal-400 hover:bg-teal-600 hover:text-white flex items-center gap-2 transition cursor-pointer">
+                                    <span>🏠</span> Caja General & Hogar
+                                </button>
+                            </div>
+                            <div class="py-1">
+                                <button id="gestionUsuariosBtn" onclick="openUsersModal(); toggleDesktopNavDropdown();" class="hidden w-full text-left px-4 py-2.5 text-xs font-semibold text-indigo-400 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition cursor-pointer">
+                                    <span>👥</span> Gestión Usuarios
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Bottom Navigation Bar (Thumb-friendly Mobile First) -->
+        <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-emerald-950/95 backdrop-blur-lg border-t border-emerald-800 z-40 px-2 py-1.5 shadow-2xl flex justify-around items-center">
+            <button onclick="showView('dashboard')" data-module="Modulo_Dashboard" class="mobile-nav-bottom flex flex-col items-center justify-center py-1 px-2 text-white hover:text-amber-400 focus:outline-none min-h-[44px]">
+                <span class="text-lg">🏠</span>
+                <span class="text-[10px] font-bold">Inicio</span>
+            </button>
+            <button onclick="showView('data_entry')" data-module="Modulo_POS" class="mobile-nav-bottom flex flex-col items-center justify-center py-1 px-2 text-white hover:text-amber-400 focus:outline-none min-h-[44px]">
+                <span class="text-lg">📝</span>
+                <span class="text-[10px] font-bold">POS / Datos</span>
+            </button>
+            <button onclick="showView('mapa_lotes')" data-module="Modulo_MapaLotes" class="mobile-nav-bottom flex flex-col items-center justify-center py-1 px-2 text-white hover:text-amber-400 focus:outline-none min-h-[44px]">
+                <span class="text-lg">🗺️</span>
+                <span class="text-[10px] font-bold">Mapa Lotes</span>
+            </button>
+            <button onclick="showView('caja_general')" data-module="Modulo_CajaGeneral" class="mobile-nav-bottom flex flex-col items-center justify-center py-1 px-2 text-white hover:text-amber-400 focus:outline-none min-h-[44px]">
+                <span class="text-lg">💰</span>
+                <span class="text-[10px] font-bold">Caja / Metas</span>
+            </button>
+            <button onclick="toggleMobileMenu()" class="flex flex-col items-center justify-center py-1 px-2 text-white hover:text-amber-400 focus:outline-none min-h-[44px]">
+                <span class="text-lg">☰</span>
+                <span class="text-[10px] font-bold">Más</span>
+            </button>
+        </nav>
+
+        <!-- Mobile Drawer Navigation Overlay -->
+        <div id="mobileMenuDrawer" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex justify-end">
+            <div class="bg-emerald-950 border-l border-emerald-800 w-4/5 max-w-xs h-full p-6 flex flex-col justify-between overflow-y-auto space-y-6">
+                <div class="space-y-6">
+                    <div class="flex justify-between items-center border-b border-emerald-800 pb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">🌴</span>
+                            <span class="font-extrabold text-base text-white">Navegación</span>
+                        </div>
+                        <button onclick="toggleMobileMenu()" class="text-slate-300 hover:text-white text-2xl font-bold p-1 cursor-pointer">&times;</button>
+                    </div>
+
+                    <div class="space-y-2.5">
+                        <button id="mobileNavBtn_dashboard" data-module="Modulo_Dashboard" onclick="showView('dashboard'); toggleMobileMenu();" class="mobile-drawer-btn w-full flex items-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 px-4 rounded-xl font-bold text-base shadow-sm transition min-h-[48px]">
+                            <span>🏠</span> Volver al Dashboard
+                        </button>
+                        <button id="btnRefrescarMobile" onclick="fetchData(true); toggleMobileMenu();" class="w-full flex items-center gap-3 bg-emerald-900/80 hover:bg-emerald-800 text-white py-3.5 px-4 rounded-xl font-bold text-base border border-emerald-800 transition min-h-[48px]">
+                            <span id="iconRefrescarMobile" class="inline-block transition-transform duration-500">🔄</span> Refrescar Datos
+                        </button>
+                        <button id="mobileToggleViewBtn" data-module="Modulo_POS" onclick="showView('data_entry'); toggleMobileMenu();" class="mobile-drawer-btn w-full flex items-center gap-3 bg-amber-500 hover:bg-amber-600 text-slate-950 py-3.5 px-4 rounded-xl font-bold text-base shadow-sm transition min-h-[48px]">
+                            <span>📝</span> Ingresar Información
+                        </button>
+                        <button id="mobileEstadoResultadosBtn" data-module="Modulo_EstadoResultados" onclick="showView('estado_resultados'); toggleMobileMenu();" class="mobile-drawer-btn w-full flex items-center gap-3 bg-sky-600 hover:bg-sky-700 text-white py-3.5 px-4 rounded-xl font-bold text-base shadow-sm transition min-h-[48px]">
+                            <span>📊</span> Estado de Resultados
+                        </button>
+                        <button id="mobileObligacionesBtn" data-module="Modulo_Obligaciones" onclick="showView('obligaciones'); toggleMobileMenu();" class="mobile-drawer-btn w-full flex items-center gap-3 bg-violet-600 hover:bg-violet-700 text-white py-3.5 px-4 rounded-xl font-bold text-base shadow-sm transition min-h-[48px]">
+                            <span>💳</span> Obligaciones / Préstamos
+                        </button>
+                        <button id="mobileMapaLotesBtn" data-module="Modulo_MapaLotes" onclick="showView('mapa_lotes'); toggleMobileMenu();" class="mobile-drawer-btn w-full flex items-center gap-3 bg-emerald-700 hover:bg-emerald-800 text-white py-3.5 px-4 rounded-xl font-bold text-base shadow-sm transition min-h-[48px]">
+                            <span>🗺️</span> Mapa Interactivo
+                        </button>
+                        <button id="mobileCajaGeneralBtn" data-module="Modulo_CajaGeneral" onclick="showView('caja_general'); toggleMobileMenu();" class="mobile-drawer-btn w-full flex items-center gap-3 bg-teal-600 hover:bg-teal-700 text-white py-3.5 px-4 rounded-xl font-bold text-base shadow-sm transition min-h-[48px]">
+                            <span>🏠</span> Caja General & Hogar
+                        </button>
+                        <button id="mobileUsuariosBtn" onclick="openUsersModal(); toggleMobileMenu();" class="hidden w-full flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 px-4 rounded-xl font-bold text-base shadow-sm transition min-h-[48px]">
+                            <span>👥</span> Gestión Usuarios
+                        </button>
+                    </div>
+                </div>
+
+                <div class="border-t border-emerald-800 pt-4 space-y-3">
+                    <button id="mobileSyncBtn" onclick="syncOfflineData(); toggleMobileMenu();" class="w-full flex items-center justify-center gap-2 bg-amber-400 text-slate-950 py-2.5 px-4 rounded-xl font-bold text-xs shadow-sm">
+                        <span>⚡ Sincronizar Pendientes</span>
+                    </button>
+                    <p class="text-[10px] text-emerald-400 text-center font-medium">Finca Los Sauces • PWA Móvil</p>
+                </div>
+            </div>
+        </div>
+    </header>
+ 

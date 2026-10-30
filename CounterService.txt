@@ -1,0 +1,105 @@
+/**
+ * Finca Los Sauces - Servicio de Conteo de Registros por Categoría (CounterService.gs)
+ */
+
+function obtenerConteoItems(filtros) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var data = {
+      gastosIniciales: getSheetData(ss, HOJA_GASTOS_INICIALES),
+      gastosDesarrollo: getSheetData(ss, HOJA_GASTOS_DESARROLLO),
+      ventas: getSheetData(ss, HOJA_VENTAS),
+      ciclos: getSheetData(ss, HOJA_CICLOS)
+    };
+
+    var fechaInicio = filtros ? filtros.fechaInicio : null;
+    var fechaFin = filtros ? filtros.fechaFin : null;
+    var lote = filtros ? filtros.lote : "Todos";
+    var cultivo = filtros ? filtros.cultivo : "Todos";
+    var ciclo = filtros ? filtros.ciclo : "Todos";
+
+    var filterFn = function(item, type) {
+      var itemFecha = item.Fecha || item.fecha || "";
+      var itemLote = item.Lote || item.lote || item.Lote_Completo || "";
+      var itemMain = item.Lote_Principal || item.lote_principal || "";
+
+      if (fechaInicio && itemFecha < fechaInicio) return false;
+      if (fechaFin && itemFecha > fechaFin) return false;
+
+      if (lote && lote !== "Todos") {
+        var cleanLote = lote.replace(/\(Consolidado.*?\)/i, "").trim();
+        var isConsolidated = lote.indexOf("Consolidado") !== -1 || cleanLote.match(/^Lote\s*\d+$/i);
+
+        if (isConsolidated) {
+          var matchMain = (itemMain === cleanLote) ||
+                          (itemLote === cleanLote) ||
+                          (itemLote.indexOf(cleanLote + " ") === 0) ||
+                          (itemLote.indexOf(cleanLote) === 0 && (itemLote.length === cleanLote.length || itemLote.charAt(cleanLote.length).match(/[A-Z0-9]/i)));
+          if (!matchMain) return false;
+        } else {
+          if (itemLote !== cleanLote && itemLote !== lote) return false;
+        }
+      }
+
+      if (ciclo && ciclo !== "Todos") {
+        var itemCodigo = (item.Codigo_Seguimiento || item.codigo_seguimiento || item.Codigo_General || item.codigo_general || "").toString().trim().toUpperCase();
+        if (itemCodigo !== ciclo.trim().toUpperCase()) return false;
+      }
+
+      if (cultivo && cultivo !== "Todos") {
+        var itemCultivo = "";
+        if (type === "inicial") itemCultivo = item.Cultivo_Semilla || item.cultivo_semilla || "";
+        else if (type === "venta") itemCultivo = item.Producto_Vendido || item.producto_vendido || "";
+
+        if (!itemCultivo && data.ciclos) {
+          var trackingCode = (item.Codigo_General || item.Codigo_Seguimiento || "").toString().trim().toUpperCase();
+          if (trackingCode) {
+            var cycleObj = data.ciclos.find(function(c) {
+              return (c.Codigo_General || "").toString().trim().toUpperCase() === trackingCode ||
+                     (c.Codigo_Inicial || "").toString().trim().toUpperCase() === trackingCode ||
+                     (c.Codigo_Desarrollo || "").toString().trim().toUpperCase() === trackingCode ||
+                     (c.Codigo_Ventas || "").toString().trim().toUpperCase() === trackingCode;
+            });
+            if (cycleObj) itemCultivo = cycleObj.Cultivo || cycleObj.cultivo || "";
+          }
+        }
+
+        if (!itemCultivo && data.gastosIniciales) {
+          var firstIni = data.gastosIniciales.find(function(ini) {
+            return (ini.Lote || "").toString().trim() === itemLote;
+          });
+          if (firstIni) itemCultivo = firstIni.Cultivo_Semilla || firstIni.cultivo_semilla || "";
+        }
+
+        if (itemCultivo.toLowerCase().indexOf(cultivo.toLowerCase()) === -1) return false;
+      }
+
+      return true;
+    };
+
+    var conteoIniciales = data.gastosIniciales.filter(function(x) { return filterFn(x, "inicial"); }).length;
+    var conteoDesarrollo = data.gastosDesarrollo.filter(function(x) { return filterFn(x, "desarrollo"); }).length;
+    var conteoVentas = data.ventas.filter(function(x) { return filterFn(x, "venta"); }).length;
+
+    return {
+      status: "success",
+      data: {
+        conteoIniciales: conteoIniciales,
+        conteoDesarrollo: conteoDesarrollo,
+        conteoVentas: conteoVentas
+      }
+    };
+  } catch (err) {
+    return {
+      status: "error",
+      error: err.toString(),
+      data: {
+        conteoIniciales: 0,
+        conteoDesarrollo: 0,
+        conteoVentas: 0
+      }
+    };
+  }
+}
+
+ 

@@ -1,0 +1,520 @@
+                <div id="dataEntryView" class="hidden max-w-4xl mx-auto space-y-8">
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+                <!-- POS Header -->
+                <div class="bg-emerald-900 px-6 py-5 text-white flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-extrabold tracking-tight flex items-center gap-2">
+                            <svg class="h-6 w-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                            Módulo de Ingreso de Información (Estilo POS Siigo)
+                        </h2>
+                        <p class="text-xs text-emerald-300 mt-1">Registra gastos iniciales, de desarrollo o ventas de manera rápida y estructurada.</p>
+                    </div>
+                    <span class="px-3 py-1 bg-emerald-800 text-emerald-300 text-[11px] font-bold uppercase tracking-wider rounded-full border border-emerald-700/50">POS Activo</span>
+                </div>
+
+                <!-- Form Tabs navigation (Touch-scrollable on mobile) -->
+                <div class="border-b border-slate-100 bg-slate-50/70 p-3 sm:p-4 mobile-tabs-scroll gap-2">
+                    <button type="button" onclick="switchPOSTab('gastos_iniciales')" id="tabBtn_gastos_iniciales" class="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition duration-150 ease-in-out cursor-pointer shadow-sm border border-slate-200 bg-emerald-600 text-white whitespace-nowrap">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Gastos Iniciales (Establecimiento)
+                    </button>
+                    <button type="button" onclick="switchPOSTab('gastos_desarrollo')" id="tabBtn_gastos_desarrollo" class="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition duration-150 ease-in-out cursor-pointer bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 whitespace-nowrap">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        Gastos de Desarrollo (Mantenimiento)
+                    </button>
+                    <button type="button" onclick="switchPOSTab('ventas')" id="tabBtn_ventas" class="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition duration-150 ease-in-out cursor-pointer bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 whitespace-nowrap">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Ventas (Ingresos)
+                    </button>
+                    <button type="button" onclick="switchPOSTab('ciclos_lot')" id="tabBtn_ciclos_lot" class="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition duration-150 ease-in-out cursor-pointer bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 whitespace-nowrap">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 12H19M4 20v-5h.581"></path>
+                        </svg>
+                        Gestión de Ciclos de Lotes
+                    </button>
+                </div>
+
+                <!-- Notification Banner -->
+                <div id="posAlert" class="hidden mx-6 mt-4 p-4 rounded-xl flex items-center">
+                    <svg class="h-5 w-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" id="posAlertIconPath"></path>
+                    </svg>
+                    <span id="posAlertMsg" class="text-xs font-bold"></span>
+                </div>
+
+                <!-- Active Cycle Alarm Banner for Occupied Lots -->
+                <div id="posActiveCycleAlertBanner" class="hidden mx-6 mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-300 dark:bg-amber-950/60 dark:border-amber-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-amber-100 text-amber-800 rounded-xl dark:bg-amber-900 dark:text-amber-200 shrink-0">
+                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 bg-amber-200 text-amber-900 font-black text-[10px] uppercase tracking-wider rounded">LOTE EN USO Y BLOQUEADO</span>
+                                <h4 class="font-extrabold text-xs text-amber-900 dark:text-amber-200" id="posActiveCycleLoteTitle">Lote Ocupado</h4>
+                            </div>
+                            <p class="text-xs text-amber-800 dark:text-amber-300 mt-1" id="posActiveCycleMsg">
+                                Este lote ya cuenta con una gestión de cultivo activa. No se permite iniciar un nuevo cultivo / gasto inicial hasta cerrar el código de seguimiento actual.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Body -->
+                <form id="posForm" onsubmit="handlePOSSubmit(event)" class="p-4 sm:p-6 space-y-6">
+                    <!-- Always Active Lote Selector and Dynamic Cost Preview Header Grid -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 border-b border-slate-100 pb-6">
+                        <div class="lg:col-span-1">
+                            <div>
+                                    <label class="block text-xs sm:text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Selección de Lote *</label>
+                                    <select id="posLotePrincipal" required onchange="handlePOSLotePrincipalChange()" class="block w-full rounded-xl border-slate-200 bg-white py-3 px-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base sm:text-xs font-bold cursor-pointer border shadow-sm min-h-[48px] sm:min-h-0">
+                                    <option value="" disabled selected>Selecciona un Lote...</option>
+                                    <option value="Lote 1">Lote 1</option>
+                                    <option value="Lote 2">Lote 2</option>
+                                    <option value="Lote 3">Lote 3</option>
+                                    <option value="Lote 4">Lote 4</option>
+                                    <option value="Lote 5">Lote 5</option>
+                                    <option value="Lote 6">Lote 6</option>
+                                    <option value="Lote 7">Lote 7</option>
+                                    <option value="Lote 8">Lote 8</option>
+                                    <option value="Lote 9">Lote 9</option>
+                                    <option value="Lote 10">Lote 10</option>
+                                    <option value="Lote 11">Lote 11</option>
+                                    <option value="Lote 12">Lote 12</option>
+                                    <option value="Lote 13">Lote 13</option>
+                                    <option value="Lote 14">Lote 14</option>
+                                    <option value="Lote 15">Lote 15</option>
+                                    <option value="Lote 16">Lote 16</option>
+                                </select>
+                                <div id="posGeneralInsumosNotice" class="hidden mt-2.5 p-3 bg-amber-50 text-amber-900 rounded-xl border border-amber-200 text-xs font-bold flex items-center gap-2 shadow-sm">
+                                    <svg class="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <span>Gasto General: Bloqueado para prorrateo equitativo entre todos los lotes activos.</span>
+                                </div>
+                            </div>
+                            <input type="hidden" id="posSubLote" value="">
+                            <input type="hidden" id="posLote">
+                        </div>
+
+                        <!-- 1. Lote Selection Required Warning Banner -->
+                        <div id="posLoteRequiredBanner" class="lg:col-span-2 flex items-center p-4 bg-amber-50 text-amber-800 rounded-2xl border border-amber-200">
+                            <svg class="h-6 w-6 text-amber-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                            <div>
+                                <h4 class="font-bold text-sm">Lote Destino Requerido</h4>
+                                <p class="text-xs">Por favor, seleccione un Lote Destino para habilitar las secciones de registro de información y visualización del ciclo activo.</p>
+                            </div>
+                        </div>
+
+                        <!-- 2. Active Cycle Preview Card -->
+                        <div id="posLoteCycleSummaryCard" class="hidden lg:col-span-2 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl border border-emerald-100 p-4 shadow-sm">
+                            <div class="flex items-center justify-between mb-3 border-b border-emerald-100/60 pb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase bg-emerald-600 text-white rounded">Ciclo Activo</span>
+                                    <span id="posSummaryGeneralCode" class="font-mono text-xs text-emerald-800 font-bold"></span>
+                                </div>
+                                <span id="posSummaryCrop" class="text-xs font-extrabold text-teal-800 uppercase tracking-wider"></span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-4 text-center">
+                                <div class="bg-white/80 p-2 rounded-xl border border-emerald-100">
+                                    <p class="text-[9px] font-bold text-slate-400 uppercase">Costos Iniciales</p>
+                                    <p id="posSummaryGastosIniciales" class="text-xs font-black text-rose-600 mt-1"></p>
+                                </div>
+                                <div class="bg-white/80 p-2 rounded-xl border border-emerald-100">
+                                    <p class="text-[9px] font-bold text-slate-400 uppercase">Desarrollo</p>
+                                    <p id="posSummaryGastosDesarrollo" class="text-xs font-black text-amber-600 mt-1"></p>
+                                </div>
+                                <div class="bg-white/80 p-2 rounded-xl border border-emerald-100">
+                                    <p class="text-[9px] font-bold text-slate-400 uppercase">Ventas</p>
+                                    <p id="posSummaryVentas" class="text-xs font-black text-emerald-600 mt-1"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Enclosing Form content wrapper that disables when no Lote is selected -->
+                    <div id="posFormContentWrapper" class="space-y-6 opacity-40 pointer-events-none select-none">
+                        <!-- Fecha del Registro -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Fecha del Registro *</label>
+                                <input type="date" id="posFecha" required class="block w-full rounded-xl border-slate-200 bg-white py-3 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base sm:text-sm font-semibold border shadow-sm min-h-[48px] sm:min-h-0">
+                            </div>
+                        </div>
+
+                        <!-- Hidden input to preserve downstream references -->
+                        <input type="hidden" id="posTrackingCode">
+
+                        <!-- Dynamic Sections depending on Tab -->
+                        <!-- 1. GASTOS INICIALES SECTION -->
+                        <div id="section_gastos_iniciales" class="space-y-6">
+                            <div class="border-t border-slate-100 pt-6">
+                                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                    <span class="w-1.5 h-3.5 bg-emerald-500 rounded-full"></span>
+                                    Datos del Establecimiento de Cultivo
+                                </h3>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Tipo de Cultivo / Semilla *</label>
+                                    <select id="posCultivo" class="block w-full rounded-xl border-slate-200 bg-white py-3 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base sm:text-sm font-semibold cursor-pointer border shadow-sm min-h-[48px] sm:min-h-0">
+                                        <option value="" disabled selected>Selecciona un cultivo...</option>
+                                        <option value="Café Castillo">Café Castillo</option>
+                                        <option value="Aguacate Hass">Aguacate Hass</option>
+                                        <option value="Cacao Fino de Aroma">Cacao Fino de Aroma</option>
+                                        <option value="Limón Tahití">Limón Tahití</option>
+                                        <option value="Plátano Hartón">Plátano Hartón</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Cantidad *</label>
+                                    <input type="number" step="any" id="posCantidadInicial" oninput="calcPOSTotals('inicial', 'unitario')" placeholder="1" min="0" value="1" class="block w-full rounded-xl border-slate-200 bg-white py-3 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base sm:text-sm font-semibold border shadow-sm min-h-[48px] sm:min-h-0">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Unidad de Medida *</label>
+                                    <select id="posUnidadMedidaInicial" class="block w-full rounded-xl border-slate-200 bg-white py-3 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base sm:text-sm font-semibold cursor-pointer border shadow-sm min-h-[48px] sm:min-h-0">
+                                        <option value="Unidades">Unidades</option>
+                                        <option value="Arrobas (@)">Arrobas (@)</option>
+                                        <option value="Atados">Atados</option>
+                                        <option value="Bultos">Bultos</option>
+                                        <option value="Jornales">Jornales</option>
+                                        <option value="Horas">Horas</option>
+                                        <option value="Litros">Litros</option>
+                                        <option value="Canecas">Canecas</option>
+                                        <option value="Cargas">Cargas</option>
+                                        <option value="Kilos">Kilos</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Costo Unitario (COP) *</label>
+                                    <div class="relative rounded-xl shadow-sm">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-slate-400 text-sm font-bold">$</span></div>
+                                        <input type="number" step="any" id="posCostoUnitarioInicial" oninput="calcPOSTotals('inicial', 'unitario')" placeholder="0" min="0" class="block w-full rounded-xl border-slate-200 bg-white py-3 pl-8 pr-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base sm:text-sm font-semibold border shadow-sm min-h-[48px] sm:min-h-0">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Costo Total Establecimiento (COP) *</label>
+                                    <div class="relative rounded-xl shadow-sm">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-slate-400 text-sm font-bold">$</span></div>
+                                        <input type="number" step="any" id="posCostoInicial" oninput="calcPOSTotals('inicial', 'total')" placeholder="0" min="0" class="block w-full rounded-xl border-slate-200 bg-white py-3 pl-8 pr-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base sm:text-sm font-semibold border shadow-sm font-extrabold text-emerald-700 min-h-[48px] sm:min-h-0">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Estado de Pago *</label>
+                                    <div class="flex items-center gap-4 mt-2">
+                                        <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-700">
+                                            <input type="radio" name="posEstadoPagoInicial" value="PAGADO" checked onchange="togglePOSDueDate('inicial')" class="text-emerald-600 focus:ring-emerald-500"> PAGADO
+                                        </label>
+                                        <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs font-bold text-amber-700">
+                                            <input type="radio" name="posEstadoPagoInicial" value="PENDIENTE" onchange="togglePOSDueDate('inicial')" class="text-amber-600 focus:ring-amber-500"> PENDIENTE
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Proveedor / Contratista *</label>
+                                    <input type="text" id="posProveedorInicial" list="datalistProveedores" placeholder="p.ej. Vivero El Paraíso, AgroSemillas..." class="block w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-semibold border shadow-sm">
+                                    <datalist id="datalistProveedores"></datalist>
+                                </div>
+                                <div id="posContainerFechaVencInicial" class="opacity-50 pointer-events-none">
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Fecha Vencimiento (Si Pendiente)</label>
+                                    <input type="date" id="posFechaVencimientoInicial" disabled class="block w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-semibold border shadow-sm">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Notas Adicionales</label>
+                                <textarea id="posNotasInicial" rows="2" placeholder="Ingresa notas o detalles sobre el proceso de siembra o preparación del suelo..." class="block w-full rounded-xl border-slate-200 bg-white py-2.5 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold border shadow-sm"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- 2. GASTOS DE DESARROLLO SECTION -->
+                        <div id="section_gastos_desarrollo" class="hidden space-y-6">
+                            <div class="border-t border-slate-100 pt-6">
+                                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                    <span class="w-1.5 h-3.5 bg-emerald-500 rounded-full"></span>
+                                    Datos del Gasto de Desarrollo / Mantenimiento
+                                </h3>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Tipo de Insumo / Labor *</label>
+                                    <select id="posInsumo" onchange="handlePOSInsumoChange()" class="block w-full rounded-xl border-slate-200 bg-white py-2.5 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold cursor-pointer border shadow-sm">
+                                        <option value="" disabled selected>Selecciona un tipo de insumo...</option>
+                                        <option value="Fertilizantes">Fertilizantes</option>
+                                        <option value="Mano de Obra">Mano de Obra</option>
+                                        <option value="Pesticidas">Pesticidas</option>
+                                        <option value="Riego">Riego</option>
+                                        <option value="Herramientas">Herramientas</option>
+                                        <option value="Otros">Otros</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Cantidad *</label>
+                                    <input type="number" step="any" id="posCantidadDesarrollo" oninput="calcPOSTotals('desarrollo', 'unitario')" placeholder="1" min="0" value="1" class="block w-full rounded-xl border-slate-200 bg-white py-2.5 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold border shadow-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Unidad de Medida *</label>
+                                    <select id="posUnidadMedidaDesarrollo" class="block w-full rounded-xl border-slate-200 bg-white py-2.5 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold cursor-pointer border shadow-sm">
+                                        <option value="Bultos">Bultos</option>
+                                        <option value="Arrobas (@)">Arrobas (@)</option>
+                                        <option value="Litros">Litros</option>
+                                        <option value="Canecas">Canecas</option>
+                                        <option value="Jornales">Jornales</option>
+                                        <option value="Horas">Horas</option>
+                                        <option value="Unidades">Unidades</option>
+                                        <option value="Atados">Atados</option>
+                                        <option value="Cargas">Cargas</option>
+                                        <option value="Kilos">Kilos</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Costo Unitario (COP) *</label>
+                                    <div class="relative rounded-xl shadow-sm">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-slate-400 text-sm font-bold">$</span></div>
+                                        <input type="number" step="any" id="posCostoUnitarioDesarrollo" oninput="calcPOSTotals('desarrollo', 'unitario')" placeholder="0" min="0" class="block w-full rounded-xl border-slate-200 bg-white py-2.5 pl-8 pr-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold border shadow-sm">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Costo Total Insumo / Labor (COP) *</label>
+                                    <div class="relative rounded-xl shadow-sm">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-slate-400 text-sm font-bold">$</span></div>
+                                        <input type="number" step="any" id="posCostoDesarrollo" oninput="calcPOSTotals('desarrollo', 'total')" placeholder="0" min="0" class="block w-full rounded-xl border-slate-200 bg-white py-2.5 pl-8 pr-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold border shadow-sm font-extrabold text-emerald-700">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Estado de Pago *</label>
+                                    <div class="flex items-center gap-4 mt-2">
+                                        <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-700">
+                                            <input type="radio" name="posEstadoPagoDesarrollo" value="PAGADO" checked onchange="togglePOSDueDate('desarrollo')" class="text-emerald-600 focus:ring-emerald-500"> PAGADO
+                                        </label>
+                                        <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs font-bold text-amber-700">
+                                            <input type="radio" name="posEstadoPagoDesarrollo" value="PENDIENTE" onchange="togglePOSDueDate('desarrollo')" class="text-amber-600 focus:ring-amber-500"> PENDIENTE
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Proveedor / Trabajador *</label>
+                                    <input type="text" id="posProveedorDesarrollo" list="datalistProveedoresDesarrollo" placeholder="p.ej. AgroQuímicos Manizales, Pedro Pérez..." class="block w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-semibold border shadow-sm">
+                                    <datalist id="datalistProveedoresDesarrollo"></datalist>
+                                </div>
+                                <div id="posContainerFechaVencDesarrollo" class="opacity-50 pointer-events-none">
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Fecha Vencimiento (Si Pendiente)</label>
+                                    <input type="date" id="posFechaVencimientoDesarrollo" disabled class="block w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-semibold border shadow-sm">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Detalle de Actividad</label>
+                                <textarea id="posDetalleDesarrollo" rows="2" placeholder="Describe los insumos aplicados o la labor desarrollada (p.ej., Aplicación de abono orgánico, Deshierbe manual)..." class="block w-full rounded-xl border-slate-200 bg-white py-2.5 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold border shadow-sm"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- 3. VENTAS SECTION -->
+                        <div id="section_ventas" class="hidden space-y-6">
+                            <div class="border-t border-slate-100 pt-6">
+                                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                    <span class="w-1.5 h-3.5 bg-emerald-500 rounded-full"></span>
+                                    Datos de la Venta / Comercialización
+                                </h3>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Producto Agrícola Vendido *</label>
+                                    <select id="posProducto" class="block w-full rounded-xl border-slate-200 bg-white py-2.5 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold cursor-pointer border shadow-sm">
+                                        <option value="" disabled selected>Selecciona un producto...</option>
+                                        <option value="Café Pergamino Seco">Café Pergamino Seco</option>
+                                        <option value="Aguacate Hass Extra">Aguacate Hass Extra</option>
+                                        <option value="Cacao en Grano">Cacao en Grano</option>
+                                        <option value="Limón Tahití Selección">Limón Tahití Selección</option>
+                                        <option value="Plátano Hartón de Primera">Plátano Hartón de Primera</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Cantidad *</label>
+                                    <input type="number" step="any" id="posUnidadesVenta" oninput="calcPOSTotals('venta', 'unitario')" placeholder="1" min="0" value="1" class="block w-full rounded-xl border-slate-200 bg-white py-2.5 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold border shadow-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Unidad de Medida *</label>
+                                    <select id="posUnidadMedidaVenta" class="block w-full rounded-xl border-slate-200 bg-white py-2.5 px-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold cursor-pointer border shadow-sm">
+                                        <option value="Arrobas (@)">Arrobas (@)</option>
+                                        <option value="Atados">Atados</option>
+                                        <option value="Bultos">Bultos</option>
+                                        <option value="Cargas">Cargas</option>
+                                        <option value="Kilos">Kilos</option>
+                                        <option value="Unidades">Unidades</option>
+                                        <option value="Horas">Horas</option>
+                                        <option value="Jornales">Jornales</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Precio Unitario (COP) *</label>
+                                    <div class="relative rounded-xl shadow-sm">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-slate-400 text-sm font-bold">$</span></div>
+                                        <input type="number" step="any" id="posPrecioUnitarioVenta" oninput="calcPOSTotals('venta', 'unitario')" placeholder="0" min="0" class="block w-full rounded-xl border-slate-200 bg-white py-2.5 pl-8 pr-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold border shadow-sm">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Ingreso Total Obtenido (COP) *</label>
+                                    <div class="relative rounded-xl shadow-sm">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-slate-400 text-sm font-bold">$</span></div>
+                                        <input type="number" step="any" id="posIngresoVenta" oninput="calcPOSTotals('venta', 'total')" placeholder="0" min="0" class="block w-full rounded-xl border-slate-200 bg-white py-2.5 pl-8 pr-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold border shadow-sm font-extrabold text-emerald-700">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Estado de Pago *</label>
+                                    <div class="flex items-center gap-4 mt-2">
+                                        <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-700">
+                                            <input type="radio" name="posEstadoPagoVenta" value="PAGADO" checked onchange="togglePOSDueDate('venta')" class="text-emerald-600 focus:ring-emerald-500"> PAGADO
+                                        </label>
+                                        <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs font-bold text-amber-700">
+                                            <input type="radio" name="posEstadoPagoVenta" value="PENDIENTE" onchange="togglePOSDueDate('venta')" class="text-amber-600 focus:ring-amber-500"> PENDIENTE
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Cliente / Comprador *</label>
+                                    <input type="text" id="posComprador" list="datalistCompradores" placeholder="p.ej. Almacenes Éxito, Central de Abastos..." class="block w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-semibold border shadow-sm">
+                                    <datalist id="datalistCompradores"></datalist>
+                                </div>
+                                <div id="posContainerFechaVencVenta" class="opacity-50 pointer-events-none">
+                                    <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Fecha Compromiso / Vencimiento</label>
+                                    <input type="date" id="posFechaVencimientoVenta" disabled class="block w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-semibold border shadow-sm">
+                                </div>
+                            </div>
+
+                            <!-- Opcion Cierre de Codigo de Seguimiento / Finalizacion de Ciclo al Vender -->
+                            <div class="p-4 bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800 rounded-2xl flex items-center justify-between gap-4">
+                                <div class="flex items-start gap-3">
+                                    <input type="checkbox" id="posCerrarCicloVenta" checked class="mt-0.5 h-5 w-5 text-violet-600 rounded border-violet-300 focus:ring-violet-500 cursor-pointer">
+                                    <div>
+                                        <label for="posCerrarCicloVenta" class="text-xs font-extrabold text-violet-900 dark:text-violet-200 cursor-pointer block">
+                                            Cerrar Código de Seguimiento y Finalizar Ciclo del Lote
+                                        </label>
+                                        <p class="text-[11px] text-violet-700 dark:text-violet-300 mt-0.5">
+                                            Al marcar esta casilla, se cerrará automáticamente el código de seguimiento activo de este lote al registrar la venta, liberándolo para un nuevo ciclo de cultivo.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    <!-- 4. GESTIÓN DE CICLOS DE LOTES SECTION -->
+                    <div id="section_ciclos_lot" class="hidden space-y-6">
+                        <div class="border-t border-slate-100 pt-6">
+                            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <span class="w-1.5 h-3.5 bg-violet-500 rounded-full"></span>
+                                Monitoreo de Ciclo de Cultivo del Lote
+                            </h3>
+                            <p class="text-xs text-slate-400">Cada lote opera en un ciclo de cultivo. Inicia un ciclo para generar códigos de seguimiento vinculados o finaliza el ciclo actual para liberar el lote.</p>
+                        </div>
+
+                        <!-- Card de Estado del Lote -->
+                        <div class="bg-slate-50 rounded-2xl p-6 border border-slate-200 space-y-4">
+                            <div class="flex justify-between items-center border-b border-slate-200 pb-4">
+                                <span class="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Estado Actual del Lote:</span>
+                                <span id="cycleLoteStatusLabel" class="px-3 py-1 bg-slate-200 text-slate-800 text-[11px] font-bold uppercase tracking-wider rounded-full border border-slate-300">
+                                    Cargando...
+                                </span>
+                            </div>
+
+                            <!-- Contenedor dinámico según el estado -->
+                            <div id="cycleLoteStateContainer" class="space-y-4">
+                                <!-- Se llenará dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Buttons bar -->
+                    <div id="posSubmitButtonsBar" class="border-t border-slate-100 pt-6 flex flex-col sm:flex-row justify-end items-center gap-3">
+                        <button type="button" onclick="clearPOSForm()" class="w-full sm:w-auto px-5 py-2.5 rounded-xl text-slate-500 hover:bg-slate-100 font-bold text-sm transition duration-150 ease-in-out border border-slate-200 cursor-pointer">
+                            Limpiar Formulario
+                        </button>
+                        <button type="submit" class="w-full sm:w-auto flex justify-center items-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md transition duration-150 ease-in-out cursor-pointer">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                            </svg>
+                            Registrar Información
+                        </button>
+                    </div>
+                    </div> <!-- End posFormContentWrapper -->
+                </form>
+            </div>
+
+            <!-- CARD: ADMINISTRAR LISTAS DESPLEGABLES -->
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden mt-8">
+                <div class="bg-slate-900 px-6 py-4 text-white flex items-center gap-2">
+                    <svg class="h-5 w-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <h3 class="text-base font-extrabold tracking-tight">Administrar Ítems de Listas Desplegables</h3>
+                </div>
+                
+                <form id="addConfigForm" onsubmit="handleAddConfigItem(event)" class="p-6 space-y-4">
+                    <div id="configAlert" class="hidden p-3 rounded-xl flex items-center bg-emerald-50 border border-emerald-200 text-emerald-800">
+                        <svg class="h-4 w-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span id="configAlertMsg" class="text-xs font-bold"></span>
+                    </div>
+
+                    <p class="text-xs text-slate-500">¿Falta algún cultivo, insumo o producto en las listas? Configúralo aquí para que aparezca en el POS de inmediato y se guarde en tu base de datos de Google Sheets.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Lista a Modificar *</label>
+                            <select id="configColumna" required class="block w-full rounded-xl border-slate-200 bg-white py-2.5 px-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-xs font-semibold cursor-pointer border shadow-sm">
+                                <option value="" disabled selected>Selecciona una lista...</option>
+                                <option value="Cultivo_Semilla">Lista de Cultivos / Semillas</option>
+                                <option value="Tipo_Insumo">Lista de Insumos / Labores</option>
+                                <option value="Producto_Vendido">Lista de Productos para Venta</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Nombre del Nuevo Ítem *</label>
+                            <input type="text" id="configNuevoValor" required placeholder="p.ej. Café Geisha, Fertilizante Foliar..." class="block w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-xs font-semibold border shadow-sm">
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-2">
+                        <button type="submit" class="w-full sm:w-auto flex justify-center items-center gap-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-900 px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition duration-150 ease-in-out cursor-pointer">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Agregar a la Lista
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+
+
+
+ 
