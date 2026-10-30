@@ -14,14 +14,14 @@ async function callGAS(functionName, ...args) {
 
   try {
     // Apps Script Web App acepta POST con form-urlencoded (evita preflight CORS)
-    const response = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        action: functionName,
-        args: JSON.stringify(args)
-      })
-    });
+   const formData = new FormData();
+formData.append('action', functionName);
+formData.append('args', JSON.stringify(args));
+
+const response = await fetch(GAS_URL, {
+   method: 'POST',
+   body: formData // Usar FormData evita el bloqueo CORS de Google
+ });
     const result = await response.json();
     return result;
   } catch (error) {
