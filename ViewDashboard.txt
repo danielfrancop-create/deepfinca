@@ -1,4 +1,4 @@
-                <div id="dashboardView" class="space-y-8">
+<div id="dashboardView" class="space-y-8">
         
         <!-- BARRA SUPERIOR DE ACCIÓN -->
         <div class="flex justify-end items-center mb-2">
@@ -496,8 +496,7 @@
             </div>
         </section>
 
-        </div><!-- Fin de dashboardView -->
-
+        </div>
 
 
   
