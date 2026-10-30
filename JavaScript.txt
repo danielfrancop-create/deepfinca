@@ -7121,8 +7121,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
 
         // Exponer initApp globalmente para que index.html lo llame
         window.initApp = initApp;
-        }
-
+        
 
   
  
