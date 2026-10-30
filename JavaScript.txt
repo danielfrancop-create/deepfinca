@@ -423,17 +423,31 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 if (iconMobile) iconMobile.classList.remove("animate-spin");
             };
 
-            if (typeof google === 'undefined' || !google.script || !google.script.run) {
-                console.warn("Entorno local detectado. Cargando datos simulados...");
-                setTimeout(() => {
-                    const mock = getMockData();
-                    handleDataLoaded(mock);
-                    stopSpin();
-                    updateSyncTimestamp();
-                }, 800);
+                       if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                console.warn("Entorno local detectado. Conectando a Google Sheets vía bridge...");
+                showLoader(true, "Conectando a base de datos...");
+                
+                window.callGAS('getDashboardData', '')
+                    .then(function(response) {
+                        stopSpin();
+                        if (response && response.success) {
+                            rawData = response.data;
+                            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
+                            updateConfigHeader();
+                            updateSyncTimestamp();
+                            applyFilters();
+                            fetchSecurityCredentialsBackend();
+                            showLoader(false);
+                        } else {
+                            showError(response ? response.error : "No se obtuvo respuesta válida.");
+                        }
+                    })
+                    .catch(function(err) {
+                        stopSpin();
+                        showError("Error conectando a Google Sheets: " + err.toString());
+                    });
                 return;
             }
-
             google.script.run
                 .withSuccessHandler(function(response) {
                     stopSpin();
