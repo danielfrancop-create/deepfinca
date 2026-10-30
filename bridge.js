@@ -9,14 +9,18 @@ async function callGAS(functionName, ...args) {
   }
 
   try {
-    // Usamos FormData para evitar el bloqueo de CORS de Google
-    const formData = new FormData();
-    formData.append('action', functionName);
-    formData.append('args', JSON.stringify(args));
+    // Enviamos los datos como TEXTO PLANO para evitar el bloqueo CORS de Google
+    const payload = {
+      action: functionName,
+      args: args
+    };
 
     const response = await fetch(GAS_URL, {
       method: 'POST',
-      body: formData // FormData añade automáticamente el formato correcto
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8' // <-- ESTO ES LA CLAVE
+      },
+      body: JSON.stringify(payload)
     });
 
     const result = await response.json();
