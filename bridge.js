@@ -1,31 +1,49 @@
-// bridge.js - Puente JSONP Definitivo
+// bridge.js - Puente con Formulario Oculto (La definitiva)
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyLTl982nl7Wun_yX1JHtE948InXJVttya8zV05GAMvLYoUGeLhoxNFLKE5HK15ekgN/exec';
 
 function callGAS(functionName, ...args) {
   return new Promise((resolve, reject) => {
-    const callbackName = 'gas_callback_' + Math.floor(Math.random() * 1000000);
-    
-    window[callbackName] = function(response) {
-      if (script.parentNode) document.body.removeChild(script);
-      delete window[callbackName];
-      resolve(response);
+    const iframeName = 'gas_iframe_' + Date.now();
+    const iframe = document.createElement('iframe');
+    iframe.name = iframeName;
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = GAS_URL;
+    form.target = iframeName;
+    form.style.display = 'none';
+
+    const actionInput = document.createElement('input');
+    actionInput.type = 'hidden';
+    actionInput.name = 'action';
+    actionInput.value = functionName;
+    form.appendChild(actionInput);
+
+    const argsInput = document.createElement('input');
+    argsInput.type = 'hidden';
+    argsInput.name = 'args';
+    argsInput.value = JSON.stringify(args);
+    form.appendChild(argsInput);
+
+    document.body.appendChild(form);
+
+    iframe.onload = () => {
+      try {
+        const responseText = iframe.contentDocument.body.innerText;
+        const result = JSON.parse(responseText);
+        document.body.removeChild(form);
+        document.body.removeChild(iframe);
+        resolve(result);
+      } catch (err) {
+        document.body.removeChild(form);
+        document.body.removeChild(iframe);
+        reject(err);
+      }
     };
 
-    const script = document.createElement('script');
-    const params = new URLSearchParams();
-    params.append('action', functionName);
-    params.append('args', JSON.stringify(args));
-    params.append('callback', callbackName);
-    
-    script.src = GAS_URL + '?' + params.toString();
-    
-    script.onerror = function() {
-      if (script.parentNode) document.body.removeChild(script);
-      delete window[callbackName];
-      reject(new Error('Error de red al conectar con Google'));
-    };
-
-    document.body.appendChild(script);
+    form.submit();
   });
 }
 
