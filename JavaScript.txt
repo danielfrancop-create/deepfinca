@@ -430,8 +430,22 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 window.callGAS('getDashboardData', '')
                     .then(function(response) {
                         stopSpin();
-                        if (response && response.success) {
-                            rawData = response.data;
+                        // Verificamos si la respuesta viene envuelta o directa
+                        var dataFinal = response;
+                        if (response && response.data && response.success === undefined) {
+                            dataFinal = response.data;
+                        }
+                        
+                        if (dataFinal && dataFinal.success) {
+                            rawData = dataFinal.data;
+                            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
+                            updateConfigHeader();
+                            updateSyncTimestamp();
+                            applyFilters();
+                            fetchSecurityCredentialsBackend();
+                            showLoader(false);
+                        } else if (dataFinal) { // Si la respuesta ES la data directamente
+                            rawData = dataFinal;
                             try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
                             updateConfigHeader();
                             updateSyncTimestamp();
@@ -439,7 +453,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                             fetchSecurityCredentialsBackend();
                             showLoader(false);
                         } else {
-                            showError(response ? response.error : "No se obtuvo respuesta válida.");
+                            showError("No se obtuvo respuesta válida de Google.");
                         }
                     })
                     .catch(function(err) {
