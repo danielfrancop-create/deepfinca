@@ -448,7 +448,8 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                     });
                 return; // Detiene la ejecución y espera los datos
             }
-        } // <-- ESTA LLAVE CIERRA LA FUNCIÓN fetchData()                     
+        } // <-- ESTA LLAVE CIERRA LA FUNCIÓN fetchData()
+                  
 
         function updateConfigHeader() {
             if (!rawData || !rawData.configuracion) return;
