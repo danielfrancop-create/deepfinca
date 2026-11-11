@@ -7125,31 +7125,31 @@ function calculateLoanBalance() {
             checkCurrentUserRole();
         }
 function enviarDatosGoogleSheets(tipo, record) {
-    // Si es una foto, usamos fetch con POST para evitar el límite de la URL
+    // Si es una foto, usamos el mismo formulario oculto para evitar bloqueos
     if (tipo === 'guardarFotoLote' || tipo === 'fotosLotes') {
-        const url = MI_GAS_URL;
-        const formData = new URLSearchParams();
-        formData.append('action', 'guardarFotoLote');
-        formData.append('args', JSON.stringify([record]));
+        const url = MI_GAS_URL + '?action=guardarFotoLote&args=' + encodeURIComponent(JSON.stringify([record]));
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.name = 'iframe_foto_' + Date.now();
+        document.body.appendChild(iframe);
 
-        fetch(url, {
-            method: 'POST',
-            mode: 'no-cors', // Evita el bloqueo de CORS
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: formData.toString()
-        })
-        .then(() => {
-            console.log("Foto enviada a Google Sheets (POST)");
-            alert("¡Fotografía guardada con éxito! Se está sincronizando con Google Drive...");
-        })
-        .catch(err => {
-            console.error("Error al guardar foto:", err);
-            alert("Error al guardar la foto. Verifica tu conexión.");
-        });
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+        form.target = iframe.name;
+        form.style.display = 'none';
+        
+        document.body.appendChild(form);
+        form.submit();
+        
+        setTimeout(() => {
+            document.body.removeChild(form);
+            document.body.removeChild(iframe);
+        }, 2000);
+
+        alert("¡Fotografía enviada! Se está procesando en Google Drive...");
     } else {
-        // Para registros normales (gastos, ventas), seguimos usando JSONP
+        // Para gastos y ventas (JSONP)
         const callbackName = 'jsonpCallback_' + Math.round(100000 * Math.random());
         window[callbackName] = function(response) {
             if (response && response.success) {
