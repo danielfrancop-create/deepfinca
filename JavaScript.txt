@@ -6142,7 +6142,7 @@ function calculateLoanBalance() {
                     Fecha: fecha,
                     Titulo: titulo,
                     Descripcion: desc,
-                    Base64_Data: base64Data,
+                    Base64_Data: "", // <--- Lo enviamos vacío
                     Url_Foto_Drive: ""
                 };
 
