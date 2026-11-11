@@ -6116,76 +6116,70 @@ function calculateLoanBalance() {
             });
         }
 
-        function handlePhotoUploadSubmit(event) {
-    event.preventDefault();
-    const lote = document.getElementById("uploadPhotoLote").value;
-    const fecha = document.getElementById("uploadPhotoFecha").value;
-    const titulo = document.getElementById("uploadPhotoTitulo").value.trim();
-    const desc = document.getElementById("uploadPhotoDescripcion").value.trim();
-    const fileInput = document.getElementById("uploadPhotoFileInput");
+                function handlePhotoUploadSubmit(event) {
+            event.preventDefault();
+            const lote = document.getElementById("uploadPhotoLote").value;
+            const fecha = document.getElementById("uploadPhotoFecha").value;
+            const titulo = document.getElementById("uploadPhotoTitulo").value.trim();
+            const desc = document.getElementById("uploadPhotoDescripcion").value.trim();
+            const fileInput = document.getElementById("uploadPhotoFileInput");
 
-    if (!lote || !fecha || !titulo || !fileInput.files || fileInput.files.length === 0) {
-        alert("Por favor completa los campos requeridos y selecciona una imagen.");
-        return;
-    }
+            if (!lote || !fecha || !titulo || !fileInput.files || fileInput.files.length === 0) {
+                alert("Por favor completa los campos requeridos y selecciona una imagen.");
+                return;
+            }
 
-    const file = fileInput.files[0];
-    closePhotoUploadModal();
+            closePhotoUploadModal();
 
-    compressImageFile(file, 1024, 0.70).then((base64Data) => {
-        const record = {
-            ID_Foto: "FOTO-" + new Date().getTime(),
-            Lote: lote,
-            Fecha: fecha,
-            Titulo: titulo,
-            Descripcion: desc,
-            Base64_Data: "", // <--- VACÍO A PROPÓSITO
-            Url_Foto_Drive: ""
-        };
+            // Creamos el registro SOLO con texto (sin Base64) para evitar el error 413
+            const record = {
+                ID_Foto: "FOTO-" + new Date().getTime(),
+                Lote: lote,
+                Fecha: fecha,
+                Titulo: titulo,
+                Descripcion: desc,
+                Base64_Data: "", // <--- VACÍO A PROPÓSITO
+                Url_Foto_Drive: ""
+            };
 
-        // Mostrar en la galería local mientras se sube
-        if (!rawData) rawData = {};
-        if (!rawData.fotosLotes) rawData.fotosLotes = [];
-        rawData.fotosLotes.push(record);
-        renderPhotoGallery();
-        
-        // ENVIAR MEDIANTE FORMULARIO OCULTO (Esto evita el bloqueo de CORS)
-        const url = MI_GAS_URL + '?action=guardarFotoLote&args=' + encodeURIComponent(JSON.stringify([record]));
-        
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.name = 'iframe_foto_' + Date.now();
-        document.body.appendChild(iframe);
-
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = url;
-        form.target = iframe.name;
-        form.style.display = 'none';
-        
-        document.body.appendChild(form);
-        form.submit();
-        
-        setTimeout(() => {
-            document.body.removeChild(form);
-            document.body.removeChild(iframe);
-        }, 3000);
-
-        alert("¡Fotografía enviada! Se está subiendo a Google Drive...");
-        setTimeout(() => fetchData(true), 2000); // Refrescar después de 2 segundos
-    }).catch(err => {
-        console.error("Error al comprimir la fotografía:", err);
-        alert("Ocurrió un error al procesar la fotografía.");
-    });
-}
-
-        function eliminarFotoGallery(idFoto) {
-            if (!confirm(`¿Estás seguro de eliminar la fotografía?`)) return;
-            if (!rawData || !rawData.fotosLotes) return;
-
-            rawData.fotosLotes = (rawData.fotosLotes || []).filter(f => (f.ID_Foto || f.id_foto) !== idFoto);
+            // Agregamos el registro a la memoria local para que se vea de inmediato
+            if (!rawData) rawData = {};
+            if (!rawData.fotosLotes) rawData.fotosLotes = [];
+            rawData.fotosLotes.push(record);
             renderPhotoGallery();
-            alert("Fotografía eliminada correctamente.");
+            
+            document.getElementById("photoUploadForm").reset();
+            if (document.getElementById("uploadPhotoFecha")) {
+                document.getElementById("uploadPhotoFecha").value = new Date().toISOString().split('T')[0];
+            }
+
+            // --- ENVÍO MEDIANTE FORMULARIO OCULTO (Evita CORS y límites de tamaño) ---
+            const url = MI_GAS_URL + '?action=guardarFotoLote&args=' + encodeURIComponent(JSON.stringify([record]));
+            
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.name = 'iframe_foto_' + Date.now();
+            document.body.appendChild(iframe);
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = url;
+            form.target = iframe.name;
+            form.style.display = 'none';
+            
+            document.body.appendChild(form);
+            form.submit();
+            
+            // Limpiamos el HTML después de enviar
+            setTimeout(() => {
+                document.body.removeChild(form);
+                document.body.removeChild(iframe);
+            }, 3000);
+
+            alert("¡Fotografía enviada! Se está procesando en Google Drive...");
+            
+            // Refrescamos los datos después de 2 segundos para ver la foto real de Drive
+            setTimeout(() => fetchData(true), 2000);
         }
 
         // --- CÓDIGO LIGHTBOX FOTOGRÁFICO Y LUPA INTERACTIVA HASTA 300% ---
