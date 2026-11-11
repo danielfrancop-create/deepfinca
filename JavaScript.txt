@@ -7125,57 +7125,32 @@ function calculateLoanBalance() {
             checkCurrentUserRole();
         }
 function enviarDatosGoogleSheets(tipo, record) {
-    // Si es una foto, usamos JSONP para evitar límites de tamaño y CORS
-    if (tipo === 'guardarFotoLote' || tipo === 'fotosLotes') {
-        // Generamos un nombre único para el callback
-        const callbackName = 'jsonpFoto_' + Math.round(100000 * Math.random());
-        
-        // Definimos la función que recibirá la respuesta de Google
-        window[callbackName] = function(response) {
-            console.log("Respuesta de Google al guardar foto:", response);
-            if (response && response.success) {
-                alert("¡Fotografía guardada con éxito en Google Sheets!");
-            } else {
-                alert("Error al guardar foto: " + (response ? response.error : "Desconocido"));
-            }
-            // Limpiamos
-            if (document.body.contains(script)) document.body.removeChild(script);
-            delete window[callbackName];
-        };
-
-        // Creamos el script con la URL de Google
-        const script = document.createElement('script');
-        // Pasamos la acción, el callback y los argumentos (la foto va aquí)
-        script.src = MI_GAS_URL + '?action=guardarFotoLote&callback=' + callbackName + '&args=' + encodeURIComponent(JSON.stringify([record]));
-        
-        script.onerror = function() {
-            alert("Error de conexión al intentar guardar la foto.");
-            if (document.body.contains(script)) document.body.removeChild(script);
-            delete window[callbackName];
-        };
-
-        document.body.appendChild(script);
-        return;
-    } 
+    // Generamos un nombre único para el callback de JSONP
+    const callbackName = 'jsonpCallback_' + Math.round(100000 * Math.random());
     
-    // Para registros normales (gastos, ventas), seguimos usando el formulario invisible
-    const url = MI_GAS_URL + '?action=' + tipo + '&args=' + encodeURIComponent(JSON.stringify([record]));
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.name = 'iframe_oculto_' + Date.now();
-    document.body.appendChild(iframe);
+    // Definimos la función que recibirá la respuesta de Google
+    window[callbackName] = function(response) {
+        console.log("Respuesta de Google al guardar:", response);
+        if (response && response.success) {
+            console.log(`Registro ${tipo} guardado exitosamente.`);
+        } else {
+            console.error(`Error al guardar ${tipo}: ` + (response ? response.error : "Desconocido"));
+        }
+        // Limpiamos el script
+        if (document.body.contains(script)) document.body.removeChild(script);
+        delete window[callbackName];
+    };
 
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = url;
-    form.target = iframe.name;
-    form.style.display = 'none';
+    // Creamos el script con la URL de Google
+    const script = document.createElement('script');
+    // Pasamos la acción, el callback y los argumentos (el registro va aquí)
+    script.src = MI_GAS_URL + '?action=' + tipo + '&callback=' + callbackName + '&args=' + encodeURIComponent(JSON.stringify([record]));
     
-    document.body.appendChild(form);
-    form.submit();
-    
-    setTimeout(() => {
-        document.body.removeChild(form);
-        document.body.removeChild(iframe);
-    }, 2000);
+    script.onerror = function() {
+        console.error("Error de conexión al intentar guardar.");
+        if (document.body.contains(script)) document.body.removeChild(script);
+        delete window[callbackName];
+    };
+
+    document.body.appendChild(script);
 }
