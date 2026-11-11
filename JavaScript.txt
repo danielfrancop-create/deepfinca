@@ -7125,32 +7125,51 @@ function calculateLoanBalance() {
             checkCurrentUserRole();
         }
 function enviarDatosGoogleSheets(tipo, record) {
-    // Generamos un nombre único para el callback de JSONP
-    const callbackName = 'jsonpCallback_' + Math.round(100000 * Math.random());
-    
-    // Definimos la función que recibirá la respuesta de Google
-    window[callbackName] = function(response) {
-        console.log("Respuesta de Google al guardar:", response);
-        if (response && response.success) {
-            console.log(`Registro ${tipo} guardado exitosamente.`);
-        } else {
-            console.error(`Error al guardar ${tipo}: ` + (response ? response.error : "Desconocido"));
-        }
-        // Limpiamos el script
-        if (document.body.contains(script)) document.body.removeChild(script);
-        delete window[callbackName];
-    };
+    // Si es una foto, usamos fetch con POST para evitar el límite de la URL
+    if (tipo === 'guardarFotoLote' || tipo === 'fotosLotes') {
+        const url = MI_GAS_URL;
+        const formData = new URLSearchParams();
+        formData.append('action', 'guardarFotoLote');
+        formData.append('args', JSON.stringify([record]));
 
-    // Creamos el script con la URL de Google
-    const script = document.createElement('script');
-    // Pasamos la acción, el callback y los argumentos (el registro va aquí)
-    script.src = MI_GAS_URL + '?action=' + tipo + '&callback=' + callbackName + '&args=' + encodeURIComponent(JSON.stringify([record]));
-    
-    script.onerror = function() {
-        console.error("Error de conexión al intentar guardar.");
-        if (document.body.contains(script)) document.body.removeChild(script);
-        delete window[callbackName];
-    };
+        fetch(url, {
+            method: 'POST',
+            mode: 'no-cors', // Evita el bloqueo de CORS
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: formData.toString()
+        })
+        .then(() => {
+            console.log("Foto enviada a Google Sheets (POST)");
+            alert("¡Fotografía guardada con éxito! Se está sincronizando con Google Drive...");
+        })
+        .catch(err => {
+            console.error("Error al guardar foto:", err);
+            alert("Error al guardar la foto. Verifica tu conexión.");
+        });
+    } else {
+        // Para registros normales (gastos, ventas), seguimos usando JSONP
+        const callbackName = 'jsonpCallback_' + Math.round(100000 * Math.random());
+        window[callbackName] = function(response) {
+            if (response && response.success) {
+                console.log(`Registro ${tipo} guardado exitosamente.`);
+            } else {
+                console.error(`Error al guardar ${tipo}: ` + (response ? response.error : "Desconocido"));
+            }
+            if (document.body.contains(script)) document.body.removeChild(script);
+            delete window[callbackName];
+        };
 
-    document.body.appendChild(script);
+        const script = document.createElement('script');
+        script.src = MI_GAS_URL + '?action=' + tipo + '&callback=' + callbackName + '&args=' + encodeURIComponent(JSON.stringify([record]));
+        
+        script.onerror = function() {
+            console.error("Error de conexión al intentar guardar.");
+            if (document.body.contains(script)) document.body.removeChild(script);
+            delete window[callbackName];
+        };
+
+        document.body.appendChild(script);
+    }
 }
