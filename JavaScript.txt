@@ -2835,47 +2835,48 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
         alert("¡Información registrada con éxito en Google Sheets!");
         clearPOSForm();
     }, 1000);
-} else {
-    google.script.run
-        .withSuccessHandler(function(response) {
-            showLoader(false);
-            if (response && response.success) {
-                if (!rawData.ventas) rawData.ventas = [];
-                (rawData.ventas || []).push(record);
-
-                if (cerrarCicloChecked && trackingCode) {
-                    endLoteCycleDirect(trackingCode, fecha, () => {
-                        applyFilters();
+ } else {
+                google.script.run
+                    .withSuccessHandler(function(response) {
                         showLoader(false);
-                        clearPOSForm();
-                        alert("¡Información registrada con éxito y Código de Seguimiento (" + trackingCode + ") cerrado!");
-                        clearPOSForm();
-                    });
-                } else {
-                    applyFilters();
-                    showLoader(false);
-                    clearPOSForm();
-                    alert("¡Información registrada con éxito!");
-                    clearPOSForm();
-                }
-            } else {
-                showToast(response ? response.error : "Error de respuesta.", "error");
-            }
-            showLoader(false);
-            saveToFileConectado("ventas", record).then(() => {
-                if (!rauda.ventas) rauda.ventas = [];
-                rauda.ventas = [].concat(rauda.ventas, [record]);
-                set("rad", JSON.stringify(rauda.ventas));
-                clearForm();
-                showView("dashboard");
-                alert("Registro guardado en dispositivo (sin conexión). Se sincronizará al recuperar señal.");
-            }).catch(error => {
-                console.error("Error guardando localmente:", error);
-                alert("Error al guardar localmente.");
-            });
-        }); // <--- ESTA LÍNEA ES LA QUE FALTABA
+                        if (response && response.success) {
+                            if (!rawData.ventas) rawData.ventas = [];
+                            (rawData.ventas || []).push(record);
 
-                 
+                            if (cerrarCicloChecked && trackingCode) {
+                                endLoteCycleDirect(trackingCode, fecha, () => {
+                                    applyFilters();
+                                    showLoader(false);
+                                    clearPOSForm();
+                                    alert("¡Información registrada con éxito y Código de Seguimiento (" + trackingCode + ") cerrado!");
+                                    clearPOSForm();
+                                });
+                            } else {
+                                applyFilters();
+                                showLoader(false);
+                                clearPOSForm();
+                                alert("¡Información registrada con éxito!");
+                                clearPOSForm();
+                            }
+                        } else {
+                            showPOSAlert(response ? response.error : "Error de respuesta.", "error");
+                        }
+                    })
+                    .withFailureHandler(function(err) {
+                        // Si falla el servidor, guardamos offline
+                        saveOfflineRecord("ventas", record).then(() => {
+                            if (!rawData.ventas) rawData.ventas = [];
+                            (rawData.ventas || []).push(record);
+                            applyFilters();
+                            showLoader(false);
+                            clearPOSForm();
+                            alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
+                        });
+                    })
+                    .guardarRegistro("ventas", record);
+            }
+        } // <-- ESTA LLAVE CIERRA LA FUNCIÓN handlePOSSubmit
+
         function calculateLoanBalance() {
             const valor = parseDecimal(document.getElementById("loanValor").value);
             const pago = parseDecimal(document.getElementById("loanPago").value);
