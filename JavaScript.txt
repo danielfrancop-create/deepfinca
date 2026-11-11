@@ -2825,29 +2825,39 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                     });
                     return;
                 }
+if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    // Usar el puente para enviar a Google Sheets
+    window.callGAS('guardarRegistro', 'ventas', record)
+        .then(function(response) {
+            showLoader(false);
+            if (response && response.success) {
+                if (!rawData.ventas) rawData.ventas = [];
+                (rawData.ventas || []).push(record);
 
-                if (typeof google === 'undefined' || !google.script || !google.script.run) {
-                    setTimeout(() => {
-                        if (!rawData.ventas) rawData.ventas = [];
-                        (rawData.ventas || []).push(record);
-
-                        if (cerrarCicloChecked && trackingCode) {
-                            endLoteCycleDirect(trackingCode, fecha, () => {
-                                applyFilters();
-                                showLoader(false);
-                                clearPOSForm();
-                                alert("¡Información registrada con éxito y Código de Seguimiento (" + trackingCode + ") cerrado!");
-                                clearPOSForm();
-                            });
-                        } else {
-                            applyFilters();
-                            showLoader(false);
-                            clearPOSForm();
-                            alert("¡Información registrada con éxito!");
-                            clearPOSForm();
-                        }
-                    }, 1000);
+                if (cerrarCicloChecked && trackingCode) {
+                    endLoteCycleDirect(trackingCode, fecha, () => {
+                        applyFilters();
+                        showLoader(false);
+                        clearPOSForm();
+                        alert("¡Información registrada con éxito y Código de Seguimiento (" + trackingCode + ") cerrado!");
+                        clearPOSForm();
+                    });
                 } else {
+                    applyFilters();
+                    showLoader(false);
+                    clearPOSForm();
+                    alert("¡Información registrada con éxito en Google Sheets!");
+                    clearPOSForm();
+                }
+            } else {
+                showPOSAlert(response ? response.error : "Error de respuesta.", "error");
+            }
+        })
+        .catch(function(err) {
+            showLoader(false);
+            showPOSAlert("Error de conexión: " + err.toString(), "error");
+        });
+} else {
                     google.script.run
                         .withSuccessHandler(function(response) {
                             if (response && response.success) {
