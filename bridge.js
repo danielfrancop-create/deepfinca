@@ -1,4 +1,4 @@
-// bridge.js - Puente con Formulario Oculto (La definitiva)
+// bridge.js - Puente con Formulario Oculto
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyLTl982nl7Wun_yX1JHtE948InXJVttya8zV05GAMvLYoUGeLhoxNFLKE5HK15ekgN/exec';
 
 function callGAS(functionName, ...args) {
@@ -39,7 +39,7 @@ function callGAS(functionName, ...args) {
       } catch (err) {
         document.body.removeChild(form);
         document.body.removeChild(iframe);
-        resolve({ success: true }); // Asumimos éxito porque el form se envió
+        resolve({ success: true });
       }
     };
 
