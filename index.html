@@ -44,9 +44,6 @@
         </div>
     </div>
 
-    <!-- JavaScript principal con versión para forzar actualización -->
-    <script src="JavaScript.txt?v=10050"></script>
-
     <script>
       async function loadPartials() {
         const files = [
@@ -68,8 +65,18 @@
             console.warn('No se pudo cargar:', file, e);
           }
         }
-        if (typeof initApp === 'function') initApp();
+        
+        // Una vez cargados los HTML, cargamos el JavaScript principal
+        const script = document.createElement('script');
+        script.src = 'JavaScript.txt'; // <-- Quitamos el ?v=10050
+        script.onload = () => {
+            // Iniciar la app solo después de que el JS y el HTML estén listos
+            if (typeof initApp === 'function') initApp();
+        };
+        document.body.appendChild(script);
       }
+      
+      // Iniciar la carga
       loadPartials();
     </script>
 
