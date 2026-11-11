@@ -7125,51 +7125,57 @@ function calculateLoanBalance() {
             checkCurrentUserRole();
         }
 function enviarDatosGoogleSheets(tipo, record) {
-    // Si es una foto, usamos fetch con POST para evitar el límite de URL y CORS
+    // Si es una foto, usamos JSONP para evitar límites de tamaño y CORS
     if (tipo === 'guardarFotoLote' || tipo === 'fotosLotes') {
-        const url = MI_GAS_URL;
-        const payload = {
-            action: 'guardarFotoLote',
-            args: JSON.stringify([record])
+        // Generamos un nombre único para el callback
+        const callbackName = 'jsonpFoto_' + Math.round(100000 * Math.random());
+        
+        // Definimos la función que recibirá la respuesta de Google
+        window[callbackName] = function(response) {
+            console.log("Respuesta de Google al guardar foto:", response);
+            if (response && response.success) {
+                alert("¡Fotografía guardada con éxito en Google Sheets!");
+            } else {
+                alert("Error al guardar foto: " + (response ? response.error : "Desconocido"));
+            }
+            // Limpiamos
+            if (document.body.contains(script)) document.body.removeChild(script);
+            delete window[callbackName];
         };
 
-        fetch(url, {
-            method: 'POST',
-            mode: 'no-cors', // Evita bloqueos de CORS
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: new URLSearchParams(payload).toString()
-        })
-        .then(() => {
-            console.log("Petición POST de foto enviada");
-            alert("¡Fotografía guardada con éxito! (Sincronizando con Drive...)");
-        })
-        .catch(err => {
-            console.error("Error al guardar foto:", err);
-            alert("Error al guardar la foto. Verifica tu conexión.");
-        });
-    } else {
-        // Para registros normales (gastos, ventas), seguimos usando el iframe invisible
-        const url = MI_GAS_URL + '?action=' + tipo + '&args=' + encodeURIComponent(JSON.stringify([record]));
+        // Creamos el script con la URL de Google
+        const script = document.createElement('script');
+        // Pasamos la acción, el callback y los argumentos (la foto va aquí)
+        script.src = MI_GAS_URL + '?action=guardarFotoLote&callback=' + callbackName + '&args=' + encodeURIComponent(JSON.stringify([record]));
         
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.name = 'iframe_oculto_' + Date.now();
-        document.body.appendChild(iframe);
+        script.onerror = function() {
+            alert("Error de conexión al intentar guardar la foto.");
+            if (document.body.contains(script)) document.body.removeChild(script);
+            delete window[callbackName];
+        };
 
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = url;
-        form.target = iframe.name;
-        form.style.display = 'none';
-        
-        document.body.appendChild(form);
-        form.submit();
-        
-        setTimeout(() => {
-            document.body.removeChild(form);
-            document.body.removeChild(iframe);
-        }, 2000);
-    }
+        document.body.appendChild(script);
+        return;
+    } 
+    
+    // Para registros normales (gastos, ventas), seguimos usando el formulario invisible
+    const url = MI_GAS_URL + '?action=' + tipo + '&args=' + encodeURIComponent(JSON.stringify([record]));
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.name = 'iframe_oculto_' + Date.now();
+    document.body.appendChild(iframe);
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    form.target = iframe.name;
+    form.style.display = 'none';
+    
+    document.body.appendChild(form);
+    form.submit();
+    
+    setTimeout(() => {
+        document.body.removeChild(form);
+        document.body.removeChild(iframe);
+    }, 2000);
 }
