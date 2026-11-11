@@ -2682,37 +2682,33 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
     clearPOSForm();
     setTimeout(() => alert(isProrrateo ? `¡Gasto prorrateado exitosamente!` : "¡Información registrada con éxito en Google Sheets!"), 500);
 } else {
-    // ... tu google.script.run ...
-}  else {
-                    google.script.run
-                        .withSuccessHandler(function(response) {
-                            showLoader(false);
-                            if (response && response.success) {
-                                if (typeof fetchAllData === 'function') {
-                                    fetchAllData();
-                                } else {
-                                    updateLocalProrrateoRecords();
-                                    applyFilters();
-                                }
-                                clearPOSForm();
-                                alert(isProrrateo ? `¡Gasto prorrateado exitosamente entre ${response.numLotes || 'los'} lotes activos!` : "¡Información registrada con éxito!");
-                            } else {
-                                showPOSAlert(response ? response.error : "Error de respuesta.", "error");
-                            }
-                        })
-                        .withFailureHandler(function(err) {
-                            showLoader(false);
-                            saveOfflineRecord("gastosDesarrollo", record).then(() => {
-                                updateLocalProrrateoRecords();
-                                applyFilters();
-                                clearPOSForm();
-                                alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
-                            });
-                        })
-                        .guardarRegistro("gastosDesarrollo", record);
+    google.script.run
+        .withSuccessHandler(function(response) {
+            showLoader(false);
+            if (response && response.success) {
+                if (typeof fetchAllData === 'function') {
+                    fetchAllData();
+                } else {
+                    updateLocalProrrateoRecords();
+                    applyFilters();
                 }
-
-            } else if (activePOSTab === 'ventas') {
+                clearPOSForm();
+                alert(isProrrateo ? `¡Gasto prorrateado exitosamente entre ${response.numLotes || 'los'} lotes activos!` : "¡Información registrada con éxito!");
+            } else {
+                showPOSAlert(response ? response.error : "Error de respuesta.", "error");
+            }
+        })
+        .withFailureHandler(function(err) {
+            showLoader(false);
+            saveOfflineRecord("gastosDesarrollo", record).then(() => {
+                updateLocalProrrateoRecords();
+                applyFilters();
+                clearPOSForm();
+                alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
+            });
+        })
+        .guardarRegistro("gastosDesarrollo", record);
+} else if (activePOSTab === 'ventas') {
                 const producto = document.getElementById("posProducto").value;
 
                 if (activeCycle) {
@@ -2801,9 +2797,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
     clearPOSForm();
     setTimeout(() => alert("¡Información registrada con éxito en Google Sheets!"), 500);
 } else {
-    // ... tu google.script.run ...
-} else {
-                   google.script.run
+                  google.script.run
                         .withSuccessHandler(function(response) {
                             showLoader(false);
                             if (response && response.success) {
