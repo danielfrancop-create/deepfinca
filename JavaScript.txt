@@ -2533,80 +2533,81 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                     if (!rawData.ciclos) rawData.ciclos = [];
                     rawData.ciclos.push(newCycle);
                 }
-if (!navigator.onLine) {
-    saveOfflineRecord("gastosIniciales", record).then(() => {
-        if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
-        (rawData.gastosIniciales || []).push(record);
-        applyFilters();
-        showLoader(false);
-        clearPOSForm();
-        alert("¡Información registrada con éxito!");
-        clearPOSForm();
-    });
-    return;
-}
-
-if (typeof google === 'undefined' || !google.script || !google.script.run) {
-    // Enviar datos a Google Sheets usando una imagen oculta (evita CORS/CORB)
-    const params = new URLSearchParams();
-    params.append('action', 'guardarRegistro');
-    params.append('args', JSON.stringify(['gastosIniciales', record]));
-    
-    const img = new Image();
-    img.src = GAS_URL + '?' + params.toString();
-    
-    // Asumimos éxito después de un breve retraso
-    setTimeout(() => {
-        showLoader(false);
-        if (typeof fetchAllData === 'function') {
-            fetchAllData();
-        } else {
-            if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
-            (rawData.gastosIniciales || []).push(record);
-            applyFilters();
-        }
-        clearPOSForm();
-        alert("¡Información registrada con éxito en Google Sheets!");
-        clearPOSForm();
-    }, 1000);
-} else {
-    google.script.run
-        .withSuccessHandler(function(response) {
-            showLoader(false);
-            if (response && response.success) {
-                if (response.trackingCode) {
-                    record.Codigo_Seguimiento = response.trackingCode;
-                    record.Codigo_General = response.trackingCode;
-                    if (newCycle) {
-                        newCycle.Codigo_General = response.trackingCode;
-                        newCycle.Codigo_Inicial = response.trackingCode;
-                        newCycle.Codigo_Desarrollo = response.trackingCode;
-                        newCycle.Codigo_Ventas = response.trackingCode;
-                    }
+                if (!navigator.onLine) {
+                    saveOfflineRecord("gastosIniciales", record).then(() => {
+                        if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
+                        (rawData.gastosIniciales || []).push(record);
+                        applyFilters();
+                        showLoader(false);
+                        clearPOSForm();
+                        alert("¡Información registrada con éxito!");
+                        clearPOSForm();
+                    });
+                    return;
                 }
-                if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
-                (rawData.gastosIniciales || []).push(record);
-                applyFilters();
-                clearPOSForm();
-                alert("¡Información registrada con éxito!");
-                clearPOSForm();
-            } else {
-                showPOSAlert(response ? response.error : "Error de respuesta.", "error");
-            }
-        })
-        .withFailureHandler(function(err) {
-            showLoader(false);
-            saveOfflineRecord("gastosIniciales", record).then(() => {
-                if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
-                (rawData.gastosIniciales || []).push(record);
-                applyFilters();
-                clearPOSForm();
-                alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
-            });
-        })
-        .guardarRegistro("gastosIniciales", record);
-}
-} else if (activePOSTab === 'gastos_desarrollo') {
+
+                if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                    // Enviar datos a Google Sheets usando una imagen oculta (evita CORS/CORB)
+                    const params = new URLSearchParams();
+                    params.append('action', 'guardarRegistro');
+                    params.append('args', JSON.stringify(['gastosIniciales', record]));
+                    
+                    const img = new Image();
+                    img.src = GAS_URL + '?' + params.toString();
+                    
+                    // Asumimos éxito después de un breve retraso
+                    setTimeout(() => {
+                        showLoader(false);
+                        if (typeof fetchAllData === 'function') {
+                            fetchAllData();
+                        } else {
+                            if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
+                            (rawData.gastosIniciales || []).push(record);
+                            applyFilters();
+                        }
+                        clearPOSForm();
+                        alert("¡Información registrada con éxito en Google Sheets!");
+                        clearPOSForm();
+                    }, 1000);
+                } else {
+                    google.script.run
+                        .withSuccessHandler(function(response) {
+                            showLoader(false);
+                            if (response && response.success) {
+                                if (response.trackingCode) {
+                                    record.Codigo_Seguimiento = response.trackingCode;
+                                    record.Codigo_General = response.trackingCode;
+                                    if (newCycle) {
+                                        newCycle.Codigo_General = response.trackingCode;
+                                        newCycle.Codigo_Inicial = response.trackingCode;
+                                        newCycle.Codigo_Desarrollo = response.trackingCode;
+                                        newCycle.Codigo_Ventas = response.trackingCode;
+                                    }
+                                }
+                                if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
+                                (rawData.gastosIniciales || []).push(record);
+                                applyFilters();
+                                clearPOSForm();
+                                alert("¡Información registrada con éxito!");
+                                clearPOSForm();
+                            } else {
+                                showPOSAlert(response ? response.error : "Error de respuesta.", "error");
+                            }
+                        })
+                        .withFailureHandler(function(err) {
+                            showLoader(false);
+                            saveOfflineRecord("gastosIniciales", record).then(() => {
+                                if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
+                                (rawData.gastosIniciales || []).push(record);
+                                applyFilters();
+                                clearPOSForm();
+                                alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
+                            });
+                        })
+                        .guardarRegistro("gastosIniciales", record);
+                } // <--- ESTA LLAVE CIERRA EL BLOQUE DE "gastos_iniciales"
+
+            } else if (activePOSTab === 'gastos_desarrollo') {
                 const insumo = document.getElementById("posInsumo").value;
                 const cantidad = parseDecimal(document.getElementById("posCantidadDesarrollo").value) || 1;
                 const unidad = document.getElementById("posUnidadMedidaDesarrollo").value || "Bultos";
@@ -2674,15 +2675,17 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 };
 
                 if (!navigator.onLine) {
-    saveOfflineRecord("gastosDesarrollo", record).then(() => {
-        updateLocalProrrateoRecords();
-        applyFilters();
-        showLoader(false);
-        clearPOSForm();
-        alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
-    });
-    return;
-}
+                    saveOfflineRecord("gastosDesarrollo", record).then(() => {
+                        updateLocalProrrateoRecords();
+                        applyFilters();
+                        showLoader(false);
+                        clearPOSForm();
+                        alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
+                    });
+                    return;
+                }
+                // ... AQUÍ DEBES CONTINUAR CON EL RESTO DEL CÓDIGO DE GASTOS_DESARROLLO ...
+                // (Recuerda que al final de la función debe ir un "}" para cerrar handlePOSSubmit)
 if (typeof google === 'undefined' || !google.script || !google.script.run) {
     // Enviar datos a Google Sheets usando una imagen oculta (evita CORS/CORB)
     const params = new URLSearchParams();
