@@ -1,4 +1,8 @@
-GAS_URL = "https://script.google.com/macros/s/AKfycbyWHikeZ4XUmQ9zZTFfwPxIte3T3LnsN1Jpag22xmJh5pb_m5-vdJxDut5p6hKXfJE4/exec";
+var GAS_URL = "https://script.google.com/macros/s/AKfycbyWHikeZ4XUmQ9zZTFfwPxIte3T3LnsN1Jpag22xmJh5pb_m5-vdJxDut5p6hKXfJE4/exec";
+// --- CONTROL DE ROLES Y PERMISOS DE USUARIO ---
+        let currentUserRole = (typeof google !== 'undefined' && google.script && google.script.run) ? "view" : "admin";
+        let isUserActive = true;
+        let isUserRegistered = true;
 // --- INDEXEDDB & OFFLINE PWA MANAGER ---
         const DB_NAME = 'FincaSaucesOfflineDB';
         const DB_VERSION = 1;
@@ -6333,12 +6337,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             });
         }
 
-        // --- CONTROL DE ROLES Y PERMISOS DE USUARIO ---
-        let currentUserRole = (typeof google !== 'undefined' && google.script && google.script.run) ? "view" : "admin";
-        let isUserActive = true;
-        let isUserRegistered = true;
-
-        function checkCurrentUserRole() {
+           function checkCurrentUserRole() {
             const urlParams = new URLSearchParams(window.location.search);
             const urlEmail = urlParams.get("email") || "";
             const savedEmail = urlEmail || localStorage.getItem("finca_user_email") || "";
