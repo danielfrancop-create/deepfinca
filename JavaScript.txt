@@ -1,4 +1,5 @@
-        // --- INDEXEDDB & OFFLINE PWA MANAGER ---
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyWHikeZ4XUmQ9zZTFfwPxIte3T3LnsN1Jpag22xmJh5pb_m5-vdJxDut5p6hKXfJE4/exec";
+// --- INDEXEDDB & OFFLINE PWA MANAGER ---
         const DB_NAME = 'FincaSaucesOfflineDB';
         const DB_VERSION = 1;
         const STORE_NAME = 'pending_records';
@@ -2544,28 +2545,28 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                     });
                     return;
                 }
-
-                if (typeof google === 'undefined' || !google.script || !google.script.run) {
-                    const params = new URLSearchParams();
-                    params.append('action', 'guardarRegistro');
-                    params.append('args', JSON.stringify(['gastosIniciales', record]));
-                    
-                    const img = new Image();
-                    img.src = GAS_URL + '?' + params.toString();
-                    
-                    setTimeout(() => {
-                        showLoader(false);
-                        if (typeof fetchAllData === 'function') {
-                            fetchAllData();
-                        } else {
-                            if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
-                            (rawData.gastosIniciales || []).push(record);
-                            applyFilters();
-                        }
-                        clearPOSForm();
-                        alert("¡Información registrada con éxito en Google Sheets!");
-                    }, 1000);
-                } else {
+if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    const url = GAS_URL + '?action=guardarRegistro&args=' + encodeURIComponent(JSON.stringify(['gastosIniciales', record]));
+    
+    fetch(url, { mode: 'no-cors' })
+        .then(() => {
+            showLoader(false);
+            if (typeof fetchAllData === 'function') {
+                fetchAllData();
+            } else {
+                if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
+                (rawData.gastosIniciales || []).push(record);
+                applyFilters();
+            }
+            clearPOSForm();
+            alert("¡Información registrada con éxito en Google Sheets!");
+        })
+        .catch(err => {
+            showLoader(false);
+            console.error("Error al guardar:", err);
+            alert("Error de conexión al guardar. Verifica tu internet.");
+        });
+} else {
                     google.script.run
                         .withSuccessHandler(function(response) {
                             showLoader(false);
@@ -2680,25 +2681,26 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                     return;
                 }
                 if (typeof google === 'undefined' || !google.script || !google.script.run) {
-                    const params = new URLSearchParams();
-                    params.append('action', 'guardarRegistro');
-                    params.append('args', JSON.stringify(['gastosDesarrollo', record]));
-                    
-                    const img = new Image();
-                    img.src = GAS_URL + '?' + params.toString();
-                    
-                    setTimeout(() => {
-                        showLoader(false);
-                        if (typeof fetchAllData === 'function') {
-                            fetchAllData();
-                        } else {
-                            updateLocalProrrateoRecords();
-                            applyFilters();
-                        }
-                        clearPOSForm();
-                        alert(isProrrateo ? `¡Gasto prorrateado exitosamente!` : "¡Información registrada con éxito en Google Sheets!");
-                    }, 1000);
-                } else {
+    const url = GAS_URL + '?action=guardarRegistro&args=' + encodeURIComponent(JSON.stringify(['gastosDesarrollo', record]));
+    
+    fetch(url, { mode: 'no-cors' })
+        .then(() => {
+            showLoader(false);
+            if (typeof fetchAllData === 'function') {
+                fetchAllData();
+            } else {
+                updateLocalProrrateoRecords();
+                applyFilters();
+            }
+            clearPOSForm();
+            alert(isProrrateo ? `¡Gasto prorrateado exitosamente!` : "¡Información registrada con éxito en Google Sheets!");
+        })
+        .catch(err => {
+            showLoader(false);
+            console.error("Error al guardar:", err);
+            alert("Error de conexión al guardar. Verifica tu internet.");
+        });
+} else {
                     google.script.run
                         .withSuccessHandler(function(response) {
                             showLoader(false);
@@ -2806,25 +2808,25 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                     });
                     return;
                 }
-
-                if (typeof google === 'undefined' || !google.script || !google.script.run) {
-                    const params = new URLSearchParams();
-                    params.append('action', 'guardarRegistro');
-                    params.append('args', JSON.stringify(['ventas', record]));
-                    
-                    const img = new Image();
-                    img.src = GAS_URL + '?' + params.toString();
-                    
-                    setTimeout(() => {
-                        showLoader(false);
-                        if (!rawData.ventas) rawData.ventas = [];
-                        (rawData.ventas || []).push(record);
-                        applyFilters();
-                        clearPOSForm();
-                        alert("¡Información registrada con éxito en Google Sheets!");
-                    }, 1000);
-                } else {
-                    google.script.run
+if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    const url = GAS_URL + '?action=guardarRegistro&args=' + encodeURIComponent(JSON.stringify(['ventas', record]));
+    
+    fetch(url, { mode: 'no-cors' })
+        .then(() => {
+            showLoader(false);
+            if (!rawData.ventas) rawData.ventas = [];
+            (rawData.ventas || []).push(record);
+            applyFilters();
+            clearPOSForm();
+            alert("¡Información registrada con éxito en Google Sheets!");
+        })
+        .catch(err => {
+            showLoader(false);
+            console.error("Error al guardar:", err);
+            alert("Error de conexión al guardar. Verifica tu internet.");
+        });
+} else {
+                   google.script.run
                         .withSuccessHandler(function(response) {
                             showLoader(false);
                             if (response && response.success) {
