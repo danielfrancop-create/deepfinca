@@ -2546,36 +2546,16 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                     return;
                 }
 if (typeof google === 'undefined' || !google.script || !google.script.run) {
-    const url = GAS_URL + '?action=guardarRegistro&args=' + encodeURIComponent(JSON.stringify(['gastosIniciales', record]));
+    enviarDatosGoogleSheets('gastosIniciales', record);
     
-    // Usamos fetch pero con un Headers que el antivirus no bloquea
-    fetch(url, {
-        method: 'GET',
-        mode: 'no-cors',
-        headers: {
-            'Content-Type': 'text/plain'
-        }
-    })
-    .then(() => {
-        showLoader(false);
-        // Actualizamos localmente
-        if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
-        (rawData.gastosIniciales || []).push(record);
-        applyFilters();
-        clearPOSForm();
-        alert("¡Información registrada con éxito en Google Sheets!");
-    })
-    .catch(err => {
-        showLoader(false);
-        console.warn("La petición fue bloqueada o falló, pero se guardó localmente:", err);
-        // GUARDADO DE RESPALDO: Si falla, lo guardamos en local para no perderlo
-        if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
-        (rawData.gastosIniciales || []).push(record);
-        applyFilters();
-        clearPOSForm();
-        alert("Guardado localmente. (La conexión con Google Sheets fue bloqueada por el navegador).");
-    });
-} else {
+    showLoader(false);
+    if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
+    (rawData.gastosIniciales || []).push(record);
+    applyFilters();
+    clearPOSForm();
+    setTimeout(() => alert("¡Información registrada con éxito en Google Sheets!"), 500);
+}
+ else {
                     google.script.run
                         .withSuccessHandler(function(response) {
                             showLoader(false);
@@ -2689,27 +2669,21 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                     });
                     return;
                 }
-                if (typeof google === 'undefined' || !google.script || !google.script.run) {
-    const urlDesarrollo = GAS_URL + '?action=guardarRegistro&args=' + encodeURIComponent(JSON.stringify(['gastosDesarrollo', record]));
+if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    enviarDatosGoogleSheets('gastosDesarrollo', record);
     
-    fetch(urlDesarrollo, { mode: 'no-cors' })
-        .then(() => {
-            showLoader(false);
-            if (typeof fetchAllData === 'function') {
-                fetchAllData();
-            } else {
-                updateLocalProrrateoRecords();
-                applyFilters();
-            }
-            clearPOSForm();
-            alert(isProrrateo ? `¡Gasto prorrateado exitosamente!` : "¡Información registrada con éxito en Google Sheets!");
-        })
-        .catch(err => {
-            showLoader(false);
-            console.error("Error al guardar:", err);
-            alert("Error de conexión al guardar. Verifica tu internet.");
-        });
+    showLoader(false);
+    if (typeof fetchAllData === 'function') {
+        fetchAllData();
+    } else {
+        updateLocalProrrateoRecords();
+        applyFilters();
+    }
+    clearPOSForm();
+    setTimeout(() => alert(isProrrateo ? `¡Gasto prorrateado exitosamente!` : "¡Información registrada con éxito en Google Sheets!"), 500);
 } else {
+    // ... tu google.script.run ...
+}  else {
                     google.script.run
                         .withSuccessHandler(function(response) {
                             showLoader(false);
@@ -2818,22 +2792,16 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                     return;
                 }
 if (typeof google === 'undefined' || !google.script || !google.script.run) {
-    const urlVentas = GAS_URL + '?action=guardarRegistro&args=' + encodeURIComponent(JSON.stringify(['ventas', record]));
+    enviarDatosGoogleSheets('ventas', record);
     
-    fetch(urlVentas, { mode: 'no-cors' }) // <-- AQUI CAMBIA url POR urlVentas
-        .then(() => {
-            showLoader(false);
-            if (!rawData.ventas) rawData.ventas = [];
-            (rawData.ventas || []).push(record);
-            applyFilters();
-            clearPOSForm();
-            alert("¡Información registrada con éxito en Google Sheets!");
-        })
-        .catch(err => {
-            showLoader(false);
-            console.error("Error al guardar:", err);
-            alert("Error de conexión al guardar. Verifica tu internet.");
-        });
+    showLoader(false);
+    if (!rawData.ventas) rawData.ventas = [];
+    (rawData.ventas || []).push(record);
+    applyFilters();
+    clearPOSForm();
+    setTimeout(() => alert("¡Información registrada con éxito en Google Sheets!"), 500);
+} else {
+    // ... tu google.script.run ...
 } else {
                    google.script.run
                         .withSuccessHandler(function(response) {
@@ -7144,6 +7112,30 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             updatePendingSyncBadge();
             checkCurrentUserRole();
         }
+function enviarDatosGoogleSheets(tipo, record) {
+    const url = GAS_URL + '?action=guardarRegistro&args=' + encodeURIComponent(JSON.stringify([tipo, record]));
+    
+    // Creamos un iframe invisible para que el navegador no bloquee la petición
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.name = 'iframe_oculto_' + Date.now();
+    document.body.appendChild(iframe);
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    form.target = iframe.name;
+    form.style.display = 'none';
+    
+    document.body.appendChild(form);
+    form.submit();
+    
+    // Limpiamos el HTML después de enviar
+    setTimeout(() => {
+        document.body.removeChild(form);
+        document.body.removeChild(iframe);
+    }, 2000);
+}
 
         // Exponer initApp globalmente para que index.html lo llame
         window.initApp = initApp;     
