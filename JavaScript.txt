@@ -2859,63 +2859,23 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                     clearPOSForm();
                 }
             } else {
-                showPOSAlert(response ? response.error : "Error de respuesta.", "error");
+                showToast(response ? response.error : "Error de respuesta.", "error");
             }
-        })
-        .withFailureHandler(function(err) {
             showLoader(false);
-            saveOfflineRecord("ventas", record).then(() => {
-                if (!rawData.ventas) rawData.ventas = [];
-                (rawData.ventas || []).push(record);
-                applyFilters();
-                clearPOSForm();
-                showView('dashboard');
-                alert("Registro guardado en dispositivo (Sin conexión). Se sincronizará al recuperar señal.");
+            saveToFileConectado("ventas", record).then(() => {
+                if (!rauda.ventas) rauda.ventas = [];
+                rauda.ventas = [].concat(rauda.ventas, [record]);
+                set("rad", JSON.stringify(rauda.ventas));
+                clearForm();
+                showView("dashboard");
+                alert("Registro guardado en dispositivo (sin conexión). Se sincronizará al recuperar señal.");
+            }).catch(error => {
+                console.error("Error guardando localmente:", error);
+                alert("Error al guardar localmente.");
             });
-        })
-        .guardarRegistro("ventas", record);
-} else { google.script.run
-                        .withSuccessHandler(function(response) {
-                            if (response && response.success) {
-                                if (!rawData.ventas) rawData.ventas = [];
-                                (rawData.ventas || []).push(record);
+        }); // <--- ESTA LÍNEA ES LA QUE FALTABA
 
-                                if (cerrarCicloChecked && trackingCode) {
-                                    endLoteCycleDirect(trackingCode, fecha, () => {
-                                        applyFilters();
-                                        showLoader(false);
-                                        clearPOSForm();
-                                        alert("¡Información registrada con éxito y Código de Seguimiento (" + trackingCode + ") cerrado!");
-                                        clearPOSForm();
-                                    });
-                                } else {
-                                    applyFilters();
-                                    showLoader(false);
-                                    clearPOSForm();
-                                    alert("¡Información registrada con éxito!");
-                                    clearPOSForm();
-                                }
-                            } else {
-                                showLoader(false);
-                                showPOSAlert(response ? response.error : "Error de respuesta.", "error");
-                            }
-                        })
-                        .withFailureHandler(function(err) {
-                            showLoader(false);
-                            saveOfflineRecord("ventas", record).then(() => {
-                                if (!rawData.ventas) rawData.ventas = [];
-                                (rawData.ventas || []).push(record);
-                                applyFilters();
-                                clearPOSForm();
-                                showView('dashboard');
-                                alert("Registro guardado en dispositivo (Sin conexión). Se sincronizará al recuperar señal.");
-                            });
-                        })
-                        .guardarRegistro("ventas", record);
-                }
-            }
-        }
-
+                 
         function calculateLoanBalance() {
             const valor = parseDecimal(document.getElementById("loanValor").value);
             const pago = parseDecimal(document.getElementById("loanPago").value);
