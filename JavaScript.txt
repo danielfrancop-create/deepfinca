@@ -6117,84 +6117,72 @@ function calculateLoanBalance() {
             });
         }
 
-                function handlePhotoUploadSubmit(event) {
-            event.preventDefault();
-            const lote = document.getElementById("uploadPhotoLote").value;
-            const fecha = document.getElementById("uploadPhotoFecha").value;
-            const titulo = document.getElementById("uploadPhotoTitulo").value.trim();
-            const desc = document.getElementById("uploadPhotoDescripcion").value.trim();
-            const fileInput = document.getElementById("uploadPhotoFileInput");
+           function handlePhotoUploadSubmit(event) {
+    event.preventDefault();
+    const lote = document.getElementById("uploadPhotoLote").value;
+    const fecha = document.getElementById("uploadPhotoFecha").value;
+    const titulo = document.getElementById("uploadPhotoTitulo").value.trim();
+    const desc = document.getElementById("uploadPhotoDescripcion").value.trim();
+    const fileInput = document.getElementById("uploadPhotoFileInput");
 
-            if (!lote || !fecha || !titulo || !fileInput.files || fileInput.files.length === 0) {
-                alert("Por favor completa los campos requeridos y selecciona una imagen.");
-                return;
-            }
+    if (!lote || !fecha || !titulo || !fileInput.files || fileInput.files.length === 0) {
+        alert("Por favor completa los campos requeridos y selecciona una imagen.");
+        return;
+    }
 
-            const file = fileInput.files[0];
+    const file = fileInput.files[0];
+    closePhotoUploadModal();
 
-            // Immediate modal closure to prevent UI freezing
-            closePhotoUploadModal();
+    compressImageFile(file, 1024, 0.70).then((base64Data) => {
+        const record = {
+            ID_Foto: "FOTO-" + new Date().getTime(),
+            Lote: lote,
+            Fecha: fecha,
+            Titulo: titulo,
+            Descripcion: desc,
+            Base64_Data: base64Data,
+            Url_Foto_Drive: ""
+        };
 
-            compressImageFile(file, 1024, 0.70).then((base64Data) => {
-                const record = {
-                    ID_Foto: "FOTO-" + new Date().getTime(),
-                    Lote: lote,
-                    Fecha: fecha,
-                    Titulo: titulo,
-                    Descripcion: desc,
-                    Base64_Data: "", // <--- Lo enviamos vacío
-                    Url_Foto_Drive: ""
-                };
-
-                // Add to local memory immediately for preview
-                if (!rawData) rawData = {};
-                if (!rawData.fotosLotes) rawData.fotosLotes = [];
-                rawData.fotosLotes.push(record);
-                renderPhotoGallery();
-                document.getElementById("photoUploadForm").reset();
-                if (document.getElementById("uploadPhotoFecha")) {
-                    document.getElementById("uploadPhotoFecha").value = new Date().toISOString().split('T')[0];
-                }
-
-                if (!navigator.onLine) {
-                    saveOfflineRecord("fotosLotes", record).then(() => {
-                        alert("¡Información registrada con éxito! (Guardado localmente sin conexión)");
-                    });
-                    return;
-                }
-
-                // AQUÍ ESTÁ EL CAMBIO CLAVE:
-                // Usamos enviarDatosGoogleSheets para que la foto viaje a Google Sheets
-                if (typeof google === 'undefined' || !google.script || !google.script.run) {
-                    enviarDatosGoogleSheets('guardarFotoLote', record);
-                    alert("¡Fotografía guardada con éxito! Se está sincronizando con Google Drive...");
-                } else {
-                    google.script.run
-                        .withSuccessHandler(function(response) {
-                            if (response && response.success) {
-                                if (response.urlDrive) {
-                                    record.Url_Foto_Drive = response.urlDrive;
-                                    renderPhotoGallery();
-                                }
-                                alert("¡Fotografía guardada y subida a Google Drive con éxito!");
-                            } else {
-                                saveOfflineRecord("fotosLotes", record).then(() => {
-                                    alert("¡Fotografía guardada localmente!");
-                                });
-                            }
-                        })
-                        .withFailureHandler(function(err) {
-                            saveOfflineRecord("fotosLotes", record).then(() => {
-                                alert("¡Fotografía guardada localmente sin conexión!");
-                            });
-                        })
-                        .guardarFotoLote(record);
-                }
-            }).catch(err => {
-                console.error("Error al comprimir la fotografía:", err);
-                alert("Ocurrió un error al procesar la fotografía.");
-            });
+        // Mostrar en la galería local mientras se sube
+        if (!rawData) rawData = {};
+        if (!rawData.fotosLotes) rawData.fotosLotes = [];
+        rawData.fotosLotes.push(record);
+        renderPhotoGallery();
+        document.getElementById("photoUploadForm").reset();
+        if (document.getElementById("uploadPhotoFecha")) {
+            document.getElementById("uploadPhotoFecha").value = new Date().toISOString().split('T')[0];
         }
+
+        // ENVIAR MEDIANTE FORMULARIO OCULTO (Esto evita el bloqueo del navegador)
+        const url = MI_GAS_URL + '?action=guardarFotoLote&args=' + encodeURIComponent(JSON.stringify([record]));
+        
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.name = 'iframe_foto_' + Date.now();
+        document.body.appendChild(iframe);
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+        form.target = iframe.name;
+        form.style.display = 'none';
+        
+        document.body.appendChild(form);
+        form.submit();
+        
+        setTimeout(() => {
+            document.body.removeChild(form);
+            document.body.removeChild(iframe);
+        }, 3000);
+
+        alert("¡Fotografía enviada! Se está subiendo a Google Drive...");
+        fetchData(true); // Refrescar los datos desde Google Sheets
+    }).catch(err => {
+        console.error("Error al comprimir la fotografía:", err);
+        alert("Ocurrió un error al procesar la fotografía.");
+    });
+}     
 
         function eliminarFotoGallery(idFoto) {
             if (!confirm(`¿Estás seguro de eliminar la fotografía?`)) return;
