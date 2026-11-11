@@ -423,50 +423,63 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 if (iconDesktop) iconDesktop.classList.remove("animate-spin");
                 if (iconMobile) iconMobile.classList.remove("animate-spin");
             };
+if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    console.warn("Conectando a Google Sheets vía JSONP...");
+    showLoader(true, "Conectando a base de datos...");
 
-  if (typeof google === 'undefined' || !google.script || !google.script.run) {
-                console.warn("Entorno local detectado. Conectando a Google Sheets vía bridge...");
-                showLoader(true, "Conectando a base de datos...");
-                
-                window.callGAS('getDashboardData', '')
-                    .then(function(response) {
-                        stopSpin();
-                        // Verificamos si la respuesta viene envuelta o directa
-                        var dataFinal = response;
-                        if (response && response.data && response.success === undefined) {
-                            dataFinal = response.data;
-                        }
-                        
-                       if (dataFinal && dataFinal.success) {
-    rawData = dataFinal.data;
-    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){} // <-- ESTA LÍNEA
-    updateConfigHeader();
-    updateSyncTimestamp();
-    applyFilters();
-    fetchSecurityCredentialsBackend();
-    showLoader(false);
-} else if (dataFinal) { 
-    rawData = dataFinal;
-    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){} // <-- ESTA LÍNEA
-    updateConfigHeader();
-    updateSyncTimestamp();
-    applyFilters();
-    fetchSecurityCredentialsBackend();
-    showLoader(false);
-} else {
-    showError("No se obtuvo respuesta válida de Google.");
-}
-                    })
-                    .catch(function(err) {
-                        stopSpin();
-                        showError("Error conectando a Google Sheets: " + err.toString());
-                    });
-                return; // Detiene la ejecución y espera los datos
-            }
-        } // <-- ESTA LLAVE CIERRA LA FUNCIÓN fetchData()
-                  
+    // Crear un nombre de función único para el callback
+    const callbackName = 'jsonpCallback_' + Math.round(100000 * Math.random());
+    
+    // Definir la función global que recibirá los datos
+    window[callbackName] = function(dataFinal) {
+        stopSpin();
+        if (dataFinal && dataFinal.success) {
+            rawData = dataFinal.data;
+            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
+            updateConfigHeader();
+            updateSyncTimestamp();
+            applyFilters();
+            fetchSecurityCredentialsBackend();
+            showLoader(false);
+        } else if (dataFinal) {
+            rawData = dataFinal;
+            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
+            updateConfigHeader();
+            updateSyncTimestamp();
+            applyFilters();
+            fetchSecurityCredentialsBackend();
+            showLoader(false);
+        } else {
+            showError("No se obtuvo respuesta válida de Google.");
+        }
+        
+        // Limpiar el script y la función después de usarla
+        if (document.body.contains(script)) {
+            document.body.removeChild(script);
+        }
+        delete window[callbackName];
+    };
 
-        function updateConfigHeader() {
+    // Crear el elemento <script> apuntando a la URL de Google con el callback
+    const script = document.createElement('script');
+    script.src = MI_GAS_URL + '?action=getDashboardData&callback=' + callbackName;
+    
+    script.onerror = function() {
+        stopSpin();
+        showError("Error de conexión al cargar los datos (JSONP).");
+        if (document.body.contains(script)) {
+            document.body.removeChild(script);
+        }
+        delete window[callbackName];
+    };
+
+    // Agregar el script al HTML para que se ejecute
+    document.body.appendChild(script);
+    return; // Detener la ejecución normal
+    } // <--- Cierra el "if (typeof google...)"
+} // <--- Cierra la función fetchData()
+
+function updateConfigHeader() {
             if (!rawData || !rawData.configuracion) return;
             const configMap = {};
             (rawData.configuracion || []).forEach(item => {
