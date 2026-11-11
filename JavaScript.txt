@@ -7100,15 +7100,24 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             const modal = document.getElementById("modalDetalleContador");
             if (modal) modal.classList.add("hidden");
         }
+function initApp() {
+    // Esperar a que el DOM esté listo antes de usar las variables
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', runInitApp);
+    } else {
+        runInitApp();
+    }
+}
 
-               function initApp() {
-            applyViewOnlyPermissions();
-            populateLoteDropdowns();
-            fetchData();
-            setupLightboxInteractions();
-            updatePendingSyncBadge();
-            checkCurrentUserRole();
-        }
+function runInitApp() {
+    applyViewOnlyPermissions();
+    populateLoteDropdowns();
+    fetchData();
+    setupLightboxInteractions();
+    updatePendingSyncBadge();
+    checkCurrentUserRole();
+}
+               
 function enviarDatosGoogleSheets(tipo, record) {
     const url = GAS_URL + '?action=guardarRegistro&args=' + encodeURIComponent(JSON.stringify([tipo, record]));
     
