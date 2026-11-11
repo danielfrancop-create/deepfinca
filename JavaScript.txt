@@ -376,109 +376,109 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 headerSubtitle.textContent = `${baseUbicacion} | Última Sincronización: ${formattedTime}`;
             }
         }
-
-        function fetchData(forceRefresh = false) {
-            // Check sessionStorage cache first for instant initial load if not forceRefresh
-            const CACHE_KEY = "finca_dashboard_cache_data";
-            if (!forceRefresh) {
-                try {
-                    const cachedStr = sessionStorage.getItem(CACHE_KEY);
-                    if (cachedStr) {
-                        const cachedData = JSON.parse(cachedStr);
-                        if (cachedData && typeof cachedData === 'object') {
-                            rawData = cachedData;
-                            handleDataLoaded(rawData);
-                            showLoader(false);
-                            // Asynchronously fetch fresh data in background without blocking UI
-                            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                                google.script.run
-                                    .withSuccessHandler(function(response) {
-                                        if (response && response.success) {
-                                            rawData = response.data;
-                                            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
-                                            updateConfigHeader();
-                                            applyFilters();
-                                        }
-                                    })
-                                    .getDashboardData();
-                            }
-                            return;
-                        }
-                    }
-                } catch (e) {
-                    console.warn("Error leyendo de sessionStorage:", e);
+function fetchData(forceRefresh = false) {
+    const CACHE_KEY = "finca_dashboard_cache_data";
+    
+    // 1. Intentar cargar desde la caché para que sea instantáneo
+    if (!forceRefresh) {
+        try {
+            const cachedStr = sessionStorage.getItem(CACHE_KEY);
+            if (cachedStr) {
+                const cachedData = JSON.parse(cachedStr);
+                if (cachedData && typeof cachedData === 'object') {
+                    rawData = cachedData;
+                    handleDataLoaded(rawData);
+                    showLoader(false);
                 }
             }
-
-            // Visual spin animation on refresh icon
-            const iconDesktop = document.getElementById("iconRefrescar");
-            const iconMobile = document.getElementById("iconRefrescarMobile");
-            if (iconDesktop) iconDesktop.classList.add("animate-spin");
-            if (iconMobile) iconMobile.classList.add("animate-spin");
-
-            showLoader(true, "Refrescando datos desde el servidor...");
-            hideError();
-
-            const stopSpin = () => {
-                if (iconDesktop) iconDesktop.classList.remove("animate-spin");
-                if (iconMobile) iconMobile.classList.remove("animate-spin");
-            };
-if (typeof google === 'undefined' || !google.script || !google.script.run) {
-    console.warn("Conectando a Google Sheets vía JSONP...");
-    showLoader(true, "Conectando a base de datos...");
-
-    // Crear un nombre de función único para el callback
-    const callbackName = 'jsonpCallback_' + Math.round(100000 * Math.random());
-    
-    // Definir la función global que recibirá los datos
-    window[callbackName] = function(dataFinal) {
-        stopSpin();
-        if (dataFinal && dataFinal.success) {
-            rawData = dataFinal.data;
-            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
-            updateConfigHeader();
-            updateSyncTimestamp();
-            applyFilters();
-            fetchSecurityCredentialsBackend();
-            showLoader(false);
-        } else if (dataFinal) {
-            rawData = dataFinal;
-            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
-            updateConfigHeader();
-            updateSyncTimestamp();
-            applyFilters();
-            fetchSecurityCredentialsBackend();
-            showLoader(false);
-        } else {
-            showError("No se obtuvo respuesta válida de Google.");
+        } catch (e) {
+            console.warn("Error leyendo de sessionStorage:", e);
         }
+    }
+
+    // 2. Animación del icono de recarga
+    const iconDesktop = document.getElementById("iconRefrescar");
+    const iconMobile = document.getElementById("iconRefrescarMobile");
+    if (iconDesktop) iconDesktop.classList.add("animate-spin");
+    if (iconMobile) iconMobile.classList.add("animate-spin");
+
+    showLoader(true, "Refrescando datos desde el servidor...");
+    hideError();
+
+    const stopSpin = () => {
+        if (iconDesktop) iconDesktop.classList.remove("animate-spin");
+        if (iconMobile) iconMobile.classList.remove("animate-spin");
+    };
+
+    // 3. Conectar con Google Sheets (vía JSONP o Google Script Run)
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        console.warn("Conectando a Google Sheets vía JSONP...");
         
-        // Limpiar el script y la función después de usarla
-        if (document.body.contains(script)) {
-            document.body.removeChild(script);
-        }
-        delete window[callbackName];
-    };
+        const callbackName = 'jsonpCallback_' + Math.round(100000 * Math.random());
+        
+        window[callbackName] = function(dataFinal) {
+            stopSpin();
+            if (dataFinal && dataFinal.success) {
+                rawData = dataFinal.data;
+                try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
+                updateConfigHeader();
+                updateSyncTimestamp();
+                applyFilters();
+                fetchSecurityCredentialsBackend();
+                showLoader(false);
+            } else if (dataFinal) {
+                rawData = dataFinal;
+                try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
+                updateConfigHeader();
+                updateSyncTimestamp();
+                applyFilters();
+                fetchSecurityCredentialsBackend();
+                showLoader(false);
+            } else {
+                showError("No se obtuvo respuesta válida de Google.");
+            }
+            
+            if (document.body.contains(script)) document.body.removeChild(script);
+            delete window[callbackName];
+        };
 
-    // Crear el elemento <script> apuntando a la URL de Google con el callback
-    const script = document.createElement('script');
-    script.src = MI_GAS_URL + '?action=getDashboardData&callback=' + callbackName;
+        const script = document.createElement('script');
+        script.src = MI_GAS_URL + '?action=getDashboardData&callback=' + callbackName;
+        
+        script.onerror = function() {
+            stopSpin();
+            showError("Error de conexión al cargar los datos (JSONP).");
+            if (document.body.contains(script)) document.body.removeChild(script);
+            delete window[callbackName];
+        };
+
+        document.body.appendChild(script);
+        return;
+    } 
     
-    script.onerror = function() {
-        stopSpin();
-        showError("Error de conexión al cargar los datos (JSONP).");
-        if (document.body.contains(script)) {
-            document.body.removeChild(script);
-        }
-        delete window[callbackName];
-    };
-
-    // Agregar el script al HTML para que se ejecute
-    document.body.appendChild(script);
-    return; // Detener la ejecución normal
-    } // <--- Cierra el "if (typeof google...)"
-} // <--- Cierra la función fetchData()
-
+    // 4. Modo Google Scripts (si se ejecuta desde el entorno de Google)
+    google.script.run
+        .withSuccessHandler(function(response) {
+            stopSpin();
+            if (response && response.success) {
+                rawData = response.data;
+                try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
+                updateConfigHeader();
+                updateSyncTimestamp();
+                applyFilters();
+                fetchSecurityCredentialsBackend();
+            } else {
+                showError("Error en los datos recibidos.");
+            }
+            showLoader(false);
+        })
+        .withFailureHandler(function(err) {
+            stopSpin();
+            showError("Error de conexión: " + err.toString());
+        })
+        .getDashboardData();
+}
+        
 function updateConfigHeader() {
             if (!rawData || !rawData.configuracion) return;
             const configMap = {};
