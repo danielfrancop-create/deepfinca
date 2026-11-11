@@ -6117,7 +6117,7 @@ function calculateLoanBalance() {
             });
         }
 
-           function handlePhotoUploadSubmit(event) {
+        function handlePhotoUploadSubmit(event) {
     event.preventDefault();
     const lote = document.getElementById("uploadPhotoLote").value;
     const fecha = document.getElementById("uploadPhotoFecha").value;
@@ -6149,12 +6149,8 @@ function calculateLoanBalance() {
         if (!rawData.fotosLotes) rawData.fotosLotes = [];
         rawData.fotosLotes.push(record);
         renderPhotoGallery();
-        document.getElementById("photoUploadForm").reset();
-        if (document.getElementById("uploadPhotoFecha")) {
-            document.getElementById("uploadPhotoFecha").value = new Date().toISOString().split('T')[0];
-        }
-
-        // ENVIAR MEDIANTE FORMULARIO OCULTO (Esto evita el bloqueo del navegador)
+        
+        // ENVIAR MEDIANTE FORMULARIO OCULTO (Esto evita el bloqueo de CORS)
         const url = MI_GAS_URL + '?action=guardarFotoLote&args=' + encodeURIComponent(JSON.stringify([record]));
         
         const iframe = document.createElement('iframe');
@@ -6177,12 +6173,12 @@ function calculateLoanBalance() {
         }, 3000);
 
         alert("¡Fotografía enviada! Se está subiendo a Google Drive...");
-        fetchData(true); // Refrescar los datos desde Google Sheets
+        setTimeout(() => fetchData(true), 2000); // Refrescar después de 2 segundos
     }).catch(err => {
         console.error("Error al comprimir la fotografía:", err);
         alert("Ocurrió un error al procesar la fotografía.");
     });
-}     
+}
 
         function eliminarFotoGallery(idFoto) {
             if (!confirm(`¿Estás seguro de eliminar la fotografía?`)) return;
