@@ -478,29 +478,6 @@ function fetchData(forceRefresh = false) {
         })
         .getDashboardData();
 }
-    // 4. Modo Google Scripts (si se ejecuta desde el entorno de Google)
-    google.script.run
-        .withSuccessHandler(function(response) {
-            stopSpin();
-            if (response && response.success) {
-                rawData = response.data;
-                try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
-                updateConfigHeader();
-                updateSyncTimestamp();
-                applyFilters();
-                fetchSecurityCredentialsBackend();
-            } else {
-                showError("Error en los datos recibidos.");
-            }
-            showLoader(false);
-        })
-        .withFailureHandler(function(err) {
-            stopSpin();
-            showError("Error de conexión: " + err.toString());
-        })
-        .getDashboardData();
-}
-        
 function updateConfigHeader() {
             if (!rawData || !rawData.configuracion) return;
             const configMap = {};
