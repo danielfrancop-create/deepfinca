@@ -1,62 +1,71 @@
-// bridge.js - Puente con Formulario Oculto (Manejando respuesta HTML)
+// bridge.js - Puente Inteligente (JSONP para leer, iframe para escribir)
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyLTl982nl7Wun_yX1JHtE948InXJVttya8zV05GAMvLYoUGeLhoxNFLKE5HK15ekgN/exec';
 
 function callGAS(functionName, ...args) {
-  return new Promise((resolve, reject) => {
-    const iframeName = 'gas_iframe_' + Date.now();
-    const iframe = document.createElement('iframe');
-    iframe.name = iframeName;
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
+  // Si es para LEER datos, usamos JSONP (rápido y confiable)
+  if (functionName === 'getDashboardData' || functionName === 'getLoteSummary' || functionName === 'exportToExcelData') {
+    return new Promise((resolve, reject) => {
+      const callbackName = 'gas_callback_' + Math.floor(Math.random() * 1000000);
+      window[callbackName] = function(response) {
+        if (script.parentNode) document.body.removeChild(script);
+        delete window[callbackName];
+        resolve(response);
+      };
 
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = GAS_URL;
-    form.target = iframeName;
-    form.style.display = 'none';
+      const script = document.createElement('script');
+      const params = new URLSearchParams();
+      params.append('action', functionName);
+      params.append('args', JSON.stringify(args));
+      params.append('callback', callbackName);
+      script.src = GAS_URL + '?' + params.toString();
+      
+      script.onerror = function() {
+        if (script.parentNode) document.body.removeChild(script);
+        delete window[callbackName];
+        reject(new Error('Error de red'));
+      };
+      document.body.appendChild(script);
+    });
+  } 
+  
+  // Si es para ESCRIBIR datos, usamos el Formulario Oculto (no espera respuesta)
+  else {
+    return new Promise((resolve) => {
+      const iframeName = 'gas_iframe_' + Date.now();
+      const iframe = document.createElement('iframe');
+      iframe.name = iframeName;
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
 
-    const actionInput = document.createElement('input');
-    actionInput.type = 'hidden';
-    actionInput.name = 'action';
-    actionInput.value = functionName;
-    form.appendChild(actionInput);
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = GAS_URL;
+      form.target = iframeName;
+      form.style.display = 'none';
 
-    const argsInput = document.createElement('input');
-    argsInput.type = 'hidden';
-    argsInput.name = 'args';
-    argsInput.value = JSON.stringify(args);
-    form.appendChild(argsInput);
+      const actionInput = document.createElement('input');
+      actionInput.type = 'hidden';
+      actionInput.name = 'action';
+      actionInput.value = functionName;
+      form.appendChild(actionInput);
 
-    document.body.appendChild(form);
+      const argsInput = document.createElement('input');
+      argsInput.type = 'hidden';
+      argsInput.name = 'args';
+      argsInput.value = JSON.stringify(args);
+      form.appendChild(argsInput);
 
-    iframe.onload = () => {
-      try {
-        // Leemos el texto que devuelve Google
-        const responseText = iframe.contentDocument.body.innerText;
-        let result;
-        
-        // Intentamos leerlo como JSON (si funciona, genial)
-        try {
-          result = JSON.parse(responseText);
-        } catch (e) {
-          // Si Google devuelve HTML (porque hizo una redirección), asumimos éxito
-          // ya que el formulario se envió correctamente.
-          result = { success: true, message: "Enviado por formulario" };
-        }
-        
+      document.body.appendChild(form);
+      form.submit();
+
+      // Esperamos 1.5 segundos para que Google procese y guarde, luego asumimos éxito
+      setTimeout(() => {
         document.body.removeChild(form);
         document.body.removeChild(iframe);
-        resolve(result);
-      } catch (err) {
-        document.body.removeChild(form);
-        document.body.removeChild(iframe);
-        // Si falla la lectura, asumimos éxito (el formulario llegó a Google)
         resolve({ success: true });
-      }
-    };
-
-    form.submit();
-  });
+      }, 1500);
+    });
+  }
 }
 
 window.callGAS = callGAS;
