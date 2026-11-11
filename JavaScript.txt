@@ -2437,7 +2437,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             }
         }
 
-                function handlePOSSubmit(event) {
+               function handlePOSSubmit(event) {
             event.preventDefault();
             hidePOSAlert();
 
@@ -2545,147 +2545,135 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                     });
                     return;
                 }
-if (typeof google === 'undefined' || !google.script || !google.script.run) {
-    enviarDatosGoogleSheets('gastosIniciales', record);
-    
-    showLoader(false);
-    if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
-    (rawData.gastosIniciales || []).push(record);
-    applyFilters();
-    clearPOSForm();
-    setTimeout(() => alert("¡Información registrada con éxito en Google Sheets!"), 500);
-} else {
-    google.script.run
-        .withSuccessHandler(function(response) {
-            showLoader(false);
-            if (response && response.success) {
-                if (response.trackingCode) {
-                    record.Codigo_Seguimiento = response.trackingCode;
-                    record.Codigo_General = response.trackingCode;
-                    if (newCycle) {
-                        newCycle.Codigo_General = response.trackingCode;
-                        newCycle.Codigo_Inicial = response.trackingCode;
-                        newCycle.Codigo_Desarrollo = response.trackingCode;
-                        newCycle.Codigo_Ventas = response.trackingCode;
-                    }
+
+                if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                    enviarDatosGoogleSheets('gastosIniciales', record);
+                    
+                    showLoader(false);
+                    if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
+                    (rawData.gastosIniciales || []).push(record);
+                    applyFilters();
+                    clearPOSForm();
+                    setTimeout(() => alert("¡Información registrada con éxito en Google Sheets!"), 500);
+                } else {
+                    google.script.run
+                        .withSuccessHandler(function(response) {
+                            showLoader(false);
+                            if (response && response.success) {
+                                if (response.trackingCode) {
+                                    record.Codigo_Seguimiento = response.trackingCode;
+                                    record.Codigo_General = response.trackingCode;
+                                    if (newCycle) {
+                                        newCycle.Codigo_General = response.trackingCode;
+                                        newCycle.Codigo_Inicial = response.trackingCode;
+                                        newCycle.Codigo_Desarrollo = response.trackingCode;
+                                        newCycle.Codigo_Ventas = response.trackingCode;
+                                    }
+                                }
+                                if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
+                                (rawData.gastosIniciales || []).push(record);
+                                applyFilters();
+                                clearPOSForm();
+                                alert("¡Información registrada con éxito!");
+                            } else {
+                                showPOSAlert(response ? response.error : "Error de respuesta.", "error");
+                            }
+                        })
+                        .withFailureHandler(function(err) {
+                            showLoader(false);
+                            saveOfflineRecord("gastosIniciales", record).then(() => {
+                                if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
+                                (rawData.gastosIniciales || []).push(record);
+                                applyFilters();
+                                clearPOSForm();
+                                alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
+                            });
+                        })
+                        .guardarRegistro("gastosIniciales", record);
                 }
-                if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
-                (rawData.gastosIniciales || []).push(record);
-                applyFilters();
-                clearPOSForm();
-                alert("¡Información registrada con éxito!");
-            } else {
-                showPOSAlert(response ? response.error : "Error de respuesta.", "error");
-            }
-        })
-        .withFailureHandler(function(err) {
-            showLoader(false);
-            saveOfflineRecord("gastosIniciales", record).then(() => {
-                if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
-                (rawData.gastosIniciales || []).push(record);
-                applyFilters();
-                clearPOSForm();
-                alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
-            });
-        })
-        .guardarRegistro("gastosIniciales", record);
-} // <--- ESTA LLAVE CIERRA EL ELSE DE GASTOS INICIALES
 
-} else if (activePOSTab === 'gastos_desarrollo') {
-    const insumo = document.getElementById("posInsumo").value;
-    const cantidad = parseDecimal(document.getElementById("posCantidadDesarrollo").value) || 1;
-    const unidad = document.getElementById("posUnidadMedidaDesarrollo").value || "Bultos";
-    const unitario = parseDecimal(document.getElementById("posCostoUnitarioDesarrollo").value);
-    const costo = parseDecimal(document.getElementById("posCostoDesarrollo").value) || (cantidad * unitario);
-    const isProrrateo = (insumo === "Fertilizantes" || insumo === "Pesticidas");
-    
-    const radios = document.getElementsByName("posEstadoPagoDesarrollo");
-    let estadoPago = "PAGADO";
-    for (let r of radios) { if (r.checked) estadoPago = r.value; }
+            } else if (activePOSTab === 'gastos_desarrollo') {
+                const insumo = document.getElementById("posInsumo").value;
+                const cantidad = parseDecimal(document.getElementById("posCantidadDesarrollo").value) || 1;
+                const unidad = document.getElementById("posUnidadMedidaDesarrollo").value || "Bultos";
+                const unitario = parseDecimal(document.getElementById("posCostoUnitarioDesarrollo").value);
+                const costo = parseDecimal(document.getElementById("posCostoDesarrollo").value) || (cantidad * unitario);
+                const isProrrateo = (insumo === "Fertilizantes" || insumo === "Pesticidas");
+                
+                const radios = document.getElementsByName("posEstadoPagoDesarrollo");
+                let estadoPago = "PAGADO";
+                for (let r of radios) { if (r.checked) estadoPago = r.value; }
 
-    const proveedor = document.getElementById("posProveedorDesarrollo").value || "";
-    const fechaVenc = estadoPago === "PENDIENTE" ? document.getElementById("posFechaVencimientoDesarrollo").value : "";
-    const detalle = document.getElementById("posDetalleDesarrollo").value || "";
+                const proveedor = document.getElementById("posProveedorDesarrollo").value || "";
+                const fechaVenc = estadoPago === "PENDIENTE" ? document.getElementById("posFechaVencimientoDesarrollo").value : "";
+                const detalle = document.getElementById("posDetalleDesarrollo").value || "";
 
-    if (!insumo || costo <= 0) {
-        showLoader(false);
-        showPOSAlert("Por favor, selecciona un tipo de insumo e ingresa un costo válido mayor a cero.", "error");
-        return;
-    }
+                if (!insumo || costo <= 0) {
+                    showLoader(false);
+                    showPOSAlert("Por favor, selecciona un tipo de insumo e ingresa un costo válido mayor a cero.", "error");
+                    return;
+                }
 
-    if (!isProrrateo && !lote) {
-        showLoader(false);
-        showPOSAlert("Por favor, selecciona un Lote Destino para este gasto.", "error");
-        return;
-    }
+                if (!isProrrateo && !lote) {
+                    showLoader(false);
+                    showPOSAlert("Por favor, selecciona un Lote Destino para este gasto.", "error");
+                    return;
+                }
 
-    const record = {
-        Lote_Principal: isProrrateo ? "General" : lote,
-        Lote: isProrrateo ? "General" : lote,
-        Tipo_Insumo: insumo,
-        Cantidad: cantidad,
-        Unidad_Medida: unidad,
-        Costo_Unitario_COP: unitario || (costo / cantidad),
-        Costo_Total_COP: costo,
-        Estado_Pago: estadoPago,
-        Cliente_Deudor_Proveedor: proveedor,
-        Fecha_Vencimiento: fechaVenc,
-        Fecha_Pago_Realizado: estadoPago === "PAGADO" ? fecha : "",
-        Fecha: fecha,
-        Detalle: detalle,
-        Codigo_Seguimiento: trackingCode
-    };
+                const record = {
+                    Lote_Principal: isProrrateo ? "General" : lote,
+                    Lote: isProrrateo ? "General" : lote,
+                    Tipo_Insumo: insumo,
+                    Cantidad: cantidad,
+                    Unidad_Medida: unidad,
+                    Costo_Unitario_COP: unitario || (costo / cantidad),
+                    Costo_Total_COP: costo,
+                    Estado_Pago: estadoPago,
+                    Cliente_Deudor_Proveedor: proveedor,
+                    Fecha_Vencimiento: fechaVenc,
+                    Fecha_Pago_Realizado: estadoPago === "PAGADO" ? fecha : "",
+                    Fecha: fecha,
+                    Detalle: detalle,
+                    Codigo_Seguimiento: trackingCode
+                };
 
-    const updateLocalProrrateoRecords = () => {
-        if (!rawData.gastosDesarrollo) rawData.gastosDesarrollo = [];
-        if (isProrrateo) {
-            const activeLotes = getLocalActiveLotesList();
-            const count = activeLotes.length;
-            const propCosto = count > 0 ? (costo / count) : costo;
-            const propCantidad = count > 0 ? (cantidad / count) : cantidad;
-            activeLotes.forEach(l => {
-                const recCopy = Object.assign({}, record, {
-                    Lote_Principal: l,
-                    Lote: l,
-                    Cantidad: propCantidad,
-                    Costo_Total_COP: propCosto,
-                    Detalle: (detalle ? detalle + " " : "") + `(Prorrateo general entre ${count} lotes activos)`
-                });
-                rawData.gastosDesarrollo.push(recCopy);
-            });
-        } else {
-            rawData.gastosDesarrollo.push(record);
-        }
-    };
+                const updateLocalProrrateoRecords = () => {
+                    if (!rawData.gastosDesarrollo) rawData.gastosDesarrollo = [];
+                    if (isProrrateo) {
+                        const activeLotes = getLocalActiveLotesList();
+                        const count = activeLotes.length;
+                        const propCosto = count > 0 ? (costo / count) : costo;
+                        const propCantidad = count > 0 ? (cantidad / count) : cantidad;
+                        activeLotes.forEach(l => {
+                            const recCopy = Object.assign({}, record, {
+                                Lote_Principal: l,
+                                Lote: l,
+                                Cantidad: propCantidad,
+                                Costo_Total_COP: propCosto,
+                                Detalle: (detalle ? detalle + " " : "") + `(Prorrateo general entre ${count} lotes activos)`
+                            });
+                            rawData.gastosDesarrollo.push(recCopy);
+                        });
+                    } else {
+                        rawData.gastosDesarrollo.push(record);
+                    }
+                };
 
-    if (!navigator.onLine) {
-        saveOfflineRecord("gastosDesarrollo", record).then(() => {
-            updateLocalProrrateoRecords();
-            applyFilters();
-            showLoader(false);
-            clearPOSForm();
-            alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
-        });
-        return;
-    }
+                if (!navigator.onLine) {
+                    saveOfflineRecord("gastosDesarrollo", record).then(() => {
+                        updateLocalProrrateoRecords();
+                        applyFilters();
+                        showLoader(false);
+                        clearPOSForm();
+                        alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
+                    });
+                    return;
+                }
 
-    if (typeof google === 'undefined' || !google.script || !google.script.run) {
-        enviarDatosGoogleSheets('gastosDesarrollo', record);
-        
-        showLoader(false);
-        if (typeof fetchAllData === 'function') {
-            fetchAllData();
-        } else {
-            updateLocalProrrateoRecords();
-            applyFilters();
-        }
-        clearPOSForm();
-        setTimeout(() => alert(isProrrateo ? `¡Gasto prorrateado exitosamente!` : "¡Información registrada con éxito en Google Sheets!"), 500);
-    } else {
-        google.script.run
-            .withSuccessHandler(function(response) {
-                showLoader(false);
-                if (response && response.success) {
+                if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                    enviarDatosGoogleSheets('gastosDesarrollo', record);
+                    
+                    showLoader(false);
                     if (typeof fetchAllData === 'function') {
                         fetchAllData();
                     } else {
@@ -2693,153 +2681,166 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                         applyFilters();
                     }
                     clearPOSForm();
-                    alert(isProrrateo ? `¡Gasto prorrateado exitosamente entre ${response.numLotes || 'los'} lotes activos!` : "¡Información registrada con éxito!");
+                    setTimeout(() => alert(isProrrateo ? `¡Gasto prorrateado exitosamente!` : "¡Información registrada con éxito en Google Sheets!"), 500);
                 } else {
-                    showPOSAlert(response ? response.error : "Error de respuesta.", "error");
+                    google.script.run
+                        .withSuccessHandler(function(response) {
+                            showLoader(false);
+                            if (response && response.success) {
+                                if (typeof fetchAllData === 'function') {
+                                    fetchAllData();
+                                } else {
+                                    updateLocalProrrateoRecords();
+                                    applyFilters();
+                                }
+                                clearPOSForm();
+                                alert(isProrrateo ? `¡Gasto prorrateado exitosamente entre ${response.numLotes || 'los'} lotes activos!` : "¡Información registrada con éxito!");
+                            } else {
+                                showPOSAlert(response ? response.error : "Error de respuesta.", "error");
+                            }
+                        })
+                        .withFailureHandler(function(err) {
+                            showLoader(false);
+                            saveOfflineRecord("gastosDesarrollo", record).then(() => {
+                                updateLocalProrrateoRecords();
+                                applyFilters();
+                                clearPOSForm();
+                                alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
+                            });
+                        })
+                        .guardarRegistro("gastosDesarrollo", record);
+                } 
+
+            } else if (activePOSTab === 'ventas') {
+                const producto = document.getElementById("posProducto").value;
+
+                if (activeCycle) {
+                    const activeCrop = activeCycle.Cultivo || activeCycle.cultivo;
+                    const productMap = {
+                        "Café Castillo": ["Café Pergamino Seco", "Café"],
+                        "Aguacate Hass": ["Aguacate Hass Extra", "Aguacate"],
+                        "Cacao Fino de Aroma": ["Cacao en Grano", "Cacao"],
+                        "Limón Tahití": ["Limón Tahití Selección", "Limón"],
+                        "Plátano Hartón": ["Plátano Hartón de Primera", "Plátano"]
+                    };
+                    const allowedProducts = productMap[activeCrop] || [activeCrop];
+                    const isProductCompatible = allowedProducts.some(p => producto.toLowerCase().includes(p.toLowerCase()) || p.toLowerCase().includes(producto.toLowerCase()));
+
+                    if (!isProductCompatible) {
+                        showLoader(false);
+                        showPOSAlert(`⚠️ ALERTA DE INCOMPATIBILIDAD EN VENTAS: El ${lote} tiene un ciclo activo registrado para "${activeCrop}". El producto seleccionado ("${producto}") no corresponde a este cultivo. Por favor selecciona un producto derivado de "${activeCrop}".`, "error");
+                        return;
+                    }
                 }
-            })
-            .withFailureHandler(function(err) {
-                showLoader(false);
-                saveOfflineRecord("gastosDesarrollo", record).then(() => {
-                    updateLocalProrrateoRecords();
-                    applyFilters();
-                    clearPOSForm();
-                    alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
-                });
-            })
-            .guardarRegistro("gastosDesarrollo", record);
-    } // <--- ESTA LLAVE CIERRA EL ELSE DE GASTOS DESARROLLO
 
-} else if (activePOSTab === 'ventas') {
-    const producto = document.getElementById("posProducto").value;
+                const cantidad = parseDecimal(document.getElementById("posUnidadesVenta").value) || 1;
+                const unidad = document.getElementById("posUnidadMedidaVenta").value || "Atados";
+                const unitario = parseDecimal(document.getElementById("posPrecioUnitarioVenta").value);
+                const ingreso = parseDecimal(document.getElementById("posIngresoVenta").value) || (cantidad * unitario);
+                
+                const radios = document.getElementsByName("posEstadoPagoVenta");
+                let estadoPago = "PAGADO";
+                for (let r of radios) { if (r.checked) estadoPago = r.value; }
 
-    if (activeCycle) {
-        const activeCrop = activeCycle.Cultivo || activeCycle.cultivo;
-        const productMap = {
-            "Café Castillo": ["Café Pergamino Seco", "Café"],
-            "Aguacate Hass": ["Aguacate Hass Extra", "Aguacate"],
-            "Cacao Fino de Aroma": ["Cacao en Grano", "Cacao"],
-            "Limón Tahití": ["Limón Tahití Selección", "Limón"],
-            "Plátano Hartón": ["Plátano Hartón de Primera", "Plátano"]
-        };
-        const allowedProducts = productMap[activeCrop] || [activeCrop];
-        const isProductCompatible = allowedProducts.some(p => producto.toLowerCase().includes(p.toLowerCase()) || p.toLowerCase().includes(producto.toLowerCase()));
+                const comprador = document.getElementById("posComprador").value || "";
+                const fechaVenc = estadoPago === "PENDIENTE" ? document.getElementById("posFechaVencimientoVenta").value : "";
 
-        if (!isProductCompatible) {
-            showLoader(false);
-            showPOSAlert(`⚠️ ALERTA DE INCOMPATIBILIDAD EN VENTAS: El ${lote} tiene un ciclo activo registrado para "${activeCrop}". El producto seleccionado ("${producto}") no corresponde a este cultivo. Por favor selecciona un producto derivado de "${activeCrop}".`, "error");
-            return;
-        }
-    }
-
-    const cantidad = parseDecimal(document.getElementById("posUnidadesVenta").value) || 1;
-    const unidad = document.getElementById("posUnidadMedidaVenta").value || "Atados";
-    const unitario = parseDecimal(document.getElementById("posPrecioUnitarioVenta").value);
-    const ingreso = parseDecimal(document.getElementById("posIngresoVenta").value) || (cantidad * unitario);
-    
-    const radios = document.getElementsByName("posEstadoPagoVenta");
-    let estadoPago = "PAGADO";
-    for (let r of radios) { if (r.checked) estadoPago = r.value; }
-
-    const comprador = document.getElementById("posComprador").value || "";
-    const fechaVenc = estadoPago === "PENDIENTE" ? document.getElementById("posFechaVencimientoVenta").value : "";
-
-    if (!producto || ingreso <= 0 || !comprador) {
-        showLoader(false);
-        showPOSAlert("Por favor, selecciona un producto, ingresa un ingreso válido mayor a cero y especifica el comprador.", "error");
-        return;
-    }
-
-    const record = {
-        Lote: lote,
-        Producto_Vendido: producto,
-        Cantidad: cantidad,
-        Unidades_Cosechadas: cantidad,
-        Unidad_Medida: unidad,
-        Precio_Unitario_COP: unitario || (ingreso / cantidad),
-        Ingreso_Total_COP: ingreso,
-        Estado_Pago: estadoPago,
-        Cliente_Deudor_Proveedor: comprador,
-        Comprador: comprador,
-        Fecha_Vencimiento: fechaVenc,
-        Fecha_Pago_Realizado: estadoPago === "PAGADO" ? fecha : "",
-        Fecha: fecha,
-        Codigo_Seguimiento: trackingCode
-    };
-
-    const cerrarCicloChecked = document.getElementById("posCerrarCicloVenta")?.checked;
-
-    if (!navigator.onLine) {
-        saveOfflineRecord("ventas", record).then(() => {
-            if (!rawData.ventas) rawData.ventas = [];
-            (rawData.ventas || []).push(record);
-            if (cerrarCicloChecked && trackingCode) {
-                endLoteCycleDirect(trackingCode, fecha, () => {
-                    applyFilters();
+                if (!producto || ingreso <= 0 || !comprador) {
                     showLoader(false);
-                    clearPOSForm();
-                    alert("¡Información registrada con éxito y ciclo cerrado!");
-                });
-            } else {
-                applyFilters();
-                showLoader(false);
-                clearPOSForm();
-                alert("¡Información registrada con éxito!");
-            }
-        });
-        return;
-    }
+                    showPOSAlert("Por favor, selecciona un producto, ingresa un ingreso válido mayor a cero y especifica el comprador.", "error");
+                    return;
+                }
 
-    if (typeof google === 'undefined' || !google.script || !google.script.run) {
-        enviarDatosGoogleSheets('ventas', record);
-        
-        showLoader(false);
-        if (!rawData.ventas) rawData.ventas = [];
-        (rawData.ventas || []).push(record);
-        applyFilters();
-        clearPOSForm();
-        setTimeout(() => alert("¡Información registrada con éxito en Google Sheets!"), 500);
-    } else {
-        google.script.run
-            .withSuccessHandler(function(response) {
-                showLoader(false);
-                if (response && response.success) {
-                    if (!rawData.ventas) rawData.ventas = [];
-                    (rawData.ventas || []).push(record);
+                const record = {
+                    Lote: lote,
+                    Producto_Vendido: producto,
+                    Cantidad: cantidad,
+                    Unidades_Cosechadas: cantidad,
+                    Unidad_Medida: unidad,
+                    Precio_Unitario_COP: unitario || (ingreso / cantidad),
+                    Ingreso_Total_COP: ingreso,
+                    Estado_Pago: estadoPago,
+                    Cliente_Deudor_Proveedor: comprador,
+                    Comprador: comprador,
+                    Fecha_Vencimiento: fechaVenc,
+                    Fecha_Pago_Realizado: estadoPago === "PAGADO" ? fecha : "",
+                    Fecha: fecha,
+                    Codigo_Seguimiento: trackingCode
+                };
 
-                    if (cerrarCicloChecked && trackingCode) {
-                        endLoteCycleDirect(trackingCode, fecha, () => {
+                const cerrarCicloChecked = document.getElementById("posCerrarCicloVenta")?.checked;
+
+                if (!navigator.onLine) {
+                    saveOfflineRecord("ventas", record).then(() => {
+                        if (!rawData.ventas) rawData.ventas = [];
+                        (rawData.ventas || []).push(record);
+                        if (cerrarCicloChecked && trackingCode) {
+                            endLoteCycleDirect(trackingCode, fecha, () => {
+                                applyFilters();
+                                showLoader(false);
+                                clearPOSForm();
+                                alert("¡Información registrada con éxito y ciclo cerrado!");
+                            });
+                        } else {
                             applyFilters();
                             showLoader(false);
                             clearPOSForm();
-                            alert("¡Información registrada con éxito y Código de Seguimiento (" + trackingCode + ") cerrado!");
-                        });
-                    } else {
-                        applyFilters();
-                        showLoader(false);
-                        clearPOSForm();
-                        alert("¡Información registrada con éxito!");
-                    }
-                } else {
-                    showPOSAlert(response ? response.error : "Error de respuesta.", "error");
+                            alert("¡Información registrada con éxito!");
+                        }
+                    });
+                    return;
                 }
-            })
-            .withFailureHandler(function(err) {
-                saveOfflineRecord("ventas", record).then(() => {
+
+                if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                    enviarDatosGoogleSheets('ventas', record);
+                    
+                    showLoader(false);
                     if (!rawData.ventas) rawData.ventas = [];
                     (rawData.ventas || []).push(record);
                     applyFilters();
-                    showLoader(false);
                     clearPOSForm();
-                    alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
-                });
-            })
-            .guardarRegistro("ventas", record);
-    }
-} // <--- ESTA LLAVE CIERRA EL ELSE IF DE VENTAS
-} // <--- ESTA LLAVE CIERRA LA FUNCIÓN handlePOSSubmit
+                    setTimeout(() => alert("¡Información registrada con éxito en Google Sheets!"), 500);
+                } else {
+                    google.script.run
+                        .withSuccessHandler(function(response) {
+                            showLoader(false);
+                            if (response && response.success) {
+                                if (!rawData.ventas) rawData.ventas = [];
+                                (rawData.ventas || []).push(record);
 
-function calculateLoanBalance() {
+                                if (cerrarCicloChecked && trackingCode) {
+                                    endLoteCycleDirect(trackingCode, fecha, () => {
+                                        applyFilters();
+                                        showLoader(false);
+                                        clearPOSForm();
+                                        alert("¡Información registrada con éxito y Código de Seguimiento (" + trackingCode + ") cerrado!");
+                                    });
+                                } else {
+                                    applyFilters();
+                                    showLoader(false);
+                                    clearPOSForm();
+                                    alert("¡Información registrada con éxito!");
+                                }
+                            } else {
+                                showPOSAlert(response ? response.error : "Error de respuesta.", "error");
+                            }
+                        })
+                        .withFailureHandler(function(err) {
+                            saveOfflineRecord("ventas", record).then(() => {
+                                if (!rawData.ventas) rawData.ventas = [];
+                                (rawData.ventas || []).push(record);
+                                applyFilters();
+                                showLoader(false);
+                                clearPOSForm();
+                                alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
+                            });
+                        })
+                        .guardarRegistro("ventas", record);
+                }
+            }
+        } // <--- ESTA LLAVE CIERRA LA FUNCIÓN handlePOSSubmit
+
+        function calculateLoanBalance() {        
             const valor = parseDecimal(document.getElementById("loanValor").value);
             const pago = parseDecimal(document.getElementById("loanPago").value);
             const balance = valor - pago;
