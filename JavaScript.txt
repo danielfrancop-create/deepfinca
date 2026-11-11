@@ -410,7 +410,7 @@ function fetchData(forceRefresh = false) {
         if (iconMobile) iconMobile.classList.remove("animate-spin");
     };
 
-    // 3. Conectar con Google Sheets (vía JSONP o Google Script Run)
+    // 3. Conectar con Google Sheets (vía JSONP)
     if (typeof google === 'undefined' || !google.script || !google.script.run) {
         console.warn("Conectando a Google Sheets vía JSONP...");
         
@@ -456,6 +456,28 @@ function fetchData(forceRefresh = false) {
         return;
     } 
     
+    // 4. Modo Google Scripts (si se ejecuta desde el entorno de Google)
+    google.script.run
+        .withSuccessHandler(function(response) {
+            stopSpin();
+            if (response && response.success) {
+                rawData = response.data;
+                try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
+                updateConfigHeader();
+                updateSyncTimestamp();
+                applyFilters();
+                fetchSecurityCredentialsBackend();
+            } else {
+                showError("Error en los datos recibidos.");
+            }
+            showLoader(false);
+        })
+        .withFailureHandler(function(err) {
+            stopSpin();
+            showError("Error de conexión: " + err.toString());
+        })
+        .getDashboardData();
+}
     // 4. Modo Google Scripts (si se ejecuta desde el entorno de Google)
     google.script.run
         .withSuccessHandler(function(response) {
