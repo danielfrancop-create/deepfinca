@@ -2436,7 +2436,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             }
         }
 
-        function handlePOSSubmit(event) {
+                function handlePOSSubmit(event) {
             event.preventDefault();
             hidePOSAlert();
 
@@ -2452,7 +2452,6 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             if (!rawData.ciclos) rawData.ciclos = [];
             const activeCycle = (rawData.ciclos || []).find(item => String(item.Lote || item.lote).trim() === lote && String(item.Estado || item.estado).toUpperCase() === 'EN PROCESO');
 
-            // Securely inherit and associate with active cycle tracking code
             let trackingCode = "";
             if (activeCycle) {
                 trackingCode = (activeCycle.Codigo_General || activeCycle.codigo_general || "").trim().toUpperCase();
@@ -2512,10 +2511,10 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                     Codigo_Seguimiento: trackingCode
                 };
 
-                // If lot has no active cycle, auto-create one in memory for simulated mode
+                let newCycle = null;
                 if (!activeCycle) {
                     const generatedCode = trackingCode || `FINCA-${lote.replace(/\s+/g,'').toUpperCase()}-${cultivo.substring(0,3).toUpperCase()}-2026-001`;
-                    const newCycle = {
+                    newCycle = {
                         Lote_Principal: lote,
                         Sub_Lote: "",
                         Lote: lote,
@@ -2533,6 +2532,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                     if (!rawData.ciclos) rawData.ciclos = [];
                     rawData.ciclos.push(newCycle);
                 }
+
                 if (!navigator.onLine) {
                     saveOfflineRecord("gastosIniciales", record).then(() => {
                         if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
@@ -2541,13 +2541,11 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                         showLoader(false);
                         clearPOSForm();
                         alert("¡Información registrada con éxito!");
-                        clearPOSForm();
                     });
                     return;
                 }
 
                 if (typeof google === 'undefined' || !google.script || !google.script.run) {
-                    // Enviar datos a Google Sheets usando una imagen oculta (evita CORS/CORB)
                     const params = new URLSearchParams();
                     params.append('action', 'guardarRegistro');
                     params.append('args', JSON.stringify(['gastosIniciales', record]));
@@ -2555,7 +2553,6 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                     const img = new Image();
                     img.src = GAS_URL + '?' + params.toString();
                     
-                    // Asumimos éxito después de un breve retraso
                     setTimeout(() => {
                         showLoader(false);
                         if (typeof fetchAllData === 'function') {
@@ -2567,7 +2564,6 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                         }
                         clearPOSForm();
                         alert("¡Información registrada con éxito en Google Sheets!");
-                        clearPOSForm();
                     }, 1000);
                 } else {
                     google.script.run
@@ -2589,7 +2585,6 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                                 applyFilters();
                                 clearPOSForm();
                                 alert("¡Información registrada con éxito!");
-                                clearPOSForm();
                             } else {
                                 showPOSAlert(response ? response.error : "Error de respuesta.", "error");
                             }
@@ -2605,7 +2600,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                             });
                         })
                         .guardarRegistro("gastosIniciales", record);
-                } // <--- ESTA LLAVE CIERRA EL BLOQUE DE "gastos_iniciales"
+                }
 
             } else if (activePOSTab === 'gastos_desarrollo') {
                 const insumo = document.getElementById("posInsumo").value;
@@ -2684,59 +2679,53 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                     });
                     return;
                 }
-                // ... AQUÍ DEBES CONTINUAR CON EL RESTO DEL CÓDIGO DE GASTOS_DESARROLLO ...
-                // (Recuerda que al final de la función debe ir un "}" para cerrar handlePOSSubmit)
-if (typeof google === 'undefined' || !google.script || !google.script.run) {
-    // Enviar datos a Google Sheets usando una imagen oculta (evita CORS/CORB)
-    const params = new URLSearchParams();
-    params.append('action', 'guardarRegistro');
-    params.append('args', JSON.stringify(['gastosDesarrollo', record]));
-    
-    const img = new Image();
-    img.src = GAS_URL + '?' + params.toString();
-    
-    // Asumimos éxito después de un breve retraso
-    setTimeout(() => {
-        showLoader(false);
-        if (typeof fetchAllData === 'function') {
-            fetchAllData();
-        } else {
-            updateLocalProrrateoRecords();
-            applyFilters();
-        }
-        clearPOSForm();
-        alert(isProrrateo ? `¡Gasto prorrateado exitosamente!` : "¡Información registrada con éxito en Google Sheets!");
-        clearPOSForm();
-    }, 1000);
-} else {
-    google.script.run
-        .withSuccessHandler(function(response) {
-            showLoader(false);
-            if (response && response.success) {
-                if (typeof fetchAllData === 'function') {
-                    fetchAllData();
+                if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                    const params = new URLSearchParams();
+                    params.append('action', 'guardarRegistro');
+                    params.append('args', JSON.stringify(['gastosDesarrollo', record]));
+                    
+                    const img = new Image();
+                    img.src = GAS_URL + '?' + params.toString();
+                    
+                    setTimeout(() => {
+                        showLoader(false);
+                        if (typeof fetchAllData === 'function') {
+                            fetchAllData();
+                        } else {
+                            updateLocalProrrateoRecords();
+                            applyFilters();
+                        }
+                        clearPOSForm();
+                        alert(isProrrateo ? `¡Gasto prorrateado exitosamente!` : "¡Información registrada con éxito en Google Sheets!");
+                    }, 1000);
                 } else {
-                    updateLocalProrrateoRecords();
-                    applyFilters();
+                    google.script.run
+                        .withSuccessHandler(function(response) {
+                            showLoader(false);
+                            if (response && response.success) {
+                                if (typeof fetchAllData === 'function') {
+                                    fetchAllData();
+                                } else {
+                                    updateLocalProrrateoRecords();
+                                    applyFilters();
+                                }
+                                clearPOSForm();
+                                alert(isProrrateo ? `¡Gasto prorrateado exitosamente entre ${response.numLotes || 'los'} lotes activos!` : "¡Información registrada con éxito!");
+                            } else {
+                                showPOSAlert(response ? response.error : "Error de respuesta.", "error");
+                            }
+                        })
+                        .withFailureHandler(function(err) {
+                            showLoader(false);
+                            saveOfflineRecord("gastosDesarrollo", record).then(() => {
+                                updateLocalProrrateoRecords();
+                                applyFilters();
+                                clearPOSForm();
+                                alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
+                            });
+                        })
+                        .guardarRegistro("gastosDesarrollo", record);
                 }
-                clearPOSForm();
-                alert(isProrrateo ? `¡Gasto prorrateado exitosamente entre ${response.numLotes || 'los'} lotes activos!` : "¡Información registrada con éxito!");
-            } else {
-                showPOSAlert(response ? response.error : "Error de respuesta.", "error");
-            }
-        })
-        .withFailureHandler(function(err) {
-            showLoader(false);
-            saveOfflineRecord("gastosDesarrollo", record).then(() => {
-                updateLocalProrrateoRecords();
-                applyFilters();
-                clearPOSForm();
-                alert("¡Información registrada con éxito!");
-                clearPOSForm();
-            });
-        })
-        .guardarRegistro("gastosDesarrollo", record);
-}
 
             } else if (activePOSTab === 'ventas') {
                 const producto = document.getElementById("posProducto").value;
@@ -2807,78 +2796,72 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                                 showLoader(false);
                                 clearPOSForm();
                                 alert("¡Información registrada con éxito y ciclo cerrado!");
-                                clearPOSForm();
                             });
                         } else {
                             applyFilters();
                             showLoader(false);
                             clearPOSForm();
                             alert("¡Información registrada con éxito!");
-                            clearPOSForm();
                         }
                     });
                     return;
                 }
-if (typeof google === 'undefined' || !google.script || !google.script.run) {
-    // Enviar datos a Google Sheets usando una imagen oculta (evita CORS/CORB)
-    const params = new URLSearchParams();
-    params.append('action', 'guardarRegistro');
-    params.append('args', JSON.stringify(['ventas', record]));
-    
-    const img = new Image();
-    img.src = GAS_URL + '?' + params.toString();
-    
-    // Asumimos éxito después de un breve retraso
-    setTimeout(() => {
-        showLoader(false);
-        if (!rawData.ventas) rawData.ventas = [];
-        (rawData.ventas || []).push(record);
-        applyFilters();
-        clearPOSForm();
-        alert("¡Información registrada con éxito en Google Sheets!");
-        clearPOSForm();
-    }, 1000);
- } else {
-                google.script.run
-                    .withSuccessHandler(function(response) {
-                        showLoader(false);
-                        if (response && response.success) {
-                            if (!rawData.ventas) rawData.ventas = [];
-                            (rawData.ventas || []).push(record);
 
-                            if (cerrarCicloChecked && trackingCode) {
-                                endLoteCycleDirect(trackingCode, fecha, () => {
+                if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                    const params = new URLSearchParams();
+                    params.append('action', 'guardarRegistro');
+                    params.append('args', JSON.stringify(['ventas', record]));
+                    
+                    const img = new Image();
+                    img.src = GAS_URL + '?' + params.toString();
+                    
+                    setTimeout(() => {
+                        showLoader(false);
+                        if (!rawData.ventas) rawData.ventas = [];
+                        (rawData.ventas || []).push(record);
+                        applyFilters();
+                        clearPOSForm();
+                        alert("¡Información registrada con éxito en Google Sheets!");
+                    }, 1000);
+                } else {
+                    google.script.run
+                        .withSuccessHandler(function(response) {
+                            showLoader(false);
+                            if (response && response.success) {
+                                if (!rawData.ventas) rawData.ventas = [];
+                                (rawData.ventas || []).push(record);
+
+                                if (cerrarCicloChecked && trackingCode) {
+                                    endLoteCycleDirect(trackingCode, fecha, () => {
+                                        applyFilters();
+                                        showLoader(false);
+                                        clearPOSForm();
+                                        alert("¡Información registrada con éxito y Código de Seguimiento (" + trackingCode + ") cerrado!");
+                                    });
+                                } else {
                                     applyFilters();
                                     showLoader(false);
                                     clearPOSForm();
-                                    alert("¡Información registrada con éxito y Código de Seguimiento (" + trackingCode + ") cerrado!");
-                                    clearPOSForm();
-                                });
+                                    alert("¡Información registrada con éxito!");
+                                }
                             } else {
+                                showPOSAlert(response ? response.error : "Error de respuesta.", "error");
+                            }
+                        })
+                        .withFailureHandler(function(err) {
+                            saveOfflineRecord("ventas", record).then(() => {
+                                if (!rawData.ventas) rawData.ventas = [];
+                                (rawData.ventas || []).push(record);
                                 applyFilters();
                                 showLoader(false);
                                 clearPOSForm();
-                                alert("¡Información registrada con éxito!");
-                                clearPOSForm();
-                            }
-                        } else {
-                            showPOSAlert(response ? response.error : "Error de respuesta.", "error");
-                        }
-                    })
-                    .withFailureHandler(function(err) {
-                        // Si falla el servidor, guardamos offline
-                        saveOfflineRecord("ventas", record).then(() => {
-                            if (!rawData.ventas) rawData.ventas = [];
-                            (rawData.ventas || []).push(record);
-                            applyFilters();
-                            showLoader(false);
-                            clearPOSForm();
-                            alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
-                        });
-                    })
-                    .guardarRegistro("ventas", record);
+                                alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
+                            });
+                        })
+                        .guardarRegistro("ventas", record);
+                }
             }
-        } // <-- ESTA LLAVE CIERRA LA FUNCIÓN handlePOSSubmit
+        } // <--- ESTA LLAVE CIERRA handlePOSSubmit
 
         function calculateLoanBalance() {
             const valor = parseDecimal(document.getElementById("loanValor").value);
