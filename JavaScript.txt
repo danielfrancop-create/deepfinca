@@ -6117,7 +6117,7 @@ function calculateLoanBalance() {
             });
         }
 
-        function handlePhotoUploadSubmit(event) {
+                function handlePhotoUploadSubmit(event) {
             event.preventDefault();
             const lote = document.getElementById("uploadPhotoLote").value;
             const fecha = document.getElementById("uploadPhotoFecha").value;
@@ -6163,8 +6163,11 @@ function calculateLoanBalance() {
                     return;
                 }
 
+                // AQUÍ ESTÁ EL CAMBIO CLAVE:
+                // Usamos enviarDatosGoogleSheets para que la foto viaje a Google Sheets
                 if (typeof google === 'undefined' || !google.script || !google.script.run) {
-                    alert("¡Fotografía guardada con éxito!");
+                    enviarDatosGoogleSheets('guardarFotoLote', record);
+                    alert("¡Fotografía guardada con éxito! Se está sincronizando con Google Drive...");
                 } else {
                     google.script.run
                         .withSuccessHandler(function(response) {
@@ -6344,7 +6347,6 @@ function calculateLoanBalance() {
                 }
             });
         }
-
         // --- CONTROL DE ROLES Y PERMISOS DE USUARIO ---
         let currentUserRole = (typeof google !== 'undefined' && google.script && google.script.run) ? "view" : "admin";
         let isUserActive = true;
@@ -7123,29 +7125,51 @@ function calculateLoanBalance() {
             checkCurrentUserRole();
         }
 function enviarDatosGoogleSheets(tipo, record) {
-    const url = MI_GAS_URL + '?action=guardarRegistro&args=' + encodeURIComponent(JSON.stringify([tipo, record]));
-    
-    // Creamos un iframe invisible para que el navegador no bloquee la petición
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.name = 'iframe_oculto_' + Date.now();
-    document.body.appendChild(iframe);
+    // Si es una foto, usamos fetch con POST para evitar el límite de URL y CORS
+    if (tipo === 'guardarFotoLote' || tipo === 'fotosLotes') {
+        const url = MI_GAS_URL;
+        const payload = {
+            action: 'guardarFotoLote',
+            args: JSON.stringify([record])
+        };
 
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = url;
-    form.target = iframe.name;
-    form.style.display = 'none';
-    
-    document.body.appendChild(form);
-    form.submit();
-    
-    // Limpiamos el HTML después de enviar
-    setTimeout(() => {
-        document.body.removeChild(form);
-        document.body.removeChild(iframe);
-    }, 2000);
+        fetch(url, {
+            method: 'POST',
+            mode: 'no-cors', // Evita bloqueos de CORS
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams(payload).toString()
+        })
+        .then(() => {
+            console.log("Petición POST de foto enviada");
+            alert("¡Fotografía guardada con éxito! (Sincronizando con Drive...)");
+        })
+        .catch(err => {
+            console.error("Error al guardar foto:", err);
+            alert("Error al guardar la foto. Verifica tu conexión.");
+        });
+    } else {
+        // Para registros normales (gastos, ventas), seguimos usando el iframe invisible
+        const url = MI_GAS_URL + '?action=' + tipo + '&args=' + encodeURIComponent(JSON.stringify([record]));
+        
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.name = 'iframe_oculto_' + Date.now();
+        document.body.appendChild(iframe);
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+        form.target = iframe.name;
+        form.style.display = 'none';
+        
+        document.body.appendChild(form);
+        form.submit();
+        
+        setTimeout(() => {
+            document.body.removeChild(form);
+            document.body.removeChild(iframe);
+        }, 2000);
+    }
 }
-
-        // Exponer initApp globalmente para que index.html lo llame
-        window.initApp = initApp;     
