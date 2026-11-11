@@ -436,25 +436,25 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                             dataFinal = response.data;
                         }
                         
-                        if (dataFinal && dataFinal.success) {
-                            rawData = dataFinal.data;
-                            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
-                            updateConfigHeader();
-                            updateSyncTimestamp();
-                            applyFilters();
-                            fetchSecurityCredentialsBackend();
-                            showLoader(false);
-                        } else if (dataFinal) { // Si la respuesta ES la data directamente
-                            rawData = dataFinal;
-                            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
-                            updateConfigHeader();
-                            updateSyncTimestamp();
-                            applyFilters();
-                            fetchSecurityCredentialsBackend();
-                            showLoader(false);
-                        } else {
-                            showError("No se obtuvo respuesta válida de Google.");
-                        }
+                       if (dataFinal && dataFinal.success) {
+    rawData = dataFinal.data;
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){} // <-- ESTA LÍNEA
+    updateConfigHeader();
+    updateSyncTimestamp();
+    applyFilters();
+    fetchSecurityCredentialsBackend();
+    showLoader(false);
+} else if (dataFinal) { 
+    rawData = dataFinal;
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){} // <-- ESTA LÍNEA
+    updateConfigHeader();
+    updateSyncTimestamp();
+    applyFilters();
+    fetchSecurityCredentialsBackend();
+    showLoader(false);
+} else {
+    showError("No se obtuvo respuesta válida de Google.");
+}
                     })
                     .catch(function(err) {
                         stopSpin();
