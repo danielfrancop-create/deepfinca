@@ -6017,7 +6017,7 @@ function calculateLoanBalance() {
                 const fecha = f.Fecha || f.fecha || "";
                 const titulo = f.Titulo || f.titulo || "Foto de Avance";
                 const desc = f.Descripcion || f.descripcion || "";
-                const imgSrc = f.Base64_Data || f.base64_data || f.Url_Foto_Drive || f.url_foto_drive || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='250' viewBox='0 0 400 250'><rect width='400' height='250' fill='%2310b981'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold' font-size='18'>Finca Los Sauces</text></svg>";
+                const imgSrc = f.Url_Foto_Drive || f.url_foto_drive || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='250' viewBox='0 0 400 250'><rect width='400' height='250' fill='%2310b981'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold' font-size='18'>Finca Los Sauces</text></svg>";
 
                 const card = document.createElement("div");
                 card.className = "bg-slate-50 dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700 shadow-xs flex flex-col justify-between group hover:shadow-lg transition duration-200";
