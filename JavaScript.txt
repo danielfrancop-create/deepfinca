@@ -7110,7 +7110,7 @@ function calculateLoanBalance() {
             checkCurrentUserRole();
         }
 function enviarDatosGoogleSheets(tipo, record) {
-    const url = MI_GAS_UR + '?action=guardarRegistro&args=' + encodeURIComponent(JSON.stringify([tipo, record]));
+    const url = MI_GAS_URL + '?action=guardarRegistro&args=' + encodeURIComponent(JSON.stringify([tipo, record]));
     
     // Creamos un iframe invisible para que el navegador no bloquee la petición
     const iframe = document.createElement('iframe');
