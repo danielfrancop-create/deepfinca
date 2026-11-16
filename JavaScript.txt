@@ -1,46 +1,757 @@
-        function showView(viewName) {
-            currentView = viewName;
-            
-            const drawer = document.getElementById("mobileMenuDrawer");
-            if (drawer && !drawer.classList.contains("hidden")) {
-                drawer.classList.add("hidden");
+var MI_GAS_URL = "https://script.google.com/macros/s/AKfycby47HRuaArTtDQb6lpZqz2SlLTJMxydc6jAhq2xbVsLERBX0rkzDqnssBBTyH-KoIid/exec";
+
+let rawData = null;
+let barChartInstance = null;
+let doughnutChartInstance = null;
+let currentDoughnutType = "gastos_desarrollo";
+let activePOSTab = 'gastos_iniciales';
+let currentView = 'dashboard';
+let showAllTransactions = false;
+let selectedMapLot = "Lote 1";
+let currentLightboxIndex = 0;
+let lightboxPhotosList = [];
+let lightboxZoomScale = 1;
+let lightboxPanX = 0;
+let lightboxPanY = 0;
+let isDraggingImage = false;
+let startDragX = 0;
+let startDragY = 0;
+let pendingDeleteState = null;
+let currentUserRole = "admin"; // Forzado a admin porque quitamos el módulo de usuarios
+let isUserActive = true;
+let isUserRegistered = true;
+
+// --- UTILIDADES ---
+function formatCOP(val) {
+    const num = Math.round(Number(val) || 0);
+    const isNegative = num < 0;
+    const absoluteValue = Math.abs(num);
+    const formatted = absoluteValue.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    return `${isNegative ? '-' : ''}$${formatted}`;
+}
+
+function parseDecimal(val) {
+    if (val === null || val === undefined || val === '') return 0;
+    const strVal = String(val).replace(',', '.');
+    const parsed = parseFloat(strVal);
+    return isNaN(parsed) ? 0 : parsed;
+}
+
+function showLoader(show, message) {
+    var loader = document.getElementById("loader");
+    if (loader) {
+        if (show) { loader.classList.remove("hidden"); loader.style.display = "flex"; } 
+        else { loader.classList.add("hidden"); loader.style.display = "none"; }
+    }
+    var msgEl = document.getElementById("loaderMessage");
+    if (message && msgEl) msgEl.textContent = message;
+}
+
+function hideLoader() {
+    var loader = document.getElementById("loader");
+    if (loader) loader.style.display = "none";
+}
+
+// --- TEMA (MODO OSCURO) ---
+function toggleTheme() {
+    const isDark = document.documentElement.classList.contains('dark');
+    if (isDark) {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+        document.getElementById("themeToggleIcon").textContent = "🌙";
+    } else {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+        document.getElementById("themeToggleIcon").textContent = "☀️";
+    }
+}
+
+function initThemeIcon() {
+    const isDark = document.documentElement.classList.contains('dark');
+    const icon = document.getElementById("themeToggleIcon");
+    if (icon) icon.textContent = isDark ? "☀️" : "🌙";
+}
+
+// --- NAVEGACIÓN ---
+function toggleDesktopNavDropdown(event) {
+    if (event) event.stopPropagation();
+    const menu = document.getElementById("desktopNavDropdownMenu");
+    if (menu) menu.classList.toggle("hidden");
+}
+
+document.addEventListener("click", function(event) {
+    const dropdownBtn = document.getElementById("desktopNavDropdownBtn");
+    const dropdownMenu = document.getElementById("desktopNavDropdownMenu");
+    if (dropdownMenu && !dropdownMenu.classList.contains("hidden")) {
+        if (dropdownBtn && !dropdownBtn.contains(event.target) && !dropdownMenu.contains(event.target)) {
+            dropdownMenu.classList.add("hidden");
+        }
+    }
+});
+
+function toggleMobileMenu() {
+    const drawer = document.getElementById("mobileMenuDrawer");
+    if (drawer) drawer.classList.toggle("hidden");
+}
+
+function showView(viewName) {
+    currentView = viewName;
+    const drawer = document.getElementById("mobileMenuDrawer");
+    if (drawer && !drawer.classList.contains("hidden")) drawer.classList.add("hidden");
+
+    const dashboardView = document.getElementById("dashboardView");
+    const dataEntryView = document.getElementById("dataEntryView");
+    const estadoResultadosView = document.getElementById("estadoResultadosView");
+    const mapaLotesView = document.getElementById("mapaLotesView");
+    
+    if (dashboardView) dashboardView.classList.add("hidden");
+    if (dataEntryView) dataEntryView.classList.add("hidden");
+    if (estadoResultadosView) estadoResultadosView.classList.add("hidden");
+    if (mapaLotesView) mapaLotesView.classList.add("hidden");
+
+    if (viewName === 'dashboard') {
+        if (dashboardView) dashboardView.classList.remove("hidden");
+        applyFilters();
+    } else if (viewName === 'data_entry') {
+        if (dataEntryView) dataEntryView.classList.remove("hidden");
+        populateDropdowns();
+        const posLoteSelect = document.getElementById("posLotePrincipal");
+        if (posLoteSelect && posLoteSelect.value === "") {
+            posLoteSelect.value = "Lote 1";
+            handlePOSLotePrincipalChange();
+        }
+    } else if (viewName === 'estado_resultados') {
+        if (estadoResultadosView) {
+            estadoResultadosView.classList.remove("hidden");
+            renderEstadoResultados();
+        }
+    } else if (viewName === 'mapa_lotes') {
+        if (mapaLotesView) {
+            mapaLotesView.classList.remove("hidden");
+            renderInteractiveMap();
+            renderPhotoGallery();
+        }
+    }
+}
+
+// --- CONEXIÓN CON GOOGLE SHEETS (JSONP) ---
+function fetchData(forceRefresh = false) {
+    const CACHE_KEY = "finca_dashboard_cache_data";
+    if (!forceRefresh) {
+        try {
+            const cachedStr = sessionStorage.getItem(CACHE_KEY);
+            if (cachedStr) {
+                const cachedData = JSON.parse(cachedStr);
+                if (cachedData && typeof cachedData === 'object') {
+                    rawData = cachedData;
+                    handleDataLoaded(rawData);
+                    showLoader(false);
+                }
             }
+        } catch (e) { console.warn("Error leyendo cache:", e); }
+    }
 
-            const dashboardView = document.getElementById("dashboardView");
-            const dataEntryView = document.getElementById("dataEntryView");
-            const estadoResultadosView = document.getElementById("estadoResultadosView");
-            const mapaLotesView = document.getElementById("mapaLotesView");
-            
-            const navButtons = document.querySelectorAll(".module-nav-btn");
-            const loteSelector = document.getElementById("loteSelector");
-            
-            if (dashboardView) dashboardView.classList.add("hidden");
-            if (dataEntryView) dataEntryView.classList.add("hidden");
-            if (estadoResultadosView) estadoResultadosView.classList.add("hidden");
-            if (mapaLotesView) mapaLotesView.classList.add("hidden");
-            
-            if (loteSelector) loteSelector.disabled = false;
-            
-            navButtons.forEach(btn => btn.classList.remove("hidden"));
+    const iconDesktop = document.getElementById("iconRefrescar");
+    const iconMobile = document.getElementById("iconRefrescarMobile");
+    if (iconDesktop) iconDesktop.classList.add("animate-spin");
+    if (iconMobile) iconMobile.classList.add("animate-spin");
 
-            if (viewName === 'dashboard') {
-                if (dashboardView) dashboardView.classList.remove("hidden");
-                applyFilters();
-            } else if (viewName === 'data_entry') {
-                if (dataEntryView) dataEntryView.classList.remove("hidden");
-                if (loteSelector) loteSelector.disabled = true;
-                populateDropdowns();
-                // ... (resto de la lógica para data_entry se mantiene igual)
-            } else if (viewName === 'estado_resultados') {
-                if (estadoResultadosView) {
-                    estadoResultadosView.classList.remove("hidden");
-                    renderEstadoResultados();
-                }
-            } else if (viewName === 'mapa_lotes') {
-                if (mapaLotesView) {
-                    mapaLotesView.classList.remove("hidden");
-                    renderInteractiveMap();
-                    renderPhotoGallery();
-                }
+    showLoader(true, "Refrescando datos desde Google Sheets...");
+
+    const stopSpin = () => {
+        if (iconDesktop) iconDesktop.classList.remove("animate-spin");
+        if (iconMobile) iconMobile.classList.remove("animate-spin");
+    };
+
+    const callbackName = 'jsonpGetCallback_' + Math.round(100000 * Math.random());
+    window[callbackName] = function(dataFinal) {
+        stopSpin();
+        if (dataFinal && dataFinal.success) {
+            rawData = dataFinal.data;
+            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(rawData)); } catch(e){}
+            handleDataLoaded(rawData);
+        } else {
+            console.error("Error en datos:", dataFinal);
+            alert("No se pudieron cargar los datos. Revisa la consola.");
+        }
+        showLoader(false);
+        if (document.body.contains(script)) document.body.removeChild(script);
+        delete window[callbackName];
+    };
+
+    const script = document.createElement('script');
+    script.src = MI_GAS_URL + '?action=getDashboardData&callback=' + callbackName;
+    script.onerror = function() {
+        stopSpin();
+        alert("Error de conexión (JSONP) al cargar datos.");
+        showLoader(false);
+        if (document.body.contains(script)) document.body.removeChild(script);
+        delete window[callbackName];
+    };
+    document.body.appendChild(script);
+}
+
+function enviarDatosGoogleSheets(tipo, record) {
+    const callbackName = 'jsonpSaveCallback_' + Math.round(100000 * Math.random());
+    window[callbackName] = function(response) {
+        if (response && response.success) {
+            console.log(`✅ Registro ${tipo} guardado.`);
+        } else {
+            console.error(`❌ Error al guardar ${tipo}:`, response);
+            alert("Hubo un problema al guardar en Google Sheets.");
+        }
+        if (document.body.contains(script)) document.body.removeChild(script);
+        delete window[callbackName];
+    };
+
+    const script = document.createElement('script');
+    script.src = MI_GAS_URL + '?action=' + tipo + '&callback=' + callbackName + '&args=' + encodeURIComponent(JSON.stringify([record]));
+    script.onerror = function() {
+        console.error("❌ Error de red al guardar.");
+        if (document.body.contains(script)) document.body.removeChild(script);
+        delete window[callbackName];
+    };
+    document.body.appendChild(script);
+}
+
+function handleDataLoaded(data) {
+    rawData = data || {};
+    if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
+    if (!rawData.gastosDesarrollo) rawData.gastosDesarrollo = [];
+    if (!rawData.ventas) rawData.ventas = [];
+    if (!rawData.configuracion) rawData.configuracion = [];
+    if (!rawData.ciclos) rawData.ciclos = [];
+    if (!rawData.fotosLotes) rawData.fotosLotes = [];
+    
+    updateConfigHeader();
+    applyFilters();
+    showLoader(false);
+}
+
+function updateConfigHeader() {
+    if (!rawData || !rawData.configuracion) return;
+    const configMap = {};
+    (rawData.configuracion || []).forEach(item => {
+        const param = String(item.Parametro || item.parametro).trim();
+        const valor = String(item.Valor || item.valor).trim();
+        if (param) configMap[param] = valor;
+    });
+    const nombreFinca = configMap["Nombre_Finca"] || "Finca Los Sauces";
+    const ubicacion = configMap["Ubicacion"] || "Manizales, Caldas";
+    document.getElementById("headerTitle").textContent = nombreFinca;
+    document.getElementById("headerSubtitle").textContent = `Ubicación: ${ubicacion} | Última Sincronización: ${new Date().toLocaleDateString()}`;
+    populateDropdowns();
+}
+
+// --- LÓGICA DE FILTROS Y MATEMÁTICAS ---
+function normalizeLoteStr(str) {
+    if (!str) return "";
+    let s = String(str).toUpperCase().trim();
+    s = s.replace(/\(CONSOLIDADO.*?\)/g, "").trim();
+    s = s.replace(/LOTE\s*/g, "").replace(/\-/g, "").replace(/\s+/g, "");
+    return s;
+}
+
+function isLoteMatch(itemLoteStr, targetLoteStr) {
+    const target = String(targetLoteStr || "Todos").trim();
+    if (!target || target === "Todos") return true;
+    const normTarget = normalizeLoteStr(target);
+    const normItem = normalizeLoteStr(itemLoteStr);
+    if (normTarget === "TODOS" || normTarget === "") return true;
+    if (normItem === normTarget) return true;
+    if (/^\d+$/.test(normTarget)) {
+        const pattern = new RegExp("^" + normTarget + "[A-Z]+$");
+        if (pattern.test(normItem)) return true;
+    }
+    return false;
+}
+
+function getCultivoForTx(item) {
+    if (!item) return "N/A";
+    const directCultivo = String(item.Cultivo_Semilla || item.cultivo_semilla || item.Cultivo || item.cultivo || item.Producto_Vendido || item.producto_vendido || "").trim();
+    if (directCultivo) return directCultivo;
+    if (!rawData) return "N/A";
+    const lote = String(item.Lote || item.lote || "").trim();
+    if (rawData.gastosIniciales) {
+        const ini = (rawData.gastosIniciales || []).find(x => isLoteMatch(x.Lote || x.lote, lote));
+        if (ini) return String(ini.Cultivo_Semilla || ini.cultivo_semilla || "").trim();
+    }
+    return "N/A";
+}
+
+function syncSelectors(source) {
+    const headerSelect = document.getElementById("loteSelector");
+    const barSelect = document.getElementById("filterLote");
+    const cfSelect = document.getElementById("cashflowLoteSelector");
+
+    let targetVal = "Todos";
+    if (source === 'header' && headerSelect) targetVal = headerSelect.value;
+    else if (source === 'bar' && barSelect) targetVal = barSelect.value;
+    else if (source === 'cashflow' && cfSelect) targetVal = cfSelect.value;
+
+    if (headerSelect && headerSelect.value !== targetVal) headerSelect.value = targetVal;
+    if (barSelect && barSelect.value !== targetVal) barSelect.value = targetVal;
+    if (cfSelect && cfSelect.value !== targetVal) cfSelect.value = targetVal;
+
+    applyFilters();
+}
+
+function applyFilters() {
+    if (!rawData) return;
+    
+    const selectedLote = document.getElementById("loteSelector") ? document.getElementById("loteSelector").value : "Todos";
+    
+    const filterLoteSelect = document.getElementById("filterLote");
+    if (filterLoteSelect && filterLoteSelect.value !== selectedLote) {
+        filterLoteSelect.value = selectedLote;
+    }
+
+    const checkLoteMatch = (loteStr) => isLoteMatch(loteStr, selectedLote);
+
+    const gInicialesFiltrados = (rawData.gastosIniciales || []).filter(item => checkLoteMatch(item.Lote || item.lote));
+    const gDesarrolloFiltrados = (rawData.gastosDesarrollo || []).filter(item => checkLoteMatch(item.Lote || item.lote));
+    const ventasFiltradas = (rawData.ventas || []).filter(item => checkLoteMatch(item.Lote || item.lote));
+
+    const counterInicialesEl = document.getElementById("counterIniciales");
+    if (counterInicialesEl) counterInicialesEl.textContent = `${gInicialesFiltrados.length} registros (Total en el filtro)`;
+    const counterDesarrolloEl = document.getElementById("counterDesarrollo");
+    if (counterDesarrolloEl) counterDesarrolloEl.textContent = `${gDesarrolloFiltrados.length} registros (Total en el filtro)`;
+    const counterVentasEl = document.getElementById("counterVentas");
+    if (counterVentasEl) counterVentasEl.textContent = `${ventasFiltradas.length} registros (Total en el filtro)`;
+
+    const totalGastosIniciales = gInicialesFiltrados.reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
+    const totalGastosDesarrollo = gDesarrolloFiltrados.reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
+    const totalVentas = ventasFiltradas.reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0), 0);
+    const totalUnidades = ventasFiltradas.reduce((sum, item) => sum + (Number(item.Unidades_Cosechadas || item.unidades_cosechadas || item.Cantidad || item.cantidad) || 0), 0);
+    
+    const gastosTotales = totalGastosIniciales + totalGastosDesarrollo;
+    const utilidadNeta = totalVentas - gastosTotales;
+    let roiPorcentaje = gastosTotales > 0 ? (utilidadNeta / gastosTotales) * 100 : 0;
+
+    const kpiUtilidadNetaEl = document.getElementById("kpiUtilidadNeta");
+    if (kpiUtilidadNetaEl) kpiUtilidadNetaEl.textContent = formatCOP(utilidadNeta);
+    
+    updateLoteSummaryMetrics(selectedLote, gastosTotales, totalUnidades, totalUnidades > 0 ? totalVentas / totalUnidades : 0);
+
+    const kpiRoiEl = document.getElementById("kpiRoi");
+    if (kpiRoiEl) {
+        kpiRoiEl.textContent = `${roiPorcentaje.toFixed(1)}%`;
+        kpiRoiEl.className = roiPorcentaje >= 0 ? "text-xl sm:text-2xl font-extrabold text-emerald-600 mt-1" : "text-xl sm:text-2xl font-extrabold text-rose-600 mt-1";
+    }
+
+    const kpiInversionVsVentasEl = document.getElementById("kpiInversionVsVentas");
+    if (kpiInversionVsVentasEl) kpiInversionVsVentasEl.textContent = `${formatCOP(gastosTotales)} vs ${formatCOP(totalVentas)}`;
+
+    renderCharts(selectedLote);
+    renderTransaccionesTable(selectedLote);
+    renderCashflowModule();
+}
+
+function updateLoteSummaryMetrics(loteId, calcGastos, calcUnidades, calcPrecioVenta) {
+    const currentLote = loteId || "Todos";
+    const cardTitleEl = document.getElementById("kpiResumenLoteTitulo");
+    if (cardTitleEl) cardTitleEl.textContent = (currentLote !== "Todos") ? `Resumen de Lote [${currentLote}]` : "Resumen de Lote";
+
+    const inputPrecio = document.getElementById("inputPrecioMercadoRef");
+    let precioRef = inputPrecio ? parseFloat(inputPrecio.value) : 0;
+    if (isNaN(precioRef) || precioRef <= 0) precioRef = calcPrecioVenta || 0;
+
+    let totalCost = calcGastos || 0;
+    let qty = calcUnidades || 0;
+    let isEstimated = false;
+
+    if (qty <= 0) {
+        isEstimated = true;
+        const iniRecords = (rawData.gastosIniciales || []).filter(item => isLoteMatch(item.Lote || item.lote, currentLote));
+        const seedQty = iniRecords.reduce((sum, item) => sum + (Number(item.Cantidad || item.cantidad) || 0), 0);
+        qty = seedQty > 0 ? seedQty * 2.8 : 0;
+    }
+
+    const unitCost = qty > 0 ? (totalCost / qty) : 0;
+    const unitMargin = (precioRef > 0 && unitCost > 0) ? (precioRef - unitCost) : (precioRef > 0 ? precioRef : 0);
+    const pctRentabilidad = (precioRef > 0) ? (((precioRef - unitCost) / precioRef) * 100) : (unitCost > 0 ? -100 : 0);
+
+    const cuEl = document.getElementById("kpiCostoUnitario");
+    if (cuEl) cuEl.textContent = unitCost > 0 ? `${formatCOP(unitCost)} / Atado` : `$0 / Atado`;
+    const sideCuEl = document.getElementById("kpiSideCostoUnitario");
+    if (sideCuEl) sideCuEl.textContent = `${formatCOP(unitCost)} / Atado`;
+    
+    const badgeStatusEl = document.getElementById("kpiStatusRentabilidadBadge");
+    if (badgeStatusEl) {
+        badgeStatusEl.textContent = `🟢 +${pctRentabilidad.toFixed(1)}%`;
+        badgeStatusEl.className = "px-2.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-xs flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200";
+    }
+}
+
+function renderCharts(selectedLote) {
+    if (barChartInstance) barChartInstance.destroy();
+    if (doughnutChartInstance) doughnutChartInstance.destroy();
+
+    let lotes = [];
+    if (selectedLote === "Todos") { for (let i = 1; i <= 16; i++) lotes.push(`Lote ${i}`); } else { lotes.push(selectedLote); }
+
+    const datasetCostos = [], datasetVentas = [], activeLotes = [];
+    lotes.forEach(lote => {
+        const gIni = (rawData.gastosIniciales || []).filter(item => isLoteMatch(item.Lote || item.lote, lote)).reduce((sum, item) => sum + (Number(item.Costo_Total_COP) || 0), 0);
+        const gDes = (rawData.gastosDesarrollo || []).filter(item => isLoteMatch(item.Lote || item.lote, lote)).reduce((sum, item) => sum + (Number(item.Costo_Total_COP) || 0), 0);
+        const v = (rawData.ventas || []).filter(item => isLoteMatch(item.Lote || item.lote, lote)).reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP) || 0), 0);
+        if (gIni === 0 && gDes === 0 && v === 0) return;
+        activeLotes.push(lote); datasetCostos.push(gIni + gDes); datasetVentas.push(v);
+    });
+
+    const ctxBar = document.getElementById('barChart');
+    if (ctxBar) {
+        barChartInstance = new Chart(ctxBar.getContext('2d'), {
+            type: 'bar', data: { labels: activeLotes, datasets: [{ label: 'Costo', data: datasetCostos, backgroundColor: 'rgba(239, 68, 68, 0.85)' }, { label: 'Venta', data: datasetVentas, backgroundColor: 'rgba(16, 185, 129, 0.85)' }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    const desgloseInsumos = {};
+    const fDes = (rawData.gastosDesarrollo || []).filter(item => isLoteMatch(item.Lote || item.lote, selectedLote));
+    fDes.forEach(item => {
+        const tipo = String(item.Tipo_Insumo || "Otros").trim();
+        desgloseInsumos[tipo] = (desgloseInsumos[tipo] || 0) + (Number(item.Costo_Total_COP) || 0);
+    });
+
+    const ctxDona = document.getElementById('doughnutChart');
+    if (ctxDona && Object.keys(desgloseInsumos).length > 0) {
+        doughnutChartInstance = new Chart(ctxDona.getContext('2d'), {
+            type: 'doughnut', data: { labels: Object.keys(desgloseInsumos), datasets: [{ data: Object.values(desgloseInsumos), backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'] }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '65%' }
+        });
+    }
+}
+
+function changeDoughnutType(type) {
+    currentDoughnutType = type;
+    const selectedLote = document.getElementById("loteSelector")?.value || "Todos";
+    renderCharts(selectedLote);
+}
+
+// --- LÓGICA DEL POS ---
+function populateDropdowns() {
+    if (!rawData) return;
+    const cultivosSet = new Set(["Café Castillo", "Aguacate Hass", "Cacao Fino de Aroma", "Limón Tahití", "Plátano Hartón", "Cebolla Larga"]);
+    const insumosSet = new Set(["Fertilizantes", "Mano de Obra", "Pesticidas", "Riego", "Herramientas", "Otros"]);
+    const productosSet = new Set(["Café Pergamino Seco", "Aguacate Hass Extra", "Cacao en Grano", "Limón Tahití Selección", "Plátano Hartón de Primera", "Cebolla Larga Seleccionada"]);
+    
+    const cultivoSelect = document.getElementById("posCultivo");
+    if (cultivoSelect) {
+        const currentVal = cultivoSelect.value;
+        cultivoSelect.innerHTML = '<option value="" disabled selected>Selecciona un cultivo...</option>';
+        Array.from(cultivosSet).sort().forEach(c => { const opt = document.createElement("option"); opt.value = c; opt.textContent = c; cultivoSelect.appendChild(opt); });
+        if (currentVal) cultivoSelect.value = currentVal;
+    }
+    
+    const insumoSelect = document.getElementById("posInsumo");
+    if (insumoSelect) {
+        const currentVal = insumoSelect.value;
+        insumoSelect.innerHTML = '<option value="" disabled selected>Selecciona un insumo...</option>';
+        Array.from(insumosSet).sort().forEach(i => { const opt = document.createElement("option"); opt.value = i; opt.textContent = i; insumoSelect.appendChild(opt); });
+        if (currentVal) insumoSelect.value = currentVal;
+    }
+    
+    const productoSelect = document.getElementById("posProducto");
+    if (productoSelect) {
+        const currentVal = productoSelect.value;
+        productoSelect.innerHTML = '<option value="" disabled selected>Selecciona un producto...</option>';
+        Array.from(productosSet).sort().forEach(p => { const opt = document.createElement("option"); opt.value = p; opt.textContent = p; productoSelect.appendChild(opt); });
+        if (currentVal) productoSelect.value = currentVal;
+    }
+}
+
+function switchPOSTab(tab) {
+    activePOSTab = tab;
+    ['gastos_iniciales', 'gastos_desarrollo', 'ventas', 'ciclos_lot'].forEach(t => {
+        const btn = document.getElementById(`tabBtn_${t}`);
+        const section = document.getElementById(`section_${t}`);
+        if (btn && section) {
+            if (t === tab) {
+                btn.className = "flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition duration-150 ease-in-out cursor-pointer shadow-sm border border-slate-200 bg-emerald-600 text-white";
+                section.classList.remove("hidden");
+            } else {
+                btn.className = "flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition duration-150 ease-in-out cursor-pointer bg-white text-slate-600 hover:bg-slate-100 border border-slate-200";
+                section.classList.add("hidden");
             }
         }
+    });
+    
+    if (tab === 'ciclos_lot') {
+        updateCyclesTabUI();
+    } else {
+        const submitBar = document.getElementById("posSubmitButtonsBar");
+        if (submitBar) submitBar.classList.remove("hidden");
+    }
+}
+
+function handlePOSLotePrincipalChange() {
+    const posLoteSelect = document.getElementById("posLotePrincipal");
+    if (posLoteSelect) {
+        document.getElementById("posLote").value = posLoteSelect.value;
+    }
+}
+
+function calcPOSTotals(section, triggerSource) {
+    let qtyEl, unitEl, totalEl;
+    if (section === 'inicial') { qtyEl = document.getElementById("posCantidadInicial"); unitEl = document.getElementById("posCostoUnitarioInicial"); totalEl = document.getElementById("posCostoInicial"); }
+    else if (section === 'desarrollo') { qtyEl = document.getElementById("posCantidadDesarrollo"); unitEl = document.getElementById("posCostoUnitarioDesarrollo"); totalEl = document.getElementById("posCostoDesarrollo"); }
+    else if (section === 'venta') { qtyEl = document.getElementById("posUnidadesVenta"); unitEl = document.getElementById("posPrecioUnitarioVenta"); totalEl = document.getElementById("posIngresoVenta"); }
+
+    if (!qtyEl || !unitEl || !totalEl) return;
+    const qty = parseDecimal(qtyEl.value) || 1;
+    const unit = parseDecimal(unitEl.value);
+    const total = parseDecimal(totalEl.value);
+
+    if (triggerSource === 'unitario') totalEl.value = Math.round((qty * unit) * 100) / 100;
+    else if (triggerSource === 'total' && qty > 0) unitEl.value = Math.round((total / qty) * 100) / 100;
+}
+
+function togglePOSDueDate(section) {
+    let radioName = "";
+    let containerId = "";
+    let inputId = "";
+    if (section === 'inicial') { radioName = "posEstadoPagoInicial"; containerId = "posContainerFechaVencInicial"; inputId = "posFechaVencimientoInicial"; }
+    else if (section === 'desarrollo') { radioName = "posEstadoPagoDesarrollo"; containerId = "posContainerFechaVencDesarrollo"; inputId = "posFechaVencimientoDesarrollo"; }
+    else if (section === 'venta') { radioName = "posEstadoPagoVenta"; containerId = "posContainerFechaVencVenta"; inputId = "posFechaVencimientoVenta"; }
+
+    const radios = document.getElementsByName(radioName);
+    let selectedVal = "PAGADO";
+    for (let i = 0; i < radios.length; i++) if (radios[i].checked) { selectedVal = radios[i].value; break; }
+
+    const container = document.getElementById(containerId);
+    const input = document.getElementById(inputId);
+    if (container && input) {
+        if (selectedVal === 'PENDIENTE') {
+            container.classList.remove("opacity-50", "pointer-events-none");
+            input.disabled = false;
+        } else {
+            container.classList.add("opacity-50", "pointer-events-none");
+            input.disabled = true;
+        }
+    }
+}
+
+function clearPOSForm() {
+    const posForm = document.getElementById("posForm");
+    if (posForm) posForm.reset();
+    const today = new Date().toISOString().split('T')[0];
+    ["posFecha", "posFechaVencimientoInicial", "posFechaVencimientoDesarrollo", "posFechaVencimientoVenta"].forEach(id => { const el = document.getElementById(id); if (el) el.value = today; });
+    hidePOSAlert();
+}
+
+function showPOSAlert(msg, type) {
+    const alertDiv = document.getElementById("posAlert");
+    const alertMsg = document.getElementById("posAlertMsg");
+    if (alertDiv && alertMsg) {
+        alertDiv.classList.remove("hidden");
+        alertMsg.textContent = msg;
+        if (type === "error") alertDiv.className = "mx-6 mt-4 p-4 rounded-xl flex items-center bg-rose-50 border border-rose-200 text-rose-800";
+        else alertDiv.className = "mx-6 mt-4 p-4 rounded-xl flex items-center bg-emerald-50 border border-emerald-200 text-emerald-800";
+    }
+}
+function hidePOSAlert() { const alertDiv = document.getElementById("posAlert"); if (alertDiv) alertDiv.classList.add("hidden"); }
+
+function handlePOSSubmit(event) {
+    event.preventDefault();
+    hidePOSAlert();
+
+    const lote = document.getElementById("posLote").value;
+    const fecha = document.getElementById("posFecha").value;
+
+    if (!lote || !fecha) { showPOSAlert("Completa los campos requeridos (*).", "error"); return; }
+    showLoader(true);
+
+    let record = {};
+    let tipoEnvio = "";
+
+    if (activePOSTab === 'gastos_iniciales') {
+        const cultivo = document.getElementById("posCultivo").value;
+        const cantidad = parseDecimal(document.getElementById("posCantidadInicial").value) || 1;
+        const costo = parseDecimal(document.getElementById("posCostoInicial").value);
+        if (!cultivo || costo <= 0) { showLoader(false); showPOSAlert("Ingresa cultivo y costo válido.", "error"); return; }
+        
+        tipoEnvio = "gastosIniciales";
+        record = { Lote: lote, Cultivo_Semilla: cultivo, Cantidad: cantidad, Costo_Total_COP: costo, Estado_Pago: "PAGADO", Fecha: fecha, Codigo_Seguimiento: "INI-" + lote.replace(/\s+/g, "").toUpperCase() + "-" + cultivo.substring(0,3).toUpperCase() };
+    } 
+    else if (activePOSTab === 'gastos_desarrollo') {
+        const insumo = document.getElementById("posInsumo").value;
+        const cantidad = parseDecimal(document.getElementById("posCantidadDesarrollo").value) || 1;
+        const costo = parseDecimal(document.getElementById("posCostoDesarrollo").value);
+        if (!insumo || costo <= 0) { showLoader(false); showPOSAlert("Ingresa insumo y costo válido.", "error"); return; }
+        
+        tipoEnvio = "gastosDesarrollo";
+        record = { Lote: lote, Tipo_Insumo: insumo, Cantidad: cantidad, Costo_Total_COP: costo, Estado_Pago: "PAGADO", Fecha: fecha };
+    } 
+    else if (activePOSTab === 'ventas') {
+        const producto = document.getElementById("posProducto").value;
+        const cantidad = parseDecimal(document.getElementById("posUnidadesVenta").value) || 1;
+        const ingreso = parseDecimal(document.getElementById("posIngresoVenta").value);
+        if (!producto || ingreso <= 0) { showLoader(false); showPOSAlert("Ingresa producto e ingreso válido.", "error"); return; }
+        
+        tipoEnvio = "ventas";
+        record = { Lote: lote, Producto_Vendido: producto, Cantidad: cantidad, Unidades_Cosechadas: cantidad, Ingreso_Total_COP: ingreso, Estado_Pago: "PAGADO", Fecha: fecha };
+    }
+
+    enviarDatosGoogleSheets(tipoEnvio, record);
+    
+    setTimeout(() => {
+        showLoader(false);
+        if (!rawData[tipoEnvio]) rawData[tipoEnvio] = [];
+        rawData[tipoEnvio].push(record);
+        applyFilters();
+        clearPOSForm();
+        alert("¡Información registrada con éxito!");
+    }, 1000);
+}
+
+// --- TRANSACCIONES ---
+function renderTransaccionesTable(selectedLote) {
+    const tableBody = document.getElementById("transaccionesTableBody");
+    if (!tableBody || !rawData) return;
+    tableBody.innerHTML = "";
+    
+    let allTx = [];
+    (rawData.gastosIniciales || []).forEach(item => { if (isLoteMatch(item.Lote || item.lote, selectedLote)) allTx.push({ lote: item.Lote, tipo: "Inicial", concepto: item.Cultivo_Semilla, monto: Number(item.Costo_Total_COP), fecha: item.Fecha, detalles: item.Notas || "-" }); });
+    (rawData.gastosDesarrollo || []).forEach(item => { if (isLoteMatch(item.Lote || item.lote, selectedLote)) allTx.push({ lote: item.Lote, tipo: "Desarrollo", concepto: item.Tipo_Insumo, monto: Number(item.Costo_Total_COP), fecha: item.Fecha, detalles: item.Detalle || "-" }); });
+    (rawData.ventas || []).forEach(item => { if (isLoteMatch(item.Lote || item.lote, selectedLote)) allTx.push({ lote: item.Lote, tipo: "Venta", concepto: item.Producto_Vendido, monto: Number(item.Ingreso_Total_COP), fecha: item.Fecha, detalles: item.Comprador || "-" }); });
+
+    allTx.sort((a, b) => b.fecha.localeCompare(a.fecha));
+    const itemsToRender = showAllTransactions ? allTx : allTx.slice(0, 5);
+
+    itemsToRender.forEach(tx => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50 transition duration-150";
+        tr.innerHTML = `
+            <td class="px-6 py-4 font-bold text-slate-900">${tx.lote}</td>
+            <td class="px-6 py-4"><span class="px-2 py-1 rounded bg-slate-100 text-xs font-semibold border">${tx.tipo}</span></td>
+            <td class="px-6 py-4 text-slate-700">${tx.concepto}</td>
+            <td class="px-6 py-4 text-right font-bold ${tx.tipo === 'Venta' ? 'text-emerald-600' : 'text-slate-800'}">${formatCOP(tx.monto)}</td>
+            <td class="px-6 py-4 text-xs text-slate-500">${tx.fecha}</td>
+            <td class="px-6 py-4 text-xs text-slate-500 truncate max-w-xs">${tx.detalles}</td>
+        `;
+        tableBody.appendChild(tr);
+    });
+
+    const countEl = document.getElementById("transaccionesCount");
+    if (countEl) countEl.textContent = `Mostrando ${itemsToRender.length} de ${allTx.length} registros`;
+}
+
+function toggleShowAllTransactions() {
+    showAllTransactions = !showAllTransactions;
+    const lote = document.getElementById("loteSelector")?.value || "Todos";
+    renderTransaccionesTable(lote);
+}
+
+function renderCashflowModule() {
+    if (!rawData) return;
+    const selectedLote = document.getElementById("cashflowLoteSelector")?.value || "Todos";
+    const v = (rawData.ventas || []).filter(item => isLoteMatch(item.Lote || item.lote, selectedLote)).reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP) || 0), 0);
+    const g = (rawData.gastosIniciales || []).concat(rawData.gastosDesarrollo || []).filter(item => isLoteMatch(item.Lote || item.lote, selectedLote)).reduce((sum, item) => sum + (Number(item.Costo_Total_COP) || 0), 0);
+    
+    const cfEfectivoIngresadoEl = document.getElementById("cfEfectivoIngresado"); if (cfEfectivoIngresadoEl) cfEfectivoIngresadoEl.textContent = formatCOP(v);
+    const cfEfectivoGastadoEl = document.getElementById("cfEfectivoGastado"); if (cfEfectivoGastadoEl) cfEfectivoGastadoEl.textContent = formatCOP(g);
+    const cfSaldoDisponibleEl = document.getElementById("cfSaldoDisponible"); if (cfSaldoDisponibleEl) cfSaldoDisponibleEl.textContent = formatCOP(v - g);
+    const cfSaldoProyectadoEl = document.getElementById("cfSaldoProyectado"); if (cfSaldoProyectadoEl) cfSaldoProyectadoEl.textContent = formatCOP(v - g);
+}
+
+// --- ESTADO DE RESULTADOS ---
+function renderEstadoResultados() {
+    if (!rawData) return;
+    const selectedLote = document.getElementById("loteSelector").value;
+    const totalIniciales = (rawData.gastosIniciales || []).filter(item => isLoteMatch(item.Lote || item.lote, selectedLote)).reduce((sum, item) => sum + (Number(item.Costo_Total_COP) || 0), 0);
+    const totalDesarrollo = (rawData.gastosDesarrollo || []).filter(item => isLoteMatch(item.Lote || item.lote, selectedLote)).reduce((sum, item) => sum + (Number(item.Costo_Total_COP) || 0), 0);
+    const totalVentas = (rawData.ventas || []).filter(item => isLoteMatch(item.Lote || item.lote, selectedLote)).reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP) || 0), 0);
+    const utilidadNeta = totalVentas - (totalIniciales + totalDesarrollo);
+    document.getElementById("plVentas").textContent = formatCOP(totalVentas);
+    document.getElementById("plCostosIniciales").textContent = formatCOP(totalIniciales);
+    document.getElementById("plCostosDesarrollo").textContent = formatCOP(totalDesarrollo);
+    document.getElementById("plUtilidad").textContent = formatCOP(utilidadNeta);
+}
+
+// --- MAPA Y FOTOS ---
+function renderInteractiveMap() {
+    if (!rawData) return;
+    for (let i = 1; i <= 11; i++) {
+        const lote = `Lote ${i}`;
+        const activeCycle = (rawData.ciclos || []).find(c => String(c.Lote || c.lote).trim() === lote && String(c.Estado).toUpperCase() === 'EN PROCESO');
+        const ini = (rawData.gastosIniciales || []).find(x => isLoteMatch(x.Lote || x.lote, lote));
+        
+        let color = "#64748b"; // Gris
+        if (activeCycle || ini) color = "#10b981"; // Verde
+
+        const polyEl = document.getElementById("poly-lote-" + i);
+        if (polyEl) {
+            polyEl.setAttribute("fill", color);
+            polyEl.setAttribute("fill-opacity", "0.3");
+            polyEl.setAttribute("stroke", color);
+        }
+        const svgCrop = document.getElementById("svg_crop_Lote" + i);
+        if (svgCrop) svgCrop.textContent = activeCycle ? activeCycle.Cultivo : (ini ? ini.Cultivo_Semilla : "Libre");
+    }
+}
+
+function renderPhotoGallery() {
+    const container = document.getElementById("photoGalleryContainer");
+    if (!container) return;
+    container.innerHTML = "<p class='text-xs text-slate-500 col-span-full'>Galería en mantenimiento (módulo simplificado).</p>";
+}
+
+// --- MODALES DE ELIMINACIÓN ---
+function openDeleteModal(tipo, codigo) {
+    if (confirm("¿Estás seguro de eliminar este registro?")) {
+        showLoader(true, "Eliminando...");
+        const callbackName = 'jsonpDeleteCallback_' + Math.round(100000 * Math.random());
+        window[callbackName] = function(response) {
+            if (response && response.success) {
+                fetchData(true);
+                alert("Registro eliminado.");
+            } else {
+                alert("Error al eliminar: " + (response ? response.message : "Desconocido"));
+            }
+            showLoader(false);
+            document.body.removeChild(script);
+            delete window[callbackName];
+        };
+        const script = document.createElement('script');
+        script.src = MI_GAS_URL + '?action=eliminarRegistroSeguro&callback=' + callbackName + '&args=' + encodeURIComponent(JSON.stringify([tipo, codigo, "191385"]));
+        document.body.appendChild(script);
+    }
+}
+
+// --- EXPORTACIÓN A PDF ---
+function exportToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'pt', 'a4');
+    doc.text("Reporte de Transacciones - Finca Los Sauces", 40, 40);
+    doc.save("Reporte.pdf");
+}
+
+function openInformeGeneralModal() { alert("Informe general simplificado no disponible en esta versión."); }
+
+// --- ARRANQUE ---
+function initApp() {
+    initThemeIcon();
+    fetchData();
+}
+
+window.toggleTheme = toggleTheme;
+window.toggleMobileMenu = toggleMobileMenu;
+window.showView = showView;
+window.fetchData = fetchData;
+window.syncSelectors = syncSelectors;
+window.applyFilters = applyFilters;
+window.toggleDesktopNavDropdown = toggleDesktopNavDropdown;
+window.switchPOSTab = switchPOSTab;
+window.handlePOSLotePrincipalChange = handlePOSLotePrincipalChange;
+window.handlePOSSubmit = handlePOSSubmit;
+window.clearPOSForm = clearPOSForm;
+window.calcPOSTotals = calcPOSTotals;
+window.togglePOSDueDate = togglePOSDueDate;
+window.changeDoughnutType = changeDoughnutType;
+window.toggleShowAllTransactions = toggleShowAllTransactions;
+window.openDeleteModal = openDeleteModal;
+window.exportToPDF = exportToPDF;
+window.openInformeGeneralModal = openInformeGeneralModal;
+window.renderCashflowModule = renderCashflowModule;
+window.updateLoteSummaryMetrics = updateLoteSummaryMetrics;
