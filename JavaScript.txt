@@ -755,3 +755,9 @@ window.exportToPDF = exportToPDF;
 window.openInformeGeneralModal = openInformeGeneralModal;
 window.renderCashflowModule = renderCashflowModule;
 window.updateLoteSummaryMetrics = updateLoteSummaryMetrics;
+// --- FUNCIONES DE RELLENO (Para evitar errores en el HTML) ---
+function openCounterDetailModal() { alert("Detalle de contador no disponible en esta versión."); }
+function closeCounterDetailModal() { }
+function openInformeGeneralModal() { alert("Informe general no disponible en esta versión."); }
+function closeInformeGeneralModal() { }
+
