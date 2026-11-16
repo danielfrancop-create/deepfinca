@@ -4,7 +4,10 @@
 
 function obtenerConteoItems(filtros) {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = (typeof SpreadsheetApp.getActiveSpreadsheet === 'function' && SpreadsheetApp.getActiveSpreadsheet()) || (typeof SPREADSHEET_ID !== 'undefined' ? SpreadsheetApp.openById(SPREADSHEET_ID) : null);
+    if (!ss) {
+      return { status: "error", success: false, error: "No se pudo acceder a la hoja de cálculo.", data: { conteoIniciales: 0, conteoDesarrollo: 0, conteoVentas: 0 } };
+    }
     var data = {
       gastosIniciales: getSheetData(ss, HOJA_GASTOS_INICIALES),
       gastosDesarrollo: getSheetData(ss, HOJA_GASTOS_DESARROLLO),
@@ -77,12 +80,13 @@ function obtenerConteoItems(filtros) {
       return true;
     };
 
-    var conteoIniciales = data.gastosIniciales.filter(function(x) { return filterFn(x, "inicial"); }).length;
-    var conteoDesarrollo = data.gastosDesarrollo.filter(function(x) { return filterFn(x, "desarrollo"); }).length;
-    var conteoVentas = data.ventas.filter(function(x) { return filterFn(x, "venta"); }).length;
+    var conteoIniciales = (data.gastosIniciales || []).filter(function(x) { return filterFn(x, "inicial"); }).length;
+    var conteoDesarrollo = (data.gastosDesarrollo || []).filter(function(x) { return filterFn(x, "desarrollo"); }).length;
+    var conteoVentas = (data.ventas || []).filter(function(x) { return filterFn(x, "venta"); }).length;
 
     return {
       status: "success",
+      success: true,
       data: {
         conteoIniciales: conteoIniciales,
         conteoDesarrollo: conteoDesarrollo,
@@ -92,6 +96,7 @@ function obtenerConteoItems(filtros) {
   } catch (err) {
     return {
       status: "error",
+      success: false,
       error: err.toString(),
       data: {
         conteoIniciales: 0,
@@ -101,5 +106,3 @@ function obtenerConteoItems(filtros) {
     };
   }
 }
-
- 
