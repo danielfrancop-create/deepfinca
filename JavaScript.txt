@@ -734,8 +734,11 @@ function openInformeGeneralModal() { alert("Informe general simplificado no disp
 
 // --- ARRANQUE ---
 function initApp() {
-    initThemeIcon();
-    fetchData();
+    // Esperar un momento a que el DOM se termine de armar
+    setTimeout(() => {
+        initThemeIcon();
+        fetchData(true); // Forzamos a que vaya al servidor y no a la caché
+    }, 500);
 }
 
 window.toggleTheme = toggleTheme;
