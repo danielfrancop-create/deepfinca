@@ -1,5 +1,5 @@
 // bridge.js - Envío con fetch no-cors (La solución definitiva)
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyLTl982nl7Wun_yX1JHtE948InXJVttya8zV05GAMvLYoUGeLhoxNFLKE5HK15ekgN/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycby47HRuaArTtDQb6lpZqz2SlLTJMxydc6jAhq2xbVsLERBX0rkzDqnssBBTyH-KoIid/exec';
 
 function callGAS(functionName, ...args) {
   return new Promise((resolve, reject) => {
