@@ -137,7 +137,8 @@ function showView(viewName) {
 // --- CONEXIÓN CON GOOGLE SHEETS (JSONP) ---
 function fetchData(forceRefresh = false) {
     const CACHE_KEY = "finca_dashboard_cache_data";
-    if (!forceRefresh) {
+    
+    if (!forceRefresh && !navigator.onLine) {
         try {
             const cachedStr = sessionStorage.getItem(CACHE_KEY);
             if (cachedStr) {
@@ -146,6 +147,7 @@ function fetchData(forceRefresh = false) {
                     rawData = cachedData;
                     handleDataLoaded(rawData);
                     showLoader(false);
+                    return;
                 }
             }
         } catch (e) { console.warn("Error leyendo cache:", e); }
@@ -158,6 +160,7 @@ function fetchData(forceRefresh = false) {
 
     showLoader(true, "Refrescando datos desde Google Sheets...");
 
+    // AQUÍ ESTABA EL ERROR: Faltaba declarar stopSpin
     const stopSpin = () => {
         if (iconDesktop) iconDesktop.classList.remove("animate-spin");
         if (iconMobile) iconMobile.classList.remove("animate-spin");
