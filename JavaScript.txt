@@ -1,4 +1,4 @@
-var MI_GAS_URL = "https://script.google.com/macros/s/AKfycby47HRuaArTtDQb6lpZqz2SlLTJMxydc6jAhq2xbVsLERBX0rkzDqnssBBTyH-KoIid/exec";
+var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmzrQTog5Sxb4EXQjvsJmpx9W8OBRbO_l6xL1drnmPedfaUH/exec";
 // --- INDEXEDDB & OFFLINE PWA MANAGER ---
         const DB_NAME = 'FincaSaucesOfflineDB';
         const DB_VERSION = 1;
