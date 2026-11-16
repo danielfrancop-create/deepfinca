@@ -1,4 +1,4 @@
-const CACHE_NAME = 'finca-sauces-v2';
+const CACHE_NAME = 'finca-sauces-v3'; // Versión actualizada para forzar limpieza
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -10,8 +10,6 @@ const PRECACHE_URLS = [
   './ViewDashboard.txt',
   './ViewPOS.txt',
   './ViewCashflow.txt',
-  './ViewLoans.txt',
-  './ViewPersonalExpenses.txt',
   './ViewExternalIncome.txt',
   './ViewMap.txt',
   'https://cdn.tailwindcss.com',
@@ -44,11 +42,18 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  if (url.hostname === 'script.google.com') {
+  // 1. Ignorar peticiones que NO sean GET (como los POST a GAS)
+  if (event.request.method !== 'GET') {
     return;
   }
 
-  if (url.hostname.includes('cdn.') || url.hostname.includes('fonts.googleapis.com')) {
+  // 2. Ignorar peticiones a Google Apps Script
+  if (url.hostname === 'script.google.com' || url.hostname.includes('googleusercontent.com')) {
+    return;
+  }
+
+  // 3. Estrategia para CDNs (Network First, fallback a caché)
+  if (url.hostname.includes('cdn.') || url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('cloudflare.com')) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -61,6 +66,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // 4. Estrategia para archivos locales (Cache First, fallback a red)
   event.respondWith(
     caches.match(event.request).then((cached) => {
       return cached || fetch(event.request).then((response) => {
