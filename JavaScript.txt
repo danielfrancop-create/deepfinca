@@ -761,9 +761,25 @@ window.exportToPDF = exportToPDF;
 window.openInformeGeneralModal = openInformeGeneralModal;
 window.renderCashflowModule = renderCashflowModule;
 window.updateLoteSummaryMetrics = updateLoteSummaryMetrics;
-// --- FUNCIONES DE RELLENO (Para evitar errores en el HTML) ---
-function openCounterDetailModal() { alert("Detalle de contador no disponible en esta versión."); }
-function closeCounterDetailModal() { }
-function openInformeGeneralModal() { alert("Informe general no disponible en esta versión."); }
-function closeInformeGeneralModal() { }
+function openCounterDetailModal(tipo) {
+    if (!rawData) return;
+    let title = "";
+    let dataKey = "";
+    
+    if (tipo === 'Inicial') { title = "Registros Iniciales"; dataKey = "gastosIniciales"; }
+    else if (tipo === 'Desarrollo') { title = "Gastos de Desarrollo"; dataKey = "gastosDesarrollo"; }
+    else if (tipo === 'Venta') { title = "Ventas"; dataKey = "ventas"; }
 
+    const records = rawData[dataKey] || [];
+    let msg = `--- ${title} (${records.length} registros) ---\n\n`;
+    
+    records.forEach(r => {
+        msg += `Lote: ${r.Lote || r.lote}\n`;
+        msg += `Concepto: ${r.Cultivo_Semilla || r.Tipo_Insumo || r.Producto_Vendido}\n`;
+        msg += `Monto: ${formatCOP(r.Costo_Total_COP || r.Ingreso_Total_COP)}\n`;
+        msg += `Fecha: ${r.Fecha || r.fecha}\n`;
+        msg += `-------------------\n`;
+    });
+
+    alert(msg);
+}
