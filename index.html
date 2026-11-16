@@ -13,7 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
-    <!-- Puente GAS -->
+    <!-- Puente GAS con versión para forzar actualización -->
     <script src="bridge.js?v=10050"></script>
 </head>
 <body class="h-full flex flex-col text-slate-800">
@@ -24,9 +24,8 @@
         <div id="dashboard-container"></div>
         <div id="pos-container"></div>
         <div id="cashflow-container"></div>
-        <!-- <div id="loans-container"></div> ELIMINADO -->
-        <!-- <div id="personal-container"></div> ELIMINADO -->
-        <div id="external-income-container"></div> <!-- NUEVO: Metas e Ingresos Externos -->
+        <div id="loans-container"></div>
+        <div id="personal-container"></div>
         <div id="map-container"></div>
     </main>
 
@@ -52,11 +51,11 @@
           { id: 'dashboard-container', file: 'ViewDashboard.txt' },
           { id: 'pos-container', file: 'ViewPOS.txt' },
           { id: 'cashflow-container', file: 'ViewCashflow.txt' },
-          { id: 'external-income-container', file: 'ViewExternalIncome.txt' }, // NUEVO
+          { id: 'loans-container', file: 'ViewLoans.txt' },
+          { id: 'personal-container', file: 'ViewPersonalExpenses.txt' },
           { id: 'map-container', file: 'ViewMap.txt' },
           { id: 'modals-container', file: 'Modals.txt' }
         ];
-        
         for (const { id, file } of files) {
           try {
             const res = await fetch(file);
@@ -66,27 +65,18 @@
             console.warn('No se pudo cargar:', file, e);
           }
         }
-
-        // Cargar Styles.txt dentro de una etiqueta <style>
-        try {
-          const resStyle = await fetch('Styles.txt');
-          const cssText = await resStyle.text();
-          const styleTag = document.createElement('style');
-          styleTag.textContent = cssText;
-          document.head.appendChild(styleTag);
-        } catch (e) {
-          console.warn('No se pudo cargar Styles.txt', e);
-        }
         
-        // Cargar el JavaScript principal
+        // Una vez cargados los HTML, cargamos el JavaScript principal
         const script = document.createElement('script');
-        script.src = 'JavaScript.txt';
+        script.src = 'JavaScript.txt'; // <-- Quitamos el ?v=10050
         script.onload = () => {
+            // Iniciar la app solo después de que el JS y el HTML estén listos
             if (typeof initApp === 'function') initApp();
         };
         document.body.appendChild(script);
       }
       
+      // Iniciar la carga
       loadPartials();
     </script>
 
