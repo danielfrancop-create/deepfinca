@@ -117,17 +117,6 @@ function toggleDesktopNavDropdown(event) {
     }
 }
 
-// Close desktop dropdown on click outside
-document.addEventListener("click", function(event) {
-    const dropdownBtn = document.getElementById("desktopNavDropdownBtn");
-    const dropdownMenu = document.getElementById("desktopNavDropdownMenu");
-    if (dropdownMenu && !dropdownMenu.classList.contains("hidden")) {
-        if (dropdownBtn && !dropdownBtn.contains(event.target) && !dropdownMenu.contains(event.target)) {
-            dropdownMenu.classList.add("hidden");
-        }
-    }
-});
-
 async function syncOfflineData() {
     if (!navigator.onLine) {
         alert("Sin conexión a Internet. Conéctate a una red para sincronizar con Google Sheets.");
