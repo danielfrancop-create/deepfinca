@@ -397,8 +397,6 @@ function fetchData(forceRefresh = false) {
                     rawData = cachedData;
                     handleDataLoaded(rawData);
                     showLoader(false);
-const script = document.createElement('script');
-  script.src = MI_GAS_URL + '?action=getDashboardData' + getAuthEmailParam() + '&callback=' + ;
                 }
             }
         } catch (e) {
