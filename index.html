@@ -23,9 +23,6 @@
     <main class="flex-grow max-w-7xl w-full mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6 sm:space-y-8">
         <div id="dashboard-container"></div>
         <div id="pos-container"></div>
-        <div id="cashflow-container"></div>
-        <div id="loans-container"></div>
-        <div id="personal-container"></div>
         <div id="map-container"></div>
     </main>
 
@@ -50,9 +47,6 @@
           { id: 'header-container', file: 'Header.txt' },
           { id: 'dashboard-container', file: 'ViewDashboard.txt' },
           { id: 'pos-container', file: 'ViewPOS.txt' },
-          { id: 'cashflow-container', file: 'ViewCashflow.txt' },
-          { id: 'loans-container', file: 'ViewLoans.txt' },
-          { id: 'personal-container', file: 'ViewPersonalExpenses.txt' },
           { id: 'map-container', file: 'ViewMap.txt' },
           { id: 'modals-container', file: 'Modals.txt' }
         ];
@@ -68,7 +62,7 @@
         
         // Una vez cargados los HTML, cargamos el JavaScript principal
         const script = document.createElement('script');
-        script.src = 'JavaScript.txt'; // <-- Quitamos el ?v=10050
+        script.src = 'JavaScript.txt';
         script.onload = () => {
             // Iniciar la app solo después de que el JS y el HTML estén listos
             if (typeof initApp === 'function') initApp();
