@@ -14,7 +14,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
     <!-- Puente GAS con versión para forzar actualización -->
-    <script src="bridge.js?v=10050"></script>
+    <script src="bridge.js?v=10051"></script>
 </head>
 <body class="h-full flex flex-col text-slate-800">
 
@@ -50,9 +50,11 @@
           { id: 'map-container', file: 'ViewMap.txt' },
           { id: 'modals-container', file: 'Modals.txt' }
         ];
+        
         for (const { id, file } of files) {
           try {
             const res = await fetch(file);
+            if (!res.ok) throw new Error(`Error al cargar ${file}: ${res.statusText}`);
             const html = await res.text();
             document.getElementById(id).innerHTML = html;
           } catch (e) {
@@ -65,12 +67,19 @@
         script.src = 'JavaScript.txt';
         script.onload = () => {
             // Iniciar la app solo después de que el JS y el HTML estén listos
-            if (typeof initApp === 'function') initApp();
+            if (typeof initApp === 'function') {
+                initApp();
+            } else {
+                console.warn('La función initApp no está definida en JavaScript.txt');
+            }
+        };
+        script.onerror = () => {
+            console.error('Error al cargar el archivo principal JavaScript.txt');
         };
         document.body.appendChild(script);
       }
       
-      // Iniciar la carga
+      // Iniciar la carga de la aplicación
       loadPartials();
     </script>
 
