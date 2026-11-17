@@ -398,7 +398,7 @@ function fetchData(forceRefresh = false) {
                     handleDataLoaded(rawData);
                     showLoader(false);
 const script = document.createElement('script');
-  script.src = MI_GAS_URL + '?action=getDashboardData' + getAuthEmailParam() + '&callback=' + callbackName;
+  script.src = MI_GAS_URL + '?action=getDashboardData' + getAuthEmailParam() + '&callback=' + ;
                 }
             }
         } catch (e) {
@@ -7110,17 +7110,13 @@ function calculateLoanBalance() {
             checkCurrentUserRole();
         }
 function enviarDatosGoogleSheets(tipo, record) {
-// Dentro de enviarDatosGoogleSheets():
-  const script = document.createElement('script');
-  script.src = MI_GAS_URL + '?action=' + tipo + getAuthEmailParam() + '&callback=' + callbackName + '&args=' + encodeURIComponent(JSON.stringify([record]));
-    // Si es una foto, usamos el mismo formulario oculto para evitar bloqueos
+    // Si es una foto, usamos el formulario oculto y un iframe para evitar bloqueos
     if (tipo === 'guardarFotoLote' || tipo === 'fotosLotes') {
         const url = MI_GAS_URL + '?action=guardarFotoLote&args=' + encodeURIComponent(JSON.stringify([record]));
         const iframe = document.createElement('iframe');
         iframe.style.display = 'none';
         iframe.name = 'iframe_foto_' + Date.now();
         document.body.appendChild(iframe);
-
 
         const form = document.createElement('form');
         form.method = 'POST';
@@ -7132,14 +7128,15 @@ function enviarDatosGoogleSheets(tipo, record) {
         form.submit();
         
         setTimeout(() => {
-            document.body.removeChild(form);
-            document.body.removeChild(iframe);
+            if (document.body.contains(form)) document.body.removeChild(form);
+            if (document.body.contains(iframe)) document.body.removeChild(iframe);
         }, 2000);
 
         alert("¡Fotografía enviada! Se está procesando en Google Drive...");
     } else {
-        // Para gastos y ventas (JSONP)
+        // Para gastos y ventas (JSONP) - Definimos callbackName primero
         const callbackName = 'jsonpCallback_' + Math.round(100000 * Math.random());
+        
         window[callbackName] = function(response) {
             if (response && response.success) {
                 console.log(`Registro ${tipo} guardado exitosamente.`);
@@ -7151,7 +7148,7 @@ function enviarDatosGoogleSheets(tipo, record) {
         };
 
         const script = document.createElement('script');
-        script.src = MI_GAS_URL + '?action=' + tipo + '&callback=' + callbackName + '&args=' + encodeURIComponent(JSON.stringify([record]));
+        script.src = MI_GAS_URL + '?action=' + tipo + getAuthEmailParam() + '&callback=' + callbackName + '&args=' + encodeURIComponent(JSON.stringify([record]));
         
         script.onerror = function() {
             console.error("Error de conexión al intentar guardar.");
