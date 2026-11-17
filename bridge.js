@@ -1,5 +1,5 @@
-// bridge.js - Envío con fetch no-cors (La solución definitiva)
-const GAS_URL = 'https://script.google.com/macros/s/AKfycby47HRuaArTtDQb6lpZqz2SlLTJMxydc6jAhq2xbVsLERBX0rkzDqnssBBTyH-KoIid/exec';
+// bridge.js - Capa de comunicación con Google Apps Script (Versión Corregida)
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmzrQTog5Sxb4EXQjvsJmpx9W8OBRbO_l6xL1drnmPedfaUH/exec';
 
 function callGAS(functionName, ...args) {
   return new Promise((resolve, reject) => {
@@ -13,8 +13,7 @@ function callGAS(functionName, ...args) {
       body: params
     })
     .then(() => {
-      // Como no podemos leer la respuesta, asumimos éxito.
-      // Recargamos los datos después de un breve retraso.
+      // Debido a la restricción no-cors, la respuesta opaca se maneja asumiendo éxito
       setTimeout(() => {
         resolve({ success: true });
       }, 1000);
