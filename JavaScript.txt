@@ -7110,6 +7110,9 @@ function calculateLoanBalance() {
             checkCurrentUserRole();
         }
 function enviarDatosGoogleSheets(tipo, record) {
+// Dentro de enviarDatosGoogleSheets():
+  const script = document.createElement('script');
+  script.src = MI_GAS_URL + '?action=' + tipo + getAuthEmailParam() + '&callback=' + callbackName + '&args=' + encodeURIComponent(JSON.stringify([record]));
     // Si es una foto, usamos el mismo formulario oculto para evitar bloqueos
     if (tipo === 'guardarFotoLote' || tipo === 'fotosLotes') {
         const url = MI_GAS_URL + '?action=guardarFotoLote&args=' + encodeURIComponent(JSON.stringify([record]));
@@ -7117,6 +7120,7 @@ function enviarDatosGoogleSheets(tipo, record) {
         iframe.style.display = 'none';
         iframe.name = 'iframe_foto_' + Date.now();
         document.body.appendChild(iframe);
+
 
         const form = document.createElement('form');
         form.method = 'POST';
