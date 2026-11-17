@@ -1,3 +1,11 @@
+/**
+ * Obtiene el correo autenticado del almacenamiento local o usa un respaldo por defecto,
+ * formateándolo como parámetro URL para enviarlo en las peticiones a Google Apps Script.
+ */
+function getAuthEmailParam() {
+  const email = (localStorage.getItem("finca_user_email") || "danielfrancop@gmail.com").trim().toLowerCase();
+  return "&email=" + encodeURIComponent(email);
+}
 var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmzrQTog5Sxb4EXQjvsJmpx9W8OBRbO_l6xL1drnmPedfaUH/exec";
 // --- INDEXEDDB & OFFLINE PWA MANAGER ---
         const DB_NAME = 'FincaSaucesOfflineDB';
