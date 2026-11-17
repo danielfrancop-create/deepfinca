@@ -7134,9 +7134,12 @@ function enviarDatosGoogleSheets(tipo, record) {
 
         alert("¡Fotografía enviada! Se está procesando en Google Drive...");
     } else {
-        // Para gastos y ventas (JSONP) - Definimos callbackName primero
+        // Para gastos y ventas (JSONP)
         const callbackName = 'jsonpCallback_' + Math.round(100000 * Math.random());
         
+        // 1. Creamos el elemento script primero para que exista antes de usarlo
+        const script = document.createElement('script');
+
         window[callbackName] = function(response) {
             if (response && response.success) {
                 console.log(`Registro ${tipo} guardado exitosamente.`);
@@ -7147,7 +7150,7 @@ function enviarDatosGoogleSheets(tipo, record) {
             delete window[callbackName];
         };
 
-        const script = document.createElement('script');
+        // 2. Asignamos la ruta (src) con los parámetros
         script.src = MI_GAS_URL + '?action=' + tipo + getAuthEmailParam() + '&callback=' + callbackName + '&args=' + encodeURIComponent(JSON.stringify([record]));
         
         script.onerror = function() {
