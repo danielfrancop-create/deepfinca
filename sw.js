@@ -172,14 +172,6 @@ async function syncOfflineData() {
     }
 }
 
-window.addEventListener('online', () => {
-    updatePendingSyncBadge();
-    syncOfflineData();
-});
-window.addEventListener('offline', () => {
-    updatePendingSyncBadge();
-});
-
 // --- THEME / MODE SELECTION LOGIC ---
 function toggleTheme() {
     const isDark = document.documentElement.classList.contains('dark');
