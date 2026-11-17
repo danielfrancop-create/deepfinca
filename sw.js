@@ -1,8 +1,9 @@
-const CACHE_NAME = 'finca-sauces-v2';
+const CACHE_NAME = 'finca-sauces-v3';
 const PRECACHE_URLS = [
   './',
   './index.html',
   './manifest.json',
+  './bridge.js',
   './Styles.txt',
   './Header.txt',
   './JavaScript.txt',
@@ -24,9 +25,10 @@ const PRECACHE_URLS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_URLS).catch((err) => {
-        console.warn('Precache parcial falló:', err);
-      });
+      // Intentamos cachear uno por uno o en lote de forma segura
+      return Promise.allSettled(
+        PRECACHE_URLS.map(url => cache.add(url).catch(err => console.warn(`No se pudo cachear: ${url}`, err)))
+      );
     }).then(() => self.skipWaiting())
   );
 });
@@ -44,10 +46,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Excluimos las peticiones a Google Apps Script para que siempre vayan a la red
   if (url.hostname === 'script.google.com') {
     return;
   }
 
+  // Estrategia Network-first o Stale-while-revalidate para CDNs y fuentes externas
   if (url.hostname.includes('cdn.') || url.hostname.includes('fonts.googleapis.com')) {
     event.respondWith(
       fetch(event.request)
@@ -61,6 +65,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Para archivos locales: Cache first, luego red
   event.respondWith(
     caches.match(event.request).then((cached) => {
       return cached || fetch(event.request).then((response) => {
