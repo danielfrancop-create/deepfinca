@@ -338,6 +338,14 @@ function getSheetData(ss, sheetName) {
 function guardarRegistro(tipo, datos) {
   try {
     if (typeof datos === 'string') datos = JSON.parse(datos);
+    if (tipo === "finalizarCiclo" || tipo === "cerrarCiclo" || tipo === "cierreCiclo") {
+      var cierreDatos = datos || {};
+      return finalizarCiclo(
+        cierreDatos.codigoGeneral || cierreDatos.Codigo_General || cierreDatos.Codigo_Seguimiento || cierreDatos.codigo_seguimiento || "",
+        cierreDatos.fechaFin || cierreDatos.Fecha_Fin || cierreDatos.Fecha || cierreDatos.fecha || "",
+        cierreDatos.loteReferencia || cierreDatos.Lote || cierreDatos.Lote_Principal || ""
+      );
+    }
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheetName = "", columnsNeeded = [];
 
@@ -469,12 +477,25 @@ function guardarRegistro(tipo, datos) {
     }
 
     // Automatización clave para liberar el lote al vender con casilla marcada
-    if ((tipo === "ventas" || tipo === "venta") && (datos.cerrarCiclo || datos.Cerrar_Ciclo || datos.cerrar_ciclo || datos.finalizarCiclo || datos.Finalizar_Ciclo)) {
+    var cerrarPorVenta = (tipo === "ventas" || tipo === "venta") && (
+      datos.cerrarCiclo === true || datos.cerrarCiclo === "true" || datos.cerrarCiclo === 1 ||
+      datos.Cerrar_Ciclo === true || datos.Cerrar_Ciclo === "true" || datos.Cerrar_Ciclo === 1 ||
+      datos.cerrar_ciclo === true || datos.cerrar_ciclo === "true" || datos.cerrar_ciclo === 1 ||
+      datos.finalizarCiclo === true || datos.finalizarCiclo === "true" || datos.finalizarCiclo === 1 ||
+      datos.Finalizar_Ciclo === true || datos.Finalizar_Ciclo === "true" || datos.Finalizar_Ciclo === 1
+    );
+    var cierreCiclo = null;
+    if (cerrarPorVenta) {
       var fechaFinVenta = datos.Fecha || datos.fecha || formatDateNative(new Date());
-      finalizarCiclo(trackingCode, fechaFinVenta);
+      cierreCiclo = finalizarCiclo(trackingCode, fechaFinVenta, lotePrincipal);
     }
 
-    return { success: true, trackingCode: trackingCode };
+    return {
+      success: true,
+      trackingCode: trackingCode,
+      cicloCerrado: !!(cierreCiclo && cierreCiclo.success && cierreCiclo.cerrados > 0),
+      cierreCiclo: cierreCiclo
+    };
   } catch (err) { return { success: false, error: err.toString() }; }
 }
 
@@ -589,52 +610,96 @@ function agregarCiclo(lotePrincipal, subLote, cultivo, codigoGeneral, codigoInic
   } catch (err) { return { success: false, error: err.toString() }; }
 }
 
-function finalizarCiclo(codigoGeneral, fechaFin) {
+function finalizarCiclo(codigoGeneral, fechaFin, loteReferencia) {
   try {
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(HOJA_CICLOS);
-    if (!sheet) return { success: false, error: "No existe la hoja de ciclos." };
+    if (!sheet) return { success: false, error: "No existe la hoja de ciclos.", cerrados: 0 };
     var lastRow = sheet.getLastRow();
-    if (lastRow < 2) return { success: false, error: "No hay ciclos registrados." };
+    if (lastRow < 2) return { success: false, error: "No hay ciclos registrados.", cerrados: 0 };
 
     var lastCol = sheet.getLastColumn();
     var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-    var cgCol = -1, estCol = -1, ffCol = -1;
+    var estCol = -1, ffCol = -1, loteCols = [], codeCols = [];
 
     for (var c = 0; c < headers.length; c++) {
       var h = headers[c].toString().trim();
-      if (h === "Codigo_General" || h === "Codigo_Inicial" || h === "Codigo_Seguimiento") cgCol = c + 1;
-      if (h === "Estado") estCol = c + 1;
-      if (h === "Fecha_Fin") ffCol = c + 1;
+      var hLow = h.toLowerCase();
+      if (hLow === "estado") estCol = c + 1;
+      if (hLow === "fecha_fin") ffCol = c + 1;
+      if (h === "Lote_Principal" || h === "Lote" || hLow.indexOf("lote") !== -1) loteCols.push(c);
+      if (hLow.indexOf("codigo") !== -1) codeCols.push(c);
     }
 
-    if (cgCol === -1) cgCol = 5;
     if (estCol === -1) estCol = 9;
     if (ffCol === -1) ffCol = 11;
 
-    var range = sheet.getRange(2, 1, lastRow - 1, lastCol);
-    var values = range.getValues();
+    var fechaCierre = fechaFin || formatDateNative(new Date());
+    var values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
     var targetUpper = codigoGeneral ? codigoGeneral.toString().trim().toUpperCase() : "";
+    var loteClean = "";
+    if (loteReferencia) {
+      var mLote = String(loteReferencia).trim().match(/^(Lote\s*\d+)/i);
+      loteClean = (mLote ? mLote[1] : String(loteReferencia).trim()).toUpperCase();
+    }
 
+    var matchedRows = [];
+    var activeLotRows = [];
     for (var i = 0; i < values.length; i++) {
       var row = values[i];
-      var match = false;
-      for (var colIdx = 0; colIdx < row.length; colIdx++) {
-        var cellStr = row[colIdx] ? row[colIdx].toString().trim().toUpperCase() : "";
-        if (targetUpper && cellStr === targetUpper) {
-          match = true;
-          break;
+      var estadoActual = (row[estCol - 1] !== undefined && row[estCol - 1] !== null)
+        ? row[estCol - 1].toString().trim().toUpperCase()
+        : "";
+      var esActivo = estadoActual === "EN PROCESO" || estadoActual === "ACTIVO";
+      var coincideCodigo = false;
+      if (targetUpper) {
+        var colsToCheck = codeCols.length > 0 ? codeCols : [0, 1, 2, 3, 4, 5, 6, 7];
+        for (var k = 0; k < colsToCheck.length; k++) {
+          var idxC = colsToCheck[k];
+          if (idxC < row.length && row[idxC] && row[idxC].toString().trim().toUpperCase() === targetUpper) {
+            coincideCodigo = true;
+            break;
+          }
         }
       }
-      if (match || (targetUpper === "" && row[estCol - 1].toString().trim().toUpperCase() === "EN PROCESO")) {
-        sheet.getRange(i + 2, estCol).setValue("FINALIZADO");
-        sheet.getRange(i + 2, ffCol).setValue(fechaFin || formatDateNative(new Date()));
-        break;
+      var coincideLote = false;
+      if (loteClean && esActivo) {
+        var colsLote = loteCols.length > 0 ? loteCols : [0, 2];
+        for (var m = 0; m < colsLote.length; m++) {
+          var idxL = colsLote[m];
+          if (idxL < row.length && row[idxL]) {
+            var valL = row[idxL].toString().trim().toUpperCase();
+            if (valL === loteClean || valL.indexOf(loteClean + " ") === 0) {
+              coincideLote = true;
+              break;
+            }
+          }
+        }
       }
+      if (coincideCodigo) matchedRows.push(i + 2);
+      else if (coincideLote) activeLotRows.push(i + 2);
+      else if (!targetUpper && !loteClean && esActivo) activeLotRows.push(i + 2);
     }
-    return { success: true };
+
+    var filasACerrar = matchedRows.length > 0 ? matchedRows : activeLotRows;
+    if (filasACerrar.length === 0) {
+      return { success: false, error: "No se encontró un ciclo coincidente para finalizar.", cerrados: 0 };
+    }
+
+    for (var f = 0; f < filasACerrar.length; f++) {
+      var rowNum = filasACerrar[f];
+      sheet.getRange(rowNum, estCol).setValue("FINALIZADO");
+      sheet.getRange(rowNum, ffCol).setValue(fechaCierre);
+    }
+
+    return {
+      success: true,
+      cerrados: filasACerrar.length,
+      fechaFin: fechaCierre,
+      estadoCiclo: "FINALIZADO"
+    };
   } catch (err) {
-    return { success: false, error: err.toString() };
+    return { success: false, error: err.toString(), cerrados: 0 };
   }
 }
 
