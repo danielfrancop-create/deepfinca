@@ -2012,64 +2012,6 @@ function updateConfigHeader() {
             }
         }
 
-        function endLoteCycleDirect(codigoGeneral, fechaFin, callback) {
-            const fFin = fechaFin || new Date().toISOString().split('T')[0];
-            const codeUpper = (codigoGeneral || "").toString().trim().toUpperCase();
-
-            const updateLocalCycleState = () => {
-                const cycles = rawData.ciclos || [];
-                let cycle = cycles.find(item => {
-                    const cg = (item.Codigo_General || item.codigo_general || "").toString().trim().toUpperCase();
-                    const ci = (item.Codigo_Inicial || item.codigo_inicial || "").toString().trim().toUpperCase();
-                    const cd = (item.Codigo_Desarrollo || item.codigo_desarrollo || "").toString().trim().toUpperCase();
-                    const cv = (item.Codigo_Ventas || item.codigo_ventas || "").toString().trim().toUpperCase();
-                    return (cg === codeUpper || ci === codeUpper || cd === codeUpper || cv === codeUpper) && String(item.Estado || item.estado).toUpperCase() === "EN PROCESO";
-                });
-
-                if (!cycle && codeUpper) {
-                    cycle = cycles.find(item => {
-                        const cg = (item.Codigo_General || item.codigo_general || "").toString().trim().toUpperCase();
-                        const ci = (item.Codigo_Inicial || item.codigo_inicial || "").toString().trim().toUpperCase();
-                        const cd = (item.Codigo_Desarrollo || item.codigo_desarrollo || "").toString().trim().toUpperCase();
-                        const cv = (item.Codigo_Ventas || item.codigo_ventas || "").toString().trim().toUpperCase();
-                        return cg === codeUpper || ci === codeUpper || cd === codeUpper || cv === codeUpper;
-                    });
-                }
-
-                if (cycle) {
-                    cycle.Estado = "FINALIZADO";
-                    cycle.Fecha_Fin = fFin;
-                }
-
-                updateCyclesTabUI();
-                checkPOSLoteSelection();
-                updateLoteCycleSummaryCard();
-                autoFillActiveCycleCodes();
-                if (typeof renderInteractiveMap === 'function') renderInteractiveMap();
-                if (typeof applyFilters === 'function') applyFilters();
-            };
-
-            if (typeof google === 'undefined' || !google.script || !google.script.run) {
-                updateLocalCycleState();
-                if (callback) callback();
-            } else {
-                google.script.run
-                    .withSuccessHandler(function(response) {
-                        if (response && response.success) {
-                            updateLocalCycleState();
-                        } else {
-                            alert(response ? response.error : "No se pudo finalizar el ciclo.");
-                        }
-                        if (callback) callback();
-                    })
-                    .withFailureHandler(function(err) {
-                        alert("Error al cerrar ciclo de seguimiento: " + err.toString());
-                        if (callback) callback();
-                    })
-                    .finalizarCiclo(codigoGeneral, fFin);
-            }
-        }
-
         function refreshCycleViews() {
             if (typeof updateCyclesTabUI === 'function') updateCyclesTabUI();
             if (typeof checkPOSLoteSelection === 'function') checkPOSLoteSelection();
