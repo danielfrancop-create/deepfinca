@@ -13,8 +13,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
+    <!-- Estilos personalizados del proyecto (si aplica) -->
+    <link rel="stylesheet" href="Style.txt?v=10052">
+
     <!-- Puente GAS con versión para forzar actualización -->
-    <script src="bridge.js?v=10051"></script>
+    <script src="bridge.js?v=10052"></script>
 </head>
 <body class="h-full flex flex-col text-slate-800">
 
@@ -23,6 +26,7 @@
     <main class="flex-grow max-w-7xl w-full mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6 sm:space-y-8">
         <div id="dashboard-container"></div>
         <div id="pos-container"></div>
+        <div id="cashflow-container"></div>
         <div id="map-container"></div>
     </main>
 
@@ -42,45 +46,64 @@
     </div>
 
     <script>
+      const APP_VERSION = '10052';
+
       async function loadPartials() {
         const files = [
-          { id: 'header-container', file: 'Header.txt' },
-          { id: 'dashboard-container', file: 'ViewDashboard.txt' },
-          { id: 'pos-container', file: 'ViewPOS.txt' },
-          { id: 'map-container', file: 'ViewMap.txt' },
-          { id: 'modals-container', file: 'Modals.txt' }
+          { id: 'header-container', file: 'Header.txt', required: true },
+          { id: 'dashboard-container', file: 'ViewDashboard.txt', required: true },
+          { id: 'pos-container', file: 'ViewPOS.txt', required: true },
+          { id: 'cashflow-container', file: 'ViewCashflow.txt', required: false },
+          { id: 'map-container', file: 'ViewMap.txt', required: true },
+          { id: 'modals-container', file: 'Modals.txt', required: true }
         ];
-        
-        for (const { id, file } of files) {
-          try {
-            const res = await fetch(file);
-            if (!res.ok) throw new Error(`Error al cargar ${file}: ${res.statusText}`);
-            const html = await res.text();
-            document.getElementById(id).innerHTML = html;
-          } catch (e) {
-            console.warn('No se pudo cargar:', file, e);
-          }
-        }
-        
-        // Una vez cargados los HTML, cargamos el JavaScript principal
-        const script = document.createElement('script');
-        script.src = 'JavaScript.txt';
-        script.onload = () => {
-            // Iniciar la app solo después de que el JS y el HTML estén listos
-            if (typeof initApp === 'function') {
-                initApp();
-            } else {
-                console.warn('La función initApp no está definida en JavaScript.txt');
+
+        const results = await Promise.all(
+          files.map(async ({ id, file, required }) => {
+            try {
+              const res = await fetch(`${file}?v=${APP_VERSION}`, { cache: 'no-cache' });
+              if (!res.ok) {
+                throw new Error(`HTTP ${res.status} (${res.statusText})`);
+              }
+              const html = await res.text();
+              const container = document.getElementById(id);
+              if (container) {
+                container.innerHTML = html;
+              }
+              return { file, ok: true, required };
+            } catch (err) {
+              if (required) {
+                console.error(`Error cargando parcial obligatorio ${file}:`, err);
+              } else {
+                console.warn(`Parcial opcional ${file} no cargado:`, err);
+              }
+              return { file, ok: false, required, error: err };
             }
+          })
+        );
+
+        const missingRequired = results.filter((r) => r.required && !r.ok);
+        if (missingRequired.length > 0) {
+          console.error('Faltan vistas obligatorias:', missingRequired.map((m) => m.file));
+        }
+
+        // Cargar JavaScript principal tras inyectar las vistas
+        const script = document.createElement('script');
+        script.src = `JavaScript.txt?v=${APP_VERSION}`;
+        script.onload = () => {
+          if (typeof initApp === 'function') {
+            initApp();
+          } else {
+            console.warn('La función initApp no está definida en JavaScript.txt');
+          }
         };
         script.onerror = () => {
-            console.error('Error al cargar el archivo principal JavaScript.txt');
+          console.error('Error al cargar el archivo principal JavaScript.txt');
         };
         document.body.appendChild(script);
       }
-      
-      // Iniciar la carga de la aplicación
-      loadPartials();
+
+      document.addEventListener('DOMContentLoaded', loadPartials);
     </script>
 
     <script>
