@@ -5,7 +5,6 @@ var HOJA_GASTOS_DESARROLLO = "gastosDesarrollo";
 var HOJA_VENTAS = "ventas";
 var HOJA_CONFIGURACION = "configuracion";
 var HOJA_CICLOS = "ciclos";
-var HOJA_GASTOS_PERSONALES = "gastosPersonales";
 var HOJA_FOTOS_LOTES = "fotosLotes";
 var HOJA_USUARIOS = "usuarios"; // Requerido para Gestión de Usuarios
 
@@ -51,7 +50,6 @@ function doGet(e) {
       var funciones = {
         'getDashboardData': getDashboardData,
         'guardarRegistro': guardarRegistro,
-        'guardarGastoPersonal': guardarGastoPersonal,
         'guardarFotoLote': guardarFotoLote,
         'guardarFotoLotes': guardarFotoLotes,
         'actualizarEstadoPago': actualizarEstadoPago,
@@ -118,7 +116,6 @@ function doPost(e) {
     var funciones = {
       'getDashboardData': getDashboardData,
       'guardarRegistro': guardarRegistro,
-      'guardarGastoPersonal': guardarGastoPersonal,
       'guardarFotoLote': guardarFotoLote,
       'guardarFotoLotes': guardarFotoLotes,
       'actualizarEstadoPago': actualizarEstadoPago,
@@ -305,7 +302,6 @@ function getDashboardData() {
       ventas: getSheetData(ss, HOJA_VENTAS),
       configuracion: getSheetData(ss, HOJA_CONFIGURACION),
       ciclos: getSheetData(ss, HOJA_CICLOS),
-      gastosPersonales: getSheetData(ss, HOJA_GASTOS_PERSONALES),
       fotosLotes: getSheetData(ss, HOJA_FOTOS_LOTES)
     };
     return { success: true, data: data };
@@ -642,36 +638,6 @@ function finalizarCiclo(codigoGeneral, fechaFin) {
   }
 }
 
-function guardarGastoPersonal(datos) {
-  try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var sheet = ss.getSheetByName(HOJA_GASTOS_PERSONALES);
-    var columnsNeeded = ["ID_Gasto_Personal", "Fecha", "Categoria", "Descripcion_Detalle", "Monto_COP", "Metodo_Pago", "Beneficiario_Tercero", "Notas"];
-
-    if (!sheet) {
-      sheet = ss.insertSheet(HOJA_GASTOS_PERSONALES);
-      sheet.appendRow(columnsNeeded);
-    }
-    asegurarColumnas(sheet, columnsNeeded);
-
-    var lastRow = sheet.getLastRow();
-    var nextId = "GP-" + String(lastRow < 2 ? 1 : lastRow).padStart(3, '0');
-
-    var fecha = datos.Fecha || datos.fecha || formatDateNative(new Date());
-    var categoria = datos.Categoria || datos.categoria || "Otros Hogar";
-    var descripcion = datos.Descripcion_Detalle || datos.descripcion_detalle || "";
-    var monto = Number(datos.Monto_COP || datos.monto_cop) || 0;
-    var metodo = datos.Metodo_Pago || datos.metodo_pago || "Efectivo";
-    var beneficiario = datos.Beneficiario_Tercero || datos.beneficiario_tercero || "";
-    var notas = datos.Notas || datos.notas || "";
-
-    sheet.appendRow([nextId, fecha, categoria, descripcion, monto, metodo, beneficiario, notas]);
-    return { success: true, idGenerado: nextId };
-  } catch (err) {
-    return { success: false, error: err.toString() };
-  }
-}
-
 function agregarItemConfig(columna, nuevoValor) {
   try {
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -808,7 +774,6 @@ function eliminarRegistroSeguro(tipoTabla, idRegistro, codigoSeguridad) {
     else if (tipoTabla === "gastosDesarrollo" || tipoTabla === "desarrollo") sheetName = HOJA_GASTOS_DESARROLLO;
     else if (tipoTabla === "ventas" || tipoTabla === "venta") sheetName = HOJA_VENTAS;
     else if (tipoTabla === "fotosLotes" || tipoTabla === "foto") sheetName = HOJA_FOTOS_LOTES;
-    else if (tipoTabla === "gastosPersonales" || tipoTabla === "gastoPersonal") sheetName = HOJA_GASTOS_PERSONALES;
     else return { success: false, message: "Tipo de tabla no válido." };
 
     var sheet = ss.getSheetByName(sheetName);
@@ -823,7 +788,7 @@ function eliminarRegistroSeguro(tipoTabla, idRegistro, codigoSeguridad) {
     var idColIdx = -1, codeColIdx = -1;
     for (var c = 0; c < headers.length; c++) {
       var h = headers[c].toString().trim();
-      if (h === "ID" || h === "ID_Gasto_Personal" || h === "ID_Foto" || h === "ID_Registro") idColIdx = c + 1;
+      if (h === "ID" || h === "ID_Foto" || h === "ID_Registro") idColIdx = c + 1;
       if (h === "Codigo_Seguimiento" || h === "Codigo_General") codeColIdx = c + 1;
     }
 
@@ -875,7 +840,7 @@ function vaciarHojasGoogleSheets(securityCode) {
     }
 
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var hojasABorrar = [HOJA_GASTOS_INICIALES, HOJA_GASTOS_DESARROLLO, HOJA_VENTAS, HOJA_CICLOS, HOJA_GASTOS_PERSONALES, HOJA_FOTOS_LOTES];
+    var hojasABorrar = [HOJA_GASTOS_INICIALES, HOJA_GASTOS_DESARROLLO, HOJA_VENTAS, HOJA_CICLOS, HOJA_FOTOS_LOTES];
 
     for (var h = 0; h < hojasABorrar.length; h++) {
       var sheet = ss.getSheetByName(hojasABorrar[h]);
@@ -951,7 +916,6 @@ function exportToExcelData() {
       gastosIniciales: getSheetData(ss, HOJA_GASTOS_INICIALES),
       gastosDesarrollo: getSheetData(ss, HOJA_GASTOS_DESARROLLO),
       ventas: getSheetData(ss, HOJA_VENTAS),
-      gastosPersonales: getSheetData(ss, HOJA_GASTOS_PERSONALES),
       fotosLotes: getSheetData(ss, HOJA_FOTOS_LOTES)
     };
 
@@ -974,11 +938,6 @@ function exportToExcelData() {
       csvContent += ["Venta Cosecha", item.Lote || item.lote || "", item.Producto_Vendido || item.producto_vendido || "", item.Cantidad || 1, item.Ingreso_Total_COP || 0, item.Estado_Pago || "PAGADO", item.Fecha || "", item.Comprador || "", item.Codigo_Seguimiento || ""].map(function(v) { return String(v).replace(/;/g, ","); }).join(";") + "\n";
     });
 
-    csvContent += "\n--- GASTOS PERSONALES Y DEL HOGAR ---\n";
-    csvContent += "ID;Fecha;Categoria;Descripcion;Monto_COP;Metodo_Pago;Beneficiario;Notas\n";
-    (data.gastosPersonales || []).forEach(function(item) {
-      csvContent += [item.ID_Gasto_Personal || "", item.Fecha || "", item.Categoria || "", item.Descripcion_Detalle || "", item.Monto_COP || 0, item.Metodo_Pago || "", item.Beneficiario_Tercero || "", item.Notas || ""].map(function(v) { return String(v).replace(/;/g, ","); }).join(";") + "\n";
-    });
 
     return {
       success: true,
