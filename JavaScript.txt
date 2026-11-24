@@ -154,8 +154,6 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
 
                             if (item.tipo === 'fotosLotes' || item.tipo === 'foto') {
                                 runner.guardarFotoLote(item.record);
-                            } else if (item.tipo === 'gastosPersonales') {
-                                runner.guardarGastoPersonal(item.record);
                             } else {
                                 runner.guardarRegistro(item.tipo, item.record);
                             }
@@ -778,9 +776,6 @@ function updateConfigHeader() {
             const precioVentaPromedio = totalUnidades > 0 ? (totalVentas / totalUnidades) : 0;
             const margenUnitario = precioVentaPromedio - costoUnitario;
 
-            // Sum up total debts from bank loans
-            const deudaTotalActiva = (rawData.prestamos || []).reduce((sum, item) => sum + (Number(item.Saldo_Por_Pagar || item.saldo_por_pagar) || 0), 0);
-
             // Update KPI Card UI elements
             // Tarjeta 1: Utilidad Neta Total
             const kpiUtilidadNetaEl = document.getElementById("kpiUtilidadNeta");
@@ -809,10 +804,9 @@ function updateConfigHeader() {
                 }
             }
 
-            // Tarjeta 4: Deuda / Pasivos Activos
             const kpiPasivosEl = document.getElementById("kpiPasivos");
             if (kpiPasivosEl) {
-                kpiPasivosEl.textContent = formatCOP(deudaTotalActiva);
+                kpiPasivosEl.textContent = formatCOP(0);
             }
 
             // Tarjeta 5: Total Invertido vs. Total Cosechado
@@ -834,7 +828,6 @@ function updateConfigHeader() {
             // Re-render sub components
             renderLotesTable(selectedLote);
             renderCharts(selectedLote);
-            renderPrestamos();
             renderTransaccionesTable(selectedLote);
             renderCashflowModule();
             renderCuentasPendientes();
@@ -1200,45 +1193,6 @@ function updateConfigHeader() {
             }
         }
 
-        function renderPrestamos() {
-            if (!rawData || !rawData.prestamos) return;
-            const tableBody = document.getElementById("prestamosTableBody");
-            tableBody.innerHTML = "";
-
-            let totalPrestado = 0;
-            let totalPagado = 0;
-            let totalSaldo = 0;
-
-            (rawData.prestamos || []).forEach(item => {
-                const banco = item.Entidad_Banco || item.entidad_banco || "Sin Registrar";
-                const tipo = item.Tipo_Prestamo || item.tipo_prestamo || "Crédito General";
-                const valorPrestado = Number(item.Valor_Prestado || item.valor_prestado) || 0;
-                const pagoCuotas = Number(item.Pago_Cuotas || item.pago_cuotas) || 0;
-                const saldoPagar = Number(item.Saldo_Por_Pagar || item.saldo_por_pagar || (valorPrestado - pagoCuotas)) || 0;
-                const notas = item.Notas || item.notas || "-";
-
-                totalPrestado += valorPrestado;
-                totalPagado += pagoCuotas;
-                totalSaldo += saldoPagar;
-
-                const tr = document.createElement("tr");
-                tr.className = "hover:bg-slate-50/70 transition duration-150";
-                tr.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap font-semibold text-slate-900">${banco}</td>
-                    <td class="px-6 py-4 whitespace-nowrap"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-50 text-violet-800">${tipo}</span></td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right font-medium text-slate-700">${formatCOP(valorPrestado)}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right font-medium text-slate-700">${formatCOP(pagoCuotas)}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right font-bold text-rose-600">${formatCOP(saldoPagar)}</td>
-                    <td class="px-6 py-4 text-xs text-slate-500 max-w-xs truncate" title="${notas}">${notas}</td>
-                `;
-                tableBody.appendChild(tr);
-            });
-
-            document.getElementById("kpiTotalPrestado").textContent = formatCOP(totalPrestado);
-            document.getElementById("kpiTotalPagado").textContent = formatCOP(totalPagado);
-            document.getElementById("kpiTotalSaldo").textContent = formatCOP(totalSaldo);
-        }
-
         function renderCashflowModule() {
             if (!rawData) return;
 
@@ -1498,9 +1452,7 @@ function updateConfigHeader() {
             if (!rawData.gastosDesarrollo) rawData.gastosDesarrollo = [];
             if (!rawData.ventas) rawData.ventas = [];
             if (!rawData.configuracion) rawData.configuracion = [];
-            if (!rawData.prestamos) rawData.prestamos = [];
             if (!rawData.ciclos) rawData.ciclos = [];
-            if (!rawData.gastosPersonales) rawData.gastosPersonales = [];
             if (!rawData.fotosLotes) rawData.fotosLotes = [];
             if (!rawData.ingresosExternos) rawData.ingresosExternos = [];
             if (!rawData.metasRecoleccion) rawData.metasRecoleccion = [];
@@ -1562,9 +1514,7 @@ function updateConfigHeader() {
                     { Parametro: "Nombre_Finca", Valor: "Finca Los Sauces" },
                     { Parametro: "Ubicacion", Valor: "Manizales, Caldas, Colombia" }
                 ],
-                prestamos: [],
                 ciclos: [],
-                gastosPersonales: [],
                 fotosLotes: []
             };
         }
@@ -1597,7 +1547,6 @@ function updateConfigHeader() {
             const dashboardView = document.getElementById("dashboardView");
             const dataEntryView = document.getElementById("dataEntryView");
             const estadoResultadosView = document.getElementById("estadoResultadosView");
-            const obligacionesFormView = document.getElementById("obligacionesFormView");
             const cajaGeneralView = document.getElementById("cajaGeneralView");
             const mapaLotesView = document.getElementById("mapaLotesView");
             
@@ -1609,7 +1558,6 @@ function updateConfigHeader() {
             if (dashboardView) dashboardView.classList.add("hidden");
             if (dataEntryView) dataEntryView.classList.add("hidden");
             if (estadoResultadosView) estadoResultadosView.classList.add("hidden");
-            if (obligacionesFormView) obligacionesFormView.classList.add("hidden");
             if (cajaGeneralView) cajaGeneralView.classList.add("hidden");
             if (mapaLotesView) mapaLotesView.classList.add("hidden");
             
@@ -1667,9 +1615,6 @@ function updateConfigHeader() {
                         estadoResultadosView.classList.remove("hidden");
                         renderEstadoResultados();
                     }
-                } else if (viewName === 'obligaciones') {
-                    if (obligacionesFormView) obligacionesFormView.classList.remove("hidden");
-                    if (loteSelector) loteSelector.disabled = true;
                 } else if (viewName === 'caja_general') {
                     if (cajaGeneralView) {
                         cajaGeneralView.classList.remove("hidden");
@@ -2859,102 +2804,6 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
 } // <--- ESTA LLAVE CIERRA EL ELSE IF DE VENTAS
 } // <--- ESTA LLAVE CIERRA LA FUNCIÓN handlePOSSubmit
 
-function calculateLoanBalance() {
-            const valor = parseDecimal(document.getElementById("loanValor").value);
-            const pago = parseDecimal(document.getElementById("loanPago").value);
-            const balance = valor - pago;
-            document.getElementById("loanSaldo").value = formatCOP(balance);
-        }
-
-        function showLoanAlert(msg, type) {
-            const alertDiv = document.getElementById("loanAlert");
-            const alertMsg = document.getElementById("loanAlertMsg");
-            const iconPath = document.getElementById("loanAlertIconPath");
-            if (!alertDiv || !alertMsg) return;
-
-            alertMsg.textContent = msg;
-            alertDiv.className = "mx-6 mt-4 p-4 rounded-xl flex items-center " + 
-                (type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200');
-
-            if (iconPath) {
-                if (type === 'success') {
-                    iconPath.setAttribute("d", "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z");
-                } else {
-                    iconPath.setAttribute("d", "M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z");
-                }
-            }
-            alertDiv.classList.remove("hidden");
-        }
-
-        function hideLoanAlert() {
-            const alertDiv = document.getElementById("loanAlert");
-            if (alertDiv) alertDiv.classList.add("hidden");
-        }
-
-        function handleObligacionesSubmit(event) {
-            event.preventDefault();
-            hideLoanAlert();
-
-            const banco = document.getElementById("loanBanco").value.trim();
-            const tipo = document.getElementById("loanTipo").value.trim();
-            const valor = Number(document.getElementById("loanValor").value) || 0;
-            const pago = Number(document.getElementById("loanPago").value) || 0;
-            const saldo = valor - pago;
-            const notas = document.getElementById("loanNotas").value.trim();
-
-            if (!banco || !tipo || valor <= 0) {
-                showLoanAlert("Por favor, completa los campos requeridos con datos válidos.", "error");
-                return;
-            }
-
-            showLoader(true, "Registrando obligación bancaria...");
-
-            const record = {
-                Entidad_Banco: banco,
-                Tipo_Prestamo: tipo,
-                Valor_Prestado: valor,
-                Pago_Cuotas: pago,
-                Saldo_Por_Pagar: saldo,
-                Notas: notas
-            };
-
-            if (typeof google === 'undefined' || !google.script || !google.script.run) {
-                // Modo Simulado
-                setTimeout(() => {
-                    if (!rawData.prestamos) rawData.prestamos = [];
-                    (rawData.prestamos || []).push(record);
-                    renderPrestamos();
-                    showLoader(false);
-                    document.getElementById("loanForm").reset();
-                    if (document.getElementById("loanSaldo")) document.getElementById("loanSaldo").value = "$0";
-                    if (document.getElementById("loanFecha")) document.getElementById("loanFecha").value = new Date().toISOString().split('T')[0];
-                    alert("¡Información registrada con éxito!");
-                }, 1000);
-            } else {
-                // Modo Real Google Sheets
-                google.script.run
-                    .withSuccessHandler(function(response) {
-                        showLoader(false);
-                        if (response && response.success) {
-                            if (!rawData.prestamos) rawData.prestamos = [];
-                            (rawData.prestamos || []).push(record);
-                            renderPrestamos();
-                            document.getElementById("loanForm").reset();
-                            if (document.getElementById("loanSaldo")) document.getElementById("loanSaldo").value = "$0";
-                            if (document.getElementById("loanFecha")) document.getElementById("loanFecha").value = new Date().toISOString().split('T')[0];
-                            alert("¡Información registrada con éxito!");
-                        } else {
-                            showLoanAlert(response ? response.error : "Error de respuesta del servidor.", "error");
-                        }
-                    })
-                    .withFailureHandler(function(err) {
-                        showLoader(false);
-                        showLoanAlert("Error al conectar: " + err.toString(), "error");
-                    })
-                    .agregarPrestamo(banco, tipo, valor, pago, saldo, notas);
-            }
-        }
-
         function populateLoteDropdowns() {
             const selects = [
                 document.getElementById("loteSelector"),
@@ -3165,16 +3014,10 @@ function calculateLoanBalance() {
             }
         }
 
-        // --- CÓDIGO Y LÓGICA DE CAJA GENERAL & GASTOS DEL HOGAR ---
-        let personalDoughnutChartInstance = null;
-        let personalTrendChartInstance = null;
-
         function renderCajaGeneralModule() {
             if (!rawData) return;
-            if (!rawData.gastosPersonales) rawData.gastosPersonales = [];
             if (!rawData.ingresosExternos) rawData.ingresosExternos = [];
 
-            // 1. Calculate Caja Real Agrícola
             const ventasCobradas = (rawData.ventas || [])
                 .filter(x => String(x.Estado_Pago || x.estado_pago || 'PAGADO').toUpperCase() === 'PAGADO')
                 .reduce((sum, x) => sum + (Number(x.Ingreso_Total_COP || x.ingreso_total_cop) || 0), 0);
@@ -3184,27 +3027,15 @@ function calculateLoanBalance() {
                 .reduce((sum, x) => sum + (Number(x.Costo_Total_COP || x.costo_total_cop) || 0), 0);
 
             const cajaRealAgricola = ventasCobradas - gastosAgricolasPagados;
-
-            // 2. Calculate Ingresos Externos / Extras Totales
             const totalIngresosExternos = (rawData.ingresosExternos || [])
                 .reduce((sum, x) => sum + (Number(x.Monto_COP || x.monto_cop || x.Monto || x.monto) || 0), 0);
+            const saldoLiquidoDisponible = cajaRealAgricola + totalIngresosExternos;
 
-            // 3. Calculate Gastos Personales Totales
-            const totalGastosPersonales = (rawData.gastosPersonales || [])
-                .reduce((sum, x) => sum + (Number(x.Monto_COP || x.monto_cop) || 0), 0);
-
-            // 4. Saldo Líquido Disponible = (Caja Finca + Ingresos Externos) - Gastos Hogar
-            const saldoLiquidoDisponible = (cajaRealAgricola + totalIngresosExternos) - totalGastosPersonales;
-
-            // Update KPI Cards
             const kpiCajaEl = document.getElementById("kpiCajaRealAgricola");
             if (kpiCajaEl) kpiCajaEl.textContent = formatCOP(cajaRealAgricola);
 
             const kpiExtEl = document.getElementById("kpiIngresosExternos");
             if (kpiExtEl) kpiExtEl.textContent = formatCOP(totalIngresosExternos);
-
-            const kpiPersEl = document.getElementById("kpiGastosPersonales");
-            if (kpiPersEl) kpiPersEl.textContent = formatCOP(totalGastosPersonales);
 
             const kpiSaldoEl = document.getElementById("kpiSaldoLiquido");
             if (kpiSaldoEl) {
@@ -3212,193 +3043,7 @@ function calculateLoanBalance() {
                 kpiSaldoEl.className = `text-2xl font-extrabold mt-1 ${saldoLiquidoDisponible >= 0 ? 'text-sky-600 dark:text-sky-400' : 'text-rose-600 dark:text-rose-400'}`;
             }
 
-            // Render sub-section of external incomes & metas
             renderIngresosExternosModule();
-
-            // Set default date for form if empty
-            const dateInput = document.getElementById("gastoPersonalFecha");
-            if (dateInput && !dateInput.value) {
-                dateInput.value = new Date().toISOString().split('T')[0];
-            }
-
-            // 4. Render Personal Expenses Table
-            const filterCat = document.getElementById("filterCategoriaPersonal")?.value || "Todos";
-            const tableBody = document.getElementById("gastosPersonalesTableBody");
-
-            if (tableBody) {
-                tableBody.innerHTML = "";
-                const filteredList = (rawData.gastosPersonales || []).filter(item => {
-                    if (filterCat === "Todos") return true;
-                    return String(item.Categoria || item.categoria || "").trim() === filterCat;
-                });
-
-                if (filteredList.length === 0) {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="7" class="px-6 py-6 text-center text-xs text-slate-400 font-semibold italic">
-                                Sin gastos personales/hogar registrados para esta categoría.
-                            </td>
-                        </tr>
-                    `;
-                } else {
-                    // Sort descending date
-                    filteredList.sort((a, b) => String(b.Fecha || b.fecha || '').localeCompare(String(a.Fecha || a.fecha || '')));
-
-                    filteredList.forEach(item => {
-                        const tr = document.createElement("tr");
-                        tr.className = "hover:bg-slate-50/80 dark:hover:bg-slate-800/80 transition duration-150";
-
-                        const itemId = item.ID_Gasto_Personal || item.id_gasto_personal || item.Fecha;
-                        const monto = Number(item.Monto_COP || item.monto_cop) || 0;
-
-                        tr.innerHTML = `
-                            <td class="px-6 py-3 whitespace-nowrap text-xs font-semibold text-slate-800 dark:text-slate-200">${item.Fecha || item.fecha || '-'}</td>
-                            <td class="px-6 py-3 whitespace-nowrap"><span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200">${item.Categoria || item.categoria || 'Varios'}</span></td>
-                            <td class="px-6 py-3 text-xs text-slate-700 dark:text-slate-300 font-medium">${item.Descripcion_Detalle || item.descripcion_detalle || item.Detalle || '-'}</td>
-                            <td class="px-6 py-3 whitespace-nowrap text-xs text-right font-extrabold text-rose-600 dark:text-rose-400">${formatCOP(monto)}</td>
-                            <td class="px-6 py-3 whitespace-nowrap text-xs text-center text-slate-500 font-semibold">${item.Metodo_Pago || item.metodo_pago || 'Efectivo'}</td>
-                            <td class="px-6 py-3 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300 font-medium">${item.Beneficiario_Tercero || item.beneficiario_tercero || '-'}</td>
-                            <td class="px-6 py-3 whitespace-nowrap text-center">
-                                <button type="button" onclick="openDeleteModal('gastosPersonales', '${itemId}', this.closest('tr'), { lote: 'Hogar', fecha: '${item.Fecha || ''}', concepto: '${item.Categoria || ''}', monto: ${monto} })" class="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition cursor-pointer" title="Eliminar este gasto">
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
-                                </button>
-                            </td>
-                        `;
-                        tableBody.appendChild(tr);
-                    });
-                }
-            }
-
-            // 5. Render Chart.js Visualizers for Personal Expenses
-            renderPersonalCharts();
-        }
-
-        function renderPersonalCharts() {
-            if (personalDoughnutChartInstance) personalDoughnutChartInstance.destroy();
-            if (personalTrendChartInstance) personalTrendChartInstance.destroy();
-
-            // Category breakdown
-            const catMap = {};
-            (rawData.gastosPersonales || []).forEach(x => {
-                const cat = String(x.Categoria || x.categoria || 'Varios').trim();
-                const monto = Number(x.Monto_COP || x.monto_cop) || 0;
-                catMap[cat] = (catMap[cat] || 0) + monto;
-            });
-
-            const catLabels = Object.keys(catMap);
-            const catValues = Object.values(catMap);
-
-            const ctxDona = document.getElementById('personalDoughnutChart')?.getContext('2d');
-            if (ctxDona) {
-                if (catValues.length === 0) {
-                    ctxDona.clearRect(0, 0, 300, 300);
-                    ctxDona.font = "14px 'Plus Jakarta Sans'";
-                    ctxDona.fillStyle = "#94a3b8";
-                    ctxDona.textAlign = "center";
-                    ctxDona.fillText("Sin gastos del hogar registrados", 150, 150);
-                } else {
-                    personalDoughnutChartInstance = new Chart(ctxDona, {
-                        type: 'doughnut',
-                        data: {
-                            labels: catLabels,
-                            datasets: [{
-                                data: catValues,
-                                backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'],
-                                borderWidth: 2,
-                                borderColor: '#ffffff'
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { position: 'right', labels: { font: { family: 'Plus Jakarta Sans', size: 10, weight: '600' } } },
-                                tooltip: {
-                                    callbacks: {
-                                        label: function(ctx) { return ctx.label + ': ' + formatCOP(ctx.raw); }
-                                    }
-                                }
-                            },
-                            cutout: '65%'
-                        }
-                    });
-                }
-            }
-
-            // Monthly Trend Chart
-            const ctxTrend = document.getElementById('personalTrendChart')?.getContext('2d');
-            if (ctxTrend) {
-                const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-                const fincaData = new Array(12).fill(0);
-                const hogarData = new Array(12).fill(0);
-
-                // Sales
-                (rawData.ventas || []).forEach(v => {
-                    if (String(v.Estado_Pago || v.estado_pago || 'PAGADO').toUpperCase() === 'PAGADO') {
-                        const d = new Date(v.Fecha || v.fecha);
-                        if (!isNaN(d.getTime())) {
-                            const m = d.getMonth();
-                            fincaData[m] += Number(v.Ingreso_Total_COP || v.ingreso_total_cop) || 0;
-                        }
-                    }
-                });
-
-                // Personal
-                (rawData.gastosPersonales || []).forEach(p => {
-                    const d = new Date(p.Fecha || p.fecha);
-                    if (!isNaN(d.getTime())) {
-                        const m = d.getMonth();
-                        hogarData[m] += Number(p.Monto_COP || p.monto_cop) || 0;
-                    }
-                });
-
-                personalTrendChartInstance = new Chart(ctxTrend, {
-                    type: 'bar',
-                    data: {
-                        labels: months,
-                        datasets: [
-                            {
-                                label: 'Ingresos Finca (Pagados)',
-                                data: fincaData,
-                                backgroundColor: 'rgba(16, 185, 129, 0.8)',
-                                borderRadius: 4
-                            },
-                            {
-                                label: 'Gastos Hogar / Personal',
-                                data: hogarData,
-                                backgroundColor: 'rgba(239, 68, 68, 0.8)',
-                                borderRadius: 4
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { position: 'top', labels: { font: { family: 'Plus Jakarta Sans', size: 10, weight: '600' } } },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(ctx) { return ctx.dataset.label + ': ' + formatCOP(ctx.raw); }
-                                }
-                            }
-                        },
-                        scales: {
-                            x: { grid: { display: false } },
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    callback: function(val) {
-                                        if (val >= 1e6) return '$' + (val / 1e6) + 'M';
-                                        return formatCOP(val);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            }
         }
 
         // --- MÓDULO GESTIÓN DE INGRESOS EXTERNOS Y METAS DE RECOLECCIÓN ---
@@ -3909,162 +3554,6 @@ function calculateLoanBalance() {
                 `;
                 tableBody.appendChild(tr);
             });
-        }
-
-        function handleGuardarGastoPersonal(event) {
-            event.preventDefault();
-
-            const fecha = document.getElementById("gastoPersonalFecha").value;
-            const categoria = document.getElementById("gastoPersonalCategoria").value;
-            const monto = parseDecimal(document.getElementById("gastoPersonalMonto").value);
-            const metodo = document.getElementById("gastoPersonalMetodo").value || "Efectivo";
-            const descripcion = document.getElementById("gastoPersonalDescripcion").value || "";
-            const beneficiario = document.getElementById("gastoPersonalBeneficiario").value || "";
-
-            if (!fecha || !categoria || monto <= 0 || !descripcion) {
-                alert("Por favor, ingresa todos los campos requeridos (*).");
-                return;
-            }
-
-            showLoader(true);
-
-            const record = {
-                ID_Gasto_Personal: "GP-" + new Date().getTime(),
-                Fecha: fecha,
-                Categoria: categoria,
-                Descripcion_Detalle: descripcion,
-                Monto_COP: monto,
-                Metodo_Pago: metodo,
-                Beneficiario_Tercero: beneficiario,
-                Notas: ""
-            };
-
-            if (typeof google === 'undefined' || !google.script || !google.script.run) {
-                setTimeout(() => {
-                    if (!rawData.gastosPersonales) rawData.gastosPersonales = [];
-                    (rawData.gastosPersonales || []).push(record);
-                    renderCajaGeneralModule();
-                    showLoader(false);
-                    document.getElementById("gastoPersonalForm").reset();
-                    document.getElementById("gastoPersonalFecha").value = new Date().toISOString().split('T')[0];
-                    alert("¡Información registrada con éxito!");
-                }, 600);
-            } else {
-                google.script.run
-                    .withSuccessHandler(function(res) {
-                        showLoader(false);
-                        if (res && res.success) {
-                            if (!rawData.gastosPersonales) rawData.gastosPersonales = [];
-                            (rawData.gastosPersonales || []).push(record);
-                            renderCajaGeneralModule();
-                            document.getElementById("gastoPersonalForm").reset();
-                            document.getElementById("gastoPersonalFecha").value = new Date().toISOString().split('T')[0];
-                            alert("¡Información registrada con éxito!");
-                        } else {
-                            alert("Error guardando gasto personal: " + (res ? res.error : "Error desconocido."));
-                        }
-                    })
-                    .withFailureHandler(function(err) {
-                        showLoader(false);
-                        alert("Error de red: " + err.toString());
-                    })
-                    .guardarGastoPersonal(record);
-            }
-        }
-
-        function exportPersonalPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('l', 'pt', 'a4');
-
-            doc.setFillColor(15, 118, 110);
-            doc.rect(40, 40, 762, 60, 'F');
-
-            doc.setTextColor(255, 255, 255);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(18);
-            doc.text("FINCA LOS SAUCES", 60, 65);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.text("Estado de Caja General, Gastos del Hogar y Dinero Líquido Disponible", 60, 83);
-
-            doc.setTextColor(51, 65, 85);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10);
-            doc.text("Resumen de Balances General:", 40, 130);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`Caja Real Agrícola: ${document.getElementById("kpiCajaRealAgricola")?.textContent || "$0"}`, 40, 145);
-            doc.text(`Gastos Personales / Hogar: ${document.getElementById("kpiGastosPersonales")?.textContent || "$0"}`, 40, 160);
-            doc.text(`Saldo Líquido Disponible: ${document.getElementById("kpiSaldoLiquido")?.textContent || "$0"}`, 40, 175);
-
-            doc.setFont('helvetica', 'bold');
-            doc.text("Reporte Generado:", 580, 130);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`Fecha: ${new Date().toLocaleDateString('es-CO')}`, 580, 145);
-            doc.text(`Total Registros: ${(rawData.gastosPersonales || []).length}`, 580, 160);
-
-            const columns = [
-                { header: 'Fecha', dataKey: 'fecha' },
-                { header: 'Categoría', dataKey: 'categoria' },
-                { header: 'Descripción / Detalle', dataKey: 'detalle' },
-                { header: 'Monto (COP)', dataKey: 'monto' },
-                { header: 'Método Pago', dataKey: 'metodo' },
-                { header: 'Beneficiario / Tercero', dataKey: 'tercero' }
-            ];
-
-            const rows = (rawData.gastosPersonales || []).map(p => ({
-                fecha: p.Fecha || p.fecha || '-',
-                categoria: p.Categoria || p.categoria || 'Varios',
-                detalle: p.Descripcion_Detalle || p.descripcion_detalle || p.Detalle || '-',
-                monto: formatCOP(Number(p.Monto_COP || p.monto_cop) || 0),
-                metodo: p.Metodo_Pago || p.metodo_pago || 'Efectivo',
-                tercero: p.Beneficiario_Tercero || p.beneficiario_tercero || '-'
-            }));
-
-            doc.autoTable({
-                columns: columns,
-                body: rows,
-                startY: 200,
-                margin: { left: 40, right: 40 },
-                styles: { font: 'helvetica', fontSize: 9, cellPadding: 6 },
-                headStyles: { fillColor: [15, 118, 110], textColor: [255, 255, 255], fontStyle: 'bold' },
-                columnStyles: { monto: { halign: 'right' } }
-            });
-
-            doc.save(`Balance_Caja_General_Hogar_Finca_Los_Sauces_${new Date().toISOString().split('T')[0]}.pdf`);
-        }
-
-        function exportPersonalExcel() {
-            let csvContent = "\uFEFF";
-            csvContent += "BALANCE DE CAJA GENERAL Y GASTOS DEL HOGAR - FINCA LOS SAUCES\n";
-            csvContent += `Fecha del Reporte: ${new Date().toLocaleDateString('es-CO')}\n\n`;
-
-            csvContent += "Métrica;Valor\n";
-            csvContent += `Caja Real Agrícola;${document.getElementById("kpiCajaRealAgricola")?.textContent || "$0"}\n`;
-            csvContent += `Gastos Personales / Hogar;${document.getElementById("kpiGastosPersonales")?.textContent || "$0"}\n`;
-            csvContent += `Saldo Líquido Disponible;${document.getElementById("kpiSaldoLiquido")?.textContent || "$0"}\n\n`;
-
-            csvContent += "Fecha;Categoría;Descripción / Detalle;Monto (COP);Método Pago;Beneficiario / Tercero\n";
-            (rawData.gastosPersonales || []).forEach(p => {
-                const row = [
-                    p.Fecha || p.fecha || '-',
-                    p.Categoria || p.categoria || 'Varios',
-                    (p.Descripcion_Detalle || p.descripcion_detalle || p.Detalle || '-').replace(/;/g, ','),
-                    formatCOP(Number(p.Monto_COP || p.monto_cop) || 0).replace(/;/g, ''),
-                    p.Metodo_Pago || p.metodo_pago || 'Efectivo',
-                    (p.Beneficiario_Tercero || p.beneficiario_tercero || '-').replace(/;/g, ',')
-                ];
-                csvContent += row.join(';') + "\n";
-            });
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", `Gastos_Personales_Hogar_Finca_Los_Sauces_${new Date().toISOString().split('T')[0]}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
         }
 
         // --- SISTEMA DE CREDENCIALES Y SEGURIDAD ---
@@ -5310,7 +4799,7 @@ function calculateLoanBalance() {
             currentY = doc.lastAutoTable.finalY + 25;
 
             // -------------------------------------------------------------
-            // SECCIÓN 3: OBLIGACIONES FINANCIERAS (CUENTAS POR PAGAR)
+            // SECCIÓN 3: CUENTAS POR PAGAR
             // -------------------------------------------------------------
             if (currentY + 120 > 540) { doc.addPage('a4', 'l'); currentY = 40; }
 
@@ -5319,7 +4808,7 @@ function calculateLoanBalance() {
             doc.setTextColor(255, 255, 255);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(11);
-            doc.text("3. OBLIGACIONES FINANCIERAS, DEUDAS Y CUENTAS POR PAGAR", 50, currentY + 15);
+            doc.text("3. CUENTAS POR PAGAR", 50, currentY + 15);
 
             currentY += 30;
 
@@ -5386,67 +4875,10 @@ function calculateLoanBalance() {
                 currentY = doc.lastAutoTable.finalY + 15;
             }
 
-            // Render Table B: Bancos y Préstamos
-            if (currentY + 100 > 540) { doc.addPage('a4', 'l'); currentY = 40; }
-
-            const loansRows = [];
-            let totalPrestamosSaldo = 0;
-
-            (rawData.prestamos || []).forEach(p => {
-                const entidad = p.Entidad_Banco || p.entidad_banco || p.Banco || p.banco || 'Banco / Entidad';
-                const tipo = p.Tipo_Prestamo || p.tipo_prestamo || p.Tipo || p.tipo || 'Crédito Fomento';
-                const saldo = Number(p.Saldo_Por_Pagar || p.saldo_por_pagar || p.Saldo || p.saldo) || 0;
-                const cuota = Number(p.Pago_Cuotas || p.pago_cuotas || p.Cuota || p.cuota) || 0;
-                const notas = p.Notas || p.notas || 'Condiciones vigentes';
-
-                totalPrestamosSaldo += saldo;
-                loansRows.push({
-                    entidad: entidad,
-                    tipo: tipo,
-                    saldo: formatCOP(saldo),
-                    cuota: cuota > 0 ? formatCOP(cuota) : '-',
-                    condiciones: notas
-                });
-            });
-
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(9);
-            doc.setTextColor(109, 40, 217); // Purple/Violet
-            doc.text("B. Bancos, Entidades Financieras y Préstamos de Fomento", 40, currentY);
-            currentY += 10;
-
-            if (loansRows.length === 0) {
-                doc.setFont('helvetica', 'italic');
-                doc.setFontSize(8);
-                doc.setTextColor(100, 116, 139);
-                doc.text("No se registran créditos ni deudas bancarias activas.", 40, currentY + 12);
-                currentY += 25;
-            } else {
-                doc.autoTable({
-                    columns: [
-                        { header: 'Entidad / Banco', dataKey: 'entidad' },
-                        { header: 'Línea de Crédito / Tipo', dataKey: 'tipo' },
-                        { header: 'Saldo Pendiente (COP)', dataKey: 'saldo' },
-                        { header: 'Cuota Regular', dataKey: 'cuota' },
-                        { header: 'Próxima Fecha / Condiciones', dataKey: 'condiciones' }
-                    ],
-                    body: loansRows,
-                    startY: currentY,
-                    margin: { left: 40, right: 40 },
-                    styles: { font: 'helvetica', fontSize: 8, cellPadding: 5, lineColor: [226, 232, 240], lineWidth: 0.5 },
-                    headStyles: { fillColor: [124, 58, 237], textColor: [255, 255, 255], fontStyle: 'bold' },
-                    columnStyles: {
-                        saldo: { halign: 'right', fontStyle: 'bold', textColor: [124, 58, 237] },
-                        cuota: { halign: 'right' }
-                    }
-                });
-                currentY = doc.lastAutoTable.finalY + 15;
-            }
-
             // Total Pasivos Box Summary
             if (currentY + 50 > 540) { doc.addPage('a4', 'l'); currentY = 40; }
 
-            const totalPasivosGeneral = totalProveedoresPendiente + totalPrestamosSaldo;
+            const totalPasivosGeneral = totalProveedoresPendiente;
 
             doc.setFillColor(254, 242, 242); // Rose 50
             doc.setDrawColor(252, 165, 165); // Rose 300
@@ -6405,7 +5837,6 @@ function calculateLoanBalance() {
             const modDashboard = isPermitted(perms.Modulo_Dashboard || perms.Modulo_Inicio);
             const modPOS = isPermitted(perms.Modulo_POS || perms.Modulo_Gastos);
             const modEstadoResultados = isPermitted(perms.Modulo_EstadoResultados || perms.Modulo_Finanzas);
-            const modObligaciones = isPermitted(perms.Modulo_Obligaciones || perms.Modulo_Finanzas);
             const modMapaLotes = isPermitted(perms.Modulo_MapaLotes || perms.Modulo_Lotes);
             const modCajaGeneral = isPermitted(perms.Modulo_CajaGeneral || perms.Modulo_Finanzas);
 
@@ -6420,10 +5851,6 @@ function calculateLoanBalance() {
             // Modulo Estado Resultados
             const erBtns = document.querySelectorAll("#estadoResultadosBtn, #mobileEstadoResultadosBtn, [data-module='Modulo_EstadoResultados']");
             erBtns.forEach(b => b.style.display = modEstadoResultados ? "" : "none");
-
-            // Modulo Obligaciones
-            const obBtns = document.querySelectorAll("#obligacionesBtn, #mobileObligacionesBtn, [data-module='Modulo_Obligaciones']");
-            obBtns.forEach(b => b.style.display = modObligaciones ? "" : "none");
 
             // Modulo Mapa Lotes
             const mapBtns = document.querySelectorAll("#mapaLotesBtn, #mobileMapaLotesBtn, [data-module='Modulo_MapaLotes']");
@@ -6636,7 +6063,6 @@ function calculateLoanBalance() {
                 if (document.getElementById("userFormModDashboard")) document.getElementById("userFormModDashboard").checked = user.moduloDashboard !== "No";
                 if (document.getElementById("userFormModPOS")) document.getElementById("userFormModPOS").checked = user.moduloPOS !== "No";
                 if (document.getElementById("userFormModEstadoResultados")) document.getElementById("userFormModEstadoResultados").checked = user.moduloEstadoResultados !== "No";
-                if (document.getElementById("userFormModObligaciones")) document.getElementById("userFormModObligaciones").checked = user.moduloObligaciones !== "No";
                 if (document.getElementById("userFormModMapaLotes")) document.getElementById("userFormModMapaLotes").checked = user.moduloMapaLotes !== "No";
                 if (document.getElementById("userFormModCajaGeneral")) document.getElementById("userFormModCajaGeneral").checked = user.moduloCajaGeneral !== "No";
             }
@@ -6652,7 +6078,6 @@ function calculateLoanBalance() {
             const modDashboard = document.getElementById("userFormModDashboard") ? (document.getElementById("userFormModDashboard").checked ? "Sí" : "No") : "Sí";
             const modPOS = document.getElementById("userFormModPOS") ? (document.getElementById("userFormModPOS").checked ? "Sí" : "No") : "Sí";
             const modEstadoResultados = document.getElementById("userFormModEstadoResultados") ? (document.getElementById("userFormModEstadoResultados").checked ? "Sí" : "No") : "Sí";
-            const modObligaciones = document.getElementById("userFormModObligaciones") ? (document.getElementById("userFormModObligaciones").checked ? "Sí" : "No") : "Sí";
             const modMapaLotes = document.getElementById("userFormModMapaLotes") ? (document.getElementById("userFormModMapaLotes").checked ? "Sí" : "No") : "Sí";
             const modCajaGeneral = document.getElementById("userFormModCajaGeneral") ? (document.getElementById("userFormModCajaGeneral").checked ? "Sí" : "No") : "Sí";
 
@@ -6669,7 +6094,6 @@ function calculateLoanBalance() {
                 Modulo_Dashboard: modDashboard,
                 Modulo_POS: modPOS,
                 Modulo_EstadoResultados: modEstadoResultados,
-                Modulo_Obligaciones: modObligaciones,
                 Modulo_MapaLotes: modMapaLotes,
                 Modulo_CajaGeneral: modCajaGeneral
             };
@@ -6836,7 +6260,7 @@ function calculateLoanBalance() {
             });
 
             // Put data entry forms in readonly / disabled mode while preserving filter selects/inputs
-            const dataForms = document.querySelectorAll("#posForm, #obligacionesForm, #gastoPersonalForm, #securityChangeForm, #clearDataForm, #formUsuarioAdmin, #photoUploadForm");
+            const dataForms = document.querySelectorAll("#posForm, #securityChangeForm, #clearDataForm, #formUsuarioAdmin, #photoUploadForm");
             dataForms.forEach(form => {
                 const elements = form.querySelectorAll("input, select, textarea, button[type='submit']");
                 elements.forEach(el => {
