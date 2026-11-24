@@ -48,13 +48,13 @@
             </div>
 
             <!-- Contenedor del Mapa Interactivo (Foto Google Earth) -->
-            <div class="relative w-full max-w-md mx-auto overflow-hidden rounded-xl shadow-2xl border border-slate-700 bg-slate-900">
-              
+            <div class="relative w-full min-h-[500px] overflow-hidden rounded-xl shadow-2xl border border-slate-700 bg-slate-900">
+
               <!-- Imagen Satelital Google Earth -->
               <img 
                 src="https://lh3.googleusercontent.com/d/1qpmCo0eo2uoT-a_6JkmWo30hmlLYBGie" 
                 alt="Lotes Finca Los Sauces Google Earth" 
-                class="w-full h-auto block object-cover"
+                class="w-full h-auto min-h-[500px] block object-cover"
               />
 
               <!-- Capa SVG Interactiva -->
