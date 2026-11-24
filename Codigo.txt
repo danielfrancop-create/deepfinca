@@ -54,7 +54,6 @@ function doGet(e) {
         'guardarFotoLotes': guardarFotoLotes,
         'actualizarEstadoPago': actualizarEstadoPago,
         'agregarCiclo': agregarCiclo,
-        'finalizarCiclo': finalizarCiclo,
         'agregarItemConfig': agregarItemConfig,
         'getCurrentUserRole': getCurrentUserRole,
         'obtenerListaUsuarios': obtenerListaUsuarios,
@@ -120,7 +119,6 @@ function doPost(e) {
       'guardarFotoLotes': guardarFotoLotes,
       'actualizarEstadoPago': actualizarEstadoPago,
       'agregarCiclo': agregarCiclo,
-      'finalizarCiclo': finalizarCiclo,
       'agregarItemConfig': agregarItemConfig,
       'getCurrentUserRole': getCurrentUserRole,
       'obtenerListaUsuarios': obtenerListaUsuarios,
@@ -338,7 +336,7 @@ function getSheetData(ss, sheetName) {
 function guardarRegistro(tipo, datos) {
   try {
     if (typeof datos === 'string') datos = JSON.parse(datos);
-    if (tipo === "finalizarCiclo" || tipo === "cerrarCiclo" || tipo === "cierreCiclo") {
+    if (tipo === "finalizarCiclo") {
       var cierreDatos = datos || {};
       return finalizarCiclo(
         cierreDatos.codigoGeneral || cierreDatos.Codigo_General || cierreDatos.Codigo_Seguimiento || cierreDatos.codigo_seguimiento || "",
@@ -477,13 +475,7 @@ function guardarRegistro(tipo, datos) {
     }
 
     // Automatización clave para liberar el lote al vender con casilla marcada
-    var cerrarPorVenta = (tipo === "ventas" || tipo === "venta") && (
-      datos.cerrarCiclo === true || datos.cerrarCiclo === "true" || datos.cerrarCiclo === 1 ||
-      datos.Cerrar_Ciclo === true || datos.Cerrar_Ciclo === "true" || datos.Cerrar_Ciclo === 1 ||
-      datos.cerrar_ciclo === true || datos.cerrar_ciclo === "true" || datos.cerrar_ciclo === 1 ||
-      datos.finalizarCiclo === true || datos.finalizarCiclo === "true" || datos.finalizarCiclo === 1 ||
-      datos.Finalizar_Ciclo === true || datos.Finalizar_Ciclo === "true" || datos.Finalizar_Ciclo === 1
-    );
+    var cerrarPorVenta = (tipo === "ventas" || tipo === "venta") && datos.cerrarCiclo === true;
     var cierreCiclo = null;
     if (cerrarPorVenta) {
       var fechaFinVenta = datos.Fecha || datos.fecha || formatDateNative(new Date());
