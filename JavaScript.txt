@@ -209,8 +209,7 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
                     const response = isPhoto
                         ? await callAppsScript("guardarFotoLote", [item.record])
                         : await callAppsScript("guardarRegistro", [item.tipo, item.record]);
-                    const cierraVenta = (item.tipo === "ventas" || item.tipo === "venta") &&
-                        (item.record.cerrarCiclo === true || item.record.cerrarCiclo === "true" || item.record.Cerrar_Ciclo === true || item.record.Cerrar_Ciclo === "true");
+                    const cierraVenta = (item.tipo === "ventas" || item.tipo === "venta") && item.record.cerrarCiclo === true;
 
                     if (item.tipo === "finalizarCiclo") {
                         applyCycleClosureLocally({
