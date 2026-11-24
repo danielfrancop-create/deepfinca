@@ -14,7 +14,6 @@ var HEADERS_USUARIOS = [
   "Modulo_Dashboard", 
   "Modulo_POS", 
   "Modulo_EstadoResultados", 
-  "Modulo_Obligaciones", 
   "Modulo_MapaLotes", 
   "Modulo_CajaGeneral"
 ];
@@ -29,7 +28,6 @@ function getCurrentUserRole(providedEmail) {
     Modulo_Dashboard: "No",
     Modulo_POS: "No",
     Modulo_EstadoResultados: "No",
-    Modulo_Obligaciones: "No",
     Modulo_MapaLotes: "No",
     Modulo_CajaGeneral: "No"
   };
@@ -38,7 +36,6 @@ function getCurrentUserRole(providedEmail) {
     Modulo_Dashboard: "Sí",
     Modulo_POS: "Sí",
     Modulo_EstadoResultados: "Sí",
-    Modulo_Obligaciones: "Sí",
     Modulo_MapaLotes: "Sí",
     Modulo_CajaGeneral: "Sí"
   };
@@ -165,7 +162,6 @@ function getCurrentUserRole(providedEmail) {
           Modulo_Dashboard: getPerm("modulo_dashboard", "modulo_inicio"),
           Modulo_POS: getPerm("modulo_pos", "modulo_gastos"),
           Modulo_EstadoResultados: getPerm("modulo_estadoresultados", "modulo_finanzas"),
-          Modulo_Obligaciones: getPerm("modulo_obligaciones", "modulo_finanzas"),
           Modulo_MapaLotes: getPerm("modulo_mapalotes", "modulo_lotes"),
           Modulo_CajaGeneral: getPerm("modulo_cajageneral", "modulo_finanzas")
         };
@@ -237,7 +233,6 @@ function verificarAccesoUsuario(emailOpcional) {
       Modulo_Dashboard: "No",
       Modulo_POS: "No",
       Modulo_EstadoResultados: "No",
-      Modulo_Obligaciones: "No",
       Modulo_MapaLotes: "No",
       Modulo_CajaGeneral: "No"
     },
@@ -287,7 +282,6 @@ function obtenerListaUsuarios() {
           moduloDashboard: userObj.Modulo_Dashboard || userObj.Modulo_Inicio || "Sí",
           moduloPOS: userObj.Modulo_POS || userObj.Modulo_Gastos || "Sí",
           moduloEstadoResultados: userObj.Modulo_EstadoResultados || userObj.Modulo_Finanzas || "Sí",
-          moduloObligaciones: userObj.Modulo_Obligaciones || userObj.Modulo_Finanzas || "Sí",
           moduloMapaLotes: userObj.Modulo_MapaLotes || userObj.Modulo_Lotes || "Sí",
           moduloCajaGeneral: userObj.Modulo_CajaGeneral || userObj.Modulo_Finanzas || "Sí"
         });
@@ -313,7 +307,6 @@ function guardarUsuario(datos) {
     var modDashboard = datos.Modulo_Dashboard || datos.moduloDashboard || "Sí";
     var modPOS = datos.Modulo_POS || datos.moduloPOS || "Sí";
     var modEstadoResultados = datos.Modulo_EstadoResultados || datos.moduloEstadoResultados || "Sí";
-    var modObligaciones = datos.Modulo_Obligaciones || datos.moduloObligaciones || "Sí";
     var modMapaLotes = datos.Modulo_MapaLotes || datos.moduloMapaLotes || "Sí";
     var modCajaGeneral = datos.Modulo_CajaGeneral || datos.moduloCajaGeneral || "Sí";
 
@@ -364,7 +357,6 @@ function guardarUsuario(datos) {
       "Modulo_Dashboard": modDashboard,
       "Modulo_POS": modPOS,
       "Modulo_EstadoResultados": modEstadoResultados,
-      "Modulo_Obligaciones": modObligaciones,
       "Modulo_MapaLotes": modMapaLotes,
       "Modulo_CajaGeneral": modCajaGeneral
     };
