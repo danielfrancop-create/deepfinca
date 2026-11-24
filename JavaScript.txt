@@ -1691,8 +1691,10 @@ function updateConfigHeader() {
                 } else if (viewName === 'mapa_lotes') {
                     if (mapaLotesView) {
                         mapaLotesView.classList.remove("hidden");
-                        renderInteractiveMap();
-                        renderPhotoGallery();
+                        requestAnimationFrame(() => {
+                            renderInteractiveMap();
+                            renderPhotoGallery();
+                        });
                     }
                 }
             }
