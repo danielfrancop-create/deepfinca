@@ -4157,19 +4157,33 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 return;
             }
 
-            // Limit display to maximum 4 transactions if expanded state is false
-            let itemsToRender = filtered;
-            const INITIAL_LIMIT = 4;
-
-            // Sort by Date Descending before slicing
-            filtered.sort((a, b) => {
-                if (a.fecha === "-" || !a.fecha) return 1;
-                if (b.fecha === "-" || !b.fecha) return -1;
-                return b.fecha.localeCompare(a.fecha);
+            // Group transactions by their cycle tracking code while preserving newest-first order.
+            const transactionsByTrackingCode = new Map();
+            filtered.forEach(tx => {
+                const trackingCode = tx.codigoGeneral || tx.codigo || "-";
+                if (!transactionsByTrackingCode.has(trackingCode)) transactionsByTrackingCode.set(trackingCode, []);
+                transactionsByTrackingCode.get(trackingCode).push(tx);
             });
 
+            const trackingGroups = Array.from(transactionsByTrackingCode.entries()).map(([trackingCode, items]) => {
+                items.sort((a, b) => {
+                    if (a.fecha === "-" || !a.fecha) return 1;
+                    if (b.fecha === "-" || !b.fecha) return -1;
+                    return b.fecha.localeCompare(a.fecha);
+                });
+                return { trackingCode, items };
+            }).sort((a, b) => {
+                const latestDateA = a.items[0]?.fecha || "";
+                const latestDateB = b.items[0]?.fecha || "";
+                return latestDateB.localeCompare(latestDateA);
+            });
+            const orderedTransactions = trackingGroups.flatMap(group => group.items);
+
+            // Limit display to maximum 4 transactions if expanded state is false
+            const INITIAL_LIMIT = 4;
+            let itemsToRender = orderedTransactions;
             if (!showAllTransactions && totalFilteredCount > INITIAL_LIMIT) {
-                itemsToRender = filtered.slice(0, INITIAL_LIMIT);
+                itemsToRender = orderedTransactions.slice(0, INITIAL_LIMIT);
             }
 
             if (countEl) {
@@ -4192,7 +4206,17 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 }
             }
 
+            let currentTrackingCode = null;
             itemsToRender.forEach(tx => {
+                const trackingCode = tx.codigoGeneral || tx.codigo || "-";
+                if (trackingCode !== currentTrackingCode) {
+                    const groupHeader = document.createElement("tr");
+                    groupHeader.className = "bg-slate-100 dark:bg-slate-800/80 border-y border-slate-200 dark:border-slate-700";
+                    groupHeader.innerHTML = `<td colspan="8" class="px-6 py-2 text-xs font-extrabold uppercase tracking-wide text-slate-700 dark:text-slate-200">Código de seguimiento: ${trackingCode === "-" ? "Sin Código" : trackingCode}</td>`;
+                    tableBody.appendChild(groupHeader);
+                    currentTrackingCode = trackingCode;
+                }
+
                 const tr = document.createElement("tr");
                 tr.className = "hover:bg-slate-50/70 transition duration-150";
 
@@ -4219,7 +4243,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${badgeClass}">${tx.tipoLabel}</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap font-medium text-slate-700 dark:text-slate-200">${tx.concepto}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right font-bold ${tx.tipo === 'Venta' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-100'}">${formatCOP(tx.monto)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right font-bold ${tx.tipo === 'Venta' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">${formatCOP(tx.monto)}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-slate-500 text-xs">${tx.fecha}</td>
                     <td class="px-6 py-4 whitespace-nowrap">${displayCode}</td>
                     <td class="px-6 py-4 text-xs text-slate-500 max-w-xs truncate" title="${tx.detalles}">${tx.detalles}</td>
