@@ -4,6 +4,7 @@
 
 function obtenerConteoItems(filtros) {
   try {
+    _requireAnyModuleUser_(["Modulo_Dashboard", "Modulo_POS", "Modulo_AnalisisSeguimiento"]);
     var ss = (typeof SpreadsheetApp.getActiveSpreadsheet === 'function' && SpreadsheetApp.getActiveSpreadsheet()) || (typeof SPREADSHEET_ID !== 'undefined' ? SpreadsheetApp.openById(SPREADSHEET_ID) : null);
     if (!ss) {
       return { status: "error", success: false, error: "No se pudo acceder a la hoja de cálculo.", data: { conteoIniciales: 0, conteoDesarrollo: 0, conteoVentas: 0 } };
