@@ -134,19 +134,33 @@
             </button>
             <div id="dashboardChartsContent" class="p-3 sm:p-5">
         <section class="grid grid-cols-1 gap-3 sm:gap-6">
-            <div class="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 flex flex-col h-[360px] sm:h-[460px]">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                    <div>
-                        <h3 id="doughnutCardTitle" class="text-lg sm:text-base font-bold text-slate-900">Consolidado General de Módulos</h3>
-                        <p id="doughnutCardSubtitle" class="text-xs text-slate-400 mt-0.5">Comparativa total acumulada: Gastos Iniciales vs. Gastos de Desarrollo vs. Ventas.</p>
+            <div class="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 flex flex-col h-[440px] sm:h-[520px]">
+                <div class="flex flex-col gap-3 mb-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <div>
+                            <h3 id="doughnutCardTitle" class="text-lg sm:text-base font-bold text-slate-900">Consolidado General de Módulos</h3>
+                            <p id="doughnutCardSubtitle" class="text-xs text-slate-400 mt-0.5">Comparativa total acumulada: Gastos Iniciales vs. Gastos de Desarrollo vs. Ventas.</p>
+                        </div>
+                        <span id="doughnutLoteScope" class="inline-flex w-fit items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Todos los lotes</span>
                     </div>
-                    <div>
-                        <select id="doughnutTypeSelector" onchange="changeDoughnutType(this.value)" class="block w-full sm:w-auto rounded-xl border-slate-200 bg-slate-50 text-slate-700 py-3 sm:py-1.5 px-3 text-base sm:text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer border shadow-sm min-h-[48px] sm:min-h-0">
-                            <option value="consolidado" selected>📊 Consolidado General (Todos los Módulos)</option>
-                            <option value="gastos_desarrollo">Gastos de Desarrollo</option>
-                            <option value="gastos_iniciales">Gastos Iniciales</option>
-                            <option value="ventas">Ventas</option>
-                        </select>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <label class="block text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Lote para los gráficos
+                            <select id="doughnutLoteSelector" onchange="changeDoughnutLote(this.value)" class="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:py-2 sm:text-xs">
+                                <option value="Todos" selected>Todos los lotes</option>
+                                <option value="Lote 1">Lote 1</option><option value="Lote 2">Lote 2</option><option value="Lote 3">Lote 3</option><option value="Lote 4">Lote 4</option>
+                                <option value="Lote 5">Lote 5</option><option value="Lote 6">Lote 6</option><option value="Lote 7">Lote 7</option><option value="Lote 8">Lote 8</option>
+                                <option value="Lote 9">Lote 9</option><option value="Lote 10">Lote 10</option><option value="Lote 11">Lote 11</option><option value="Lote 12">Lote 12</option>
+                                <option value="Lote 13">Lote 13</option><option value="Lote 14">Lote 14</option><option value="Lote 15">Lote 15</option><option value="Lote 16">Lote 16</option>
+                            </select>
+                        </label>
+                        <label class="block text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tipo de gráfico
+                            <select id="doughnutTypeSelector" onchange="changeDoughnutType(this.value)" class="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:py-2 sm:text-xs">
+                                <option value="consolidado" selected>📊 Consolidado General</option>
+                                <option value="gastos_desarrollo">Gastos de Desarrollo</option>
+                                <option value="gastos_iniciales">Gastos Iniciales</option>
+                                <option value="ventas">Ventas</option>
+                            </select>
+                        </label>
                     </div>
                 </div>
                 <div class="relative flex-grow min-h-0 w-full flex justify-center items-center">
