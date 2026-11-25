@@ -4533,10 +4533,26 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 });
             }
 
-            // Apply same active filters as UI
-            let filtered = allTx.filter(tx => {
-                return isLoteMatch(tx.lote, selectedLote);
+            const cycleByTrackingCode = new Map();
+            (rawData?.ciclos || []).forEach(cycle => {
+                const generalCode = String(cycle.Codigo_General || cycle.codigo_general || "").trim().toUpperCase();
+                const cycleCodes = [
+                    generalCode,
+                    cycle.Codigo_Inicial || cycle.codigo_inicial,
+                    cycle.Codigo_Desarrollo || cycle.codigo_desarrollo,
+                    cycle.Codigo_Ventas || cycle.codigo_ventas
+                ].map(code => String(code || "").trim().toUpperCase()).filter(Boolean);
+                cycleCodes.forEach(code => cycleByTrackingCode.set(code, cycle));
             });
+
+            allTx.forEach(tx => {
+                tx.cycle = cycleByTrackingCode.get(tx.codigo) || null;
+                tx.groupCode = String(tx.cycle?.Codigo_General || tx.cycle?.codigo_general || tx.codigo || "-").trim().toUpperCase();
+            });
+
+            // Apply same active filters as UI
+            const lotFiltered = allTx.filter(tx => isLoteMatch(tx.lote, selectedLote));
+            let filtered = lotFiltered.slice();
 
             if (filterType !== "Todos") {
                 const mapType = { "Inicial": "Gasto Inicial", "Desarrollo": "Gasto Desarrollo", "Venta": "Venta" };
@@ -4547,12 +4563,32 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 filtered = filtered.filter(tx => tx.codigo.includes(searchCode));
             }
 
-            // Sort by Date Descending
-            filtered.sort((a, b) => {
-                if (a.fecha === "-" || !a.fecha) return 1;
-                if (b.fecha === "-" || !b.fecha) return -1;
-                return b.fecha.localeCompare(a.fecha);
+            const transactionsByCode = new Map();
+            filtered.forEach(tx => {
+                if (!transactionsByCode.has(tx.groupCode)) transactionsByCode.set(tx.groupCode, []);
+                transactionsByCode.get(tx.groupCode).push(tx);
             });
+            const getTransactionDateValue = value => {
+                const dateText = String(value || "").trim();
+                if (!dateText || dateText === "-") return null;
+
+                const isoDate = dateText.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+                if (isoDate) return Date.UTC(Number(isoDate[1]), Number(isoDate[2]) - 1, Number(isoDate[3]));
+
+                const localDate = dateText.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})/);
+                if (localDate) return Date.UTC(Number(localDate[3]), Number(localDate[2]) - 1, Number(localDate[1]));
+
+                const parsedDate = Date.parse(dateText);
+                return Number.isNaN(parsedDate) ? null : parsedDate;
+            };
+            transactionsByCode.forEach(items => items.sort((a, b) => {
+                const dateA = getTransactionDateValue(a.fecha);
+                const dateB = getTransactionDateValue(b.fecha);
+                if (dateA === null && dateB === null) return 0;
+                if (dateA === null) return 1;
+                if (dateB === null) return -1;
+                return dateA - dateB;
+            }));
 
             // 1. PDF Title / Header Decoration (Landscape width = 842, margin = 40, width = 762)
             doc.setFillColor(6, 78, 59); // Emerald 900
@@ -4582,7 +4618,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             doc.text(`Fecha: ${new Date().toLocaleDateString('es-CO')}`, 580, 145);
             doc.text(`Total Registros: ${filtered.length}`, 580, 160);
 
-            // 3. Render Table with 'Tercero / Detalles'
+            // 3. Render one transaction block per tracking code
             const columns = [
                 { header: 'Lote', dataKey: 'lote' },
                 { header: 'Tipo Movimiento', dataKey: 'tipo' },
@@ -4592,44 +4628,105 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 { header: 'Código de Seguimiento', dataKey: 'codigo' },
                 { header: 'Tercero / Detalles', dataKey: 'detalles' }
             ];
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const groupEntries = Array.from(transactionsByCode.entries()).sort(([codeA], [codeB]) => codeA.localeCompare(codeB));
+            let currentY = 200;
 
-            const rows = filtered.map(tx => ({
-                lote: tx.lote,
-                tipo: tx.tipo,
-                concepto: tx.concepto,
-                monto: formatCOP(tx.monto),
-                fecha: tx.fecha,
-                codigo: tx.codigo === "-" ? "Sin Código" : tx.codigo,
-                detalles: tx.detalles
-            }));
+            groupEntries.forEach(([groupCode, groupItems], groupIndex) => {
+                if (currentY > pageHeight - 80) {
+                    doc.addPage();
+                    currentY = 50;
+                }
 
-            doc.autoTable({
-                columns: columns,
-                body: rows,
-                startY: 200,
-                margin: { left: 40, right: 40 },
-                styles: {
-                    font: 'helvetica',
-                    fontSize: 9,
-                    cellPadding: 6,
-                    lineColor: [226, 232, 240],
-                    lineWidth: 0.5
-                },
-                headStyles: {
-                    fillColor: [5, 150, 105], // Emerald 600
-                    textColor: [255, 255, 255],
-                    fontStyle: 'bold'
-                },
-                alternateRowStyles: {
-                    fillColor: [248, 250, 252] // Slate 50
-                },
-                columnStyles: {
-                    monto: { halign: 'right' },
-                    fecha: { halign: 'center' },
-                    lote: { halign: 'center' },
-                    codigo: { halign: 'center' }
+                doc.setFillColor(226, 232, 240);
+                doc.rect(40, currentY - 14, 762, 22, 'F');
+                doc.setTextColor(15, 23, 42);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.text(`Código de Seguimiento: ${groupCode === "-" ? "Sin Código" : groupCode}`, 48, currentY + 1);
+
+                const rows = groupItems.map(tx => ({
+                    lote: tx.lote,
+                    tipo: tx.tipo,
+                    concepto: tx.concepto,
+                    monto: formatCOP(tx.monto),
+                    fecha: tx.fecha,
+                    codigo: tx.codigo === "-" ? "Sin Código" : tx.codigo,
+                    detalles: tx.detalles
+                }));
+
+                doc.autoTable({
+                    columns: columns,
+                    body: rows,
+                    startY: currentY + 10,
+                    margin: { left: 40, right: 40 },
+                    styles: {
+                        font: 'helvetica',
+                        fontSize: 9,
+                        cellPadding: 6,
+                        lineColor: [226, 232, 240],
+                        lineWidth: 0.5
+                    },
+                    headStyles: {
+                        fillColor: [5, 150, 105],
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold'
+                    },
+                    alternateRowStyles: {
+                        fillColor: [248, 250, 252]
+                    },
+                    columnStyles: {
+                        monto: { halign: 'right' },
+                        fecha: { halign: 'center' },
+                        lote: { halign: 'center' },
+                        codigo: { halign: 'center' }
+                    },
+                    didParseCell: data => {
+                        if (data.section !== 'body') return;
+                        const isSale = data.row.raw.tipo === 'Venta';
+                        if (isSale) {
+                            data.cell.styles.fillColor = [220, 252, 231];
+                            data.cell.styles.textColor = [6, 78, 59];
+                            data.cell.styles.fontStyle = 'bold';
+                        } else if (data.column.dataKey === 'monto') {
+                            data.cell.styles.textColor = [185, 28, 28];
+                            data.cell.styles.fontStyle = 'bold';
+                        }
+                    }
+                });
+
+                const groupFinancials = lotFiltered.filter(tx => tx.groupCode === groupCode);
+                const cycle = groupItems.find(tx => tx.cycle)?.cycle || groupFinancials.find(tx => tx.cycle)?.cycle;
+                const cycleInProgress = cycle && String(cycle.Estado || cycle.estado || '').trim().toUpperCase() === 'EN PROCESO';
+                const hasSale = groupFinancials.some(tx => tx.tipo === 'Venta');
+                if (hasSale && !cycleInProgress) {
+                    const income = groupFinancials.filter(tx => tx.tipo === 'Venta').reduce((sum, tx) => sum + tx.monto, 0);
+                    const expenses = groupFinancials.filter(tx => tx.tipo !== 'Venta').reduce((sum, tx) => sum + tx.monto, 0);
+                    const profit = income - expenses;
+                    currentY = doc.lastAutoTable.finalY + 22;
+                    if (currentY > pageHeight - 35) {
+                        doc.addPage();
+                        currentY = 50;
+                    }
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(10);
+                    doc.setTextColor(profit < 0 ? 185 : 6, profit < 0 ? 28 : 78, profit < 0 ? 28 : 59);
+                    doc.text(`Ganancia neta del ciclo: ${formatCOP(profit)}`, 40, currentY);
+                }
+
+                currentY = doc.lastAutoTable.finalY + 38;
+                if (groupIndex < groupEntries.length - 1 && currentY > pageHeight - 60) {
+                    doc.addPage();
+                    currentY = 50;
                 }
             });
+
+            if (groupEntries.length === 0) {
+                doc.setTextColor(100, 116, 139);
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(10);
+                doc.text("No hay transacciones para los filtros seleccionados.", 40, 220);
+            }
 
             // Save the document
             const filename = `Transacciones_Finca_Los_Sauces_${new Date().toISOString().split('T')[0]}.pdf`;
