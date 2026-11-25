@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Finca Los Sauces - Dashboard de Control Operativo</title>
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23064e3b'/%3E%3Cpath d='M32 14v36M14 32h36' stroke='%2334d399' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
+    <meta name="theme-color" content="#064e3b">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- Puente GAS con versión para forzar actualización -->
+    <script src="bridge.js?v=10055"></script>
+</head>
+<body class="h-full flex flex-col text-slate-800">
+
+    <div id="header-container"></div>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6 sm:space-y-8">
+        <div id="dashboard-container"></div>
+        <div id="analysis-tracking-container"></div>
+        <div id="pos-container"></div>
+        <div id="map-container"></div>
+    </main>
+
+    <div id="modals-container"></div>
+
+    <div id="loader" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex flex-col justify-center items-center z-50" style="display: none;">
+        <div class="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center space-y-4 max-w-xs text-center">
+            <div class="relative w-12 h-12">
+                <div class="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+                <div class="absolute inset-0 rounded-full border-4 border-emerald-600 border-t-transparent animate-spin"></div>
+            </div>
+            <div>
+                <p class="font-bold text-slate-800" id="loaderTitle">Cargando...</p>
+                <p class="text-xs text-slate-500 mt-1" id="loaderMessage">Por favor espere un momento</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+      const APP_VERSION = '10055';
+
+      async function loadPartials() {
+        const files = [
+          { id: 'header-container', file: 'Header.txt', required: true },
+          { id: 'dashboard-container', file: 'ViewDashboard.txt', required: true },
+          { id: 'analysis-tracking-container', file: 'ViewAnalysis.txt', required: true },
+          { id: 'pos-container', file: 'ViewPOS.txt', required: true },
+          { id: 'map-container', file: 'ViewMap.txt', required: true },
+          { id: 'modals-container', file: 'Modals.txt', required: true }
+        ];
+
+        const results = await Promise.all(
+          files.map(async ({ id, file, required }) => {
+            try {
+              const res = await fetch(`${file}?v=${APP_VERSION}`, { cache: 'no-cache' });
+              if (!res.ok) {
+                throw new Error(`HTTP ${res.status} (${res.statusText})`);
+              }
+              const html = await res.text();
+              const container = document.getElementById(id);
+              if (container) {
+                container.innerHTML = html;
+              }
+              return { file, ok: true, required };
+            } catch (err) {
+              console.error(`Error cargando parcial ${file}:`, err);
+              return { file, ok: false, required, error: err };
+            }
+          })
+        );
+
+        const missingRequired = results.filter((r) => r.required && !r.ok);
+        if (missingRequired.length > 0) {
+          console.error('Faltan vistas obligatorias:', missingRequired.map((m) => m.file));
+        }
+
+        const script = document.createElement('script');
+        script.src = `JavaScript.txt?v=${APP_VERSION}`;
+        script.onload = () => {
+          if (typeof initApp === 'function') {
+            initApp();
+          } else {
+            console.warn('La función initApp no está definida en JavaScript.txt');
+          }
+        };
+        script.onerror = () => {
+          console.error('Error al cargar el archivo principal JavaScript.txt');
+        };
+        document.body.appendChild(script);
+      }
+
+      document.addEventListener('DOMContentLoaded', loadPartials);
+    </script>
+
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.__fincaOfflineSyncInProgress = false;
+        window.__fincaUpdateReloadPending = false;
+        const hadServiceWorkerController = Boolean(navigator.serviceWorker.controller);
+        let hasReloadedForControllerChange = false;
+
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!hadServiceWorkerController) return;
+          if (window.__fincaOfflineSyncInProgress) {
+            window.__fincaUpdateReloadPending = true;
+            return;
+          }
+          if (hasReloadedForControllerChange) return;
+          hasReloadedForControllerChange = true;
+          window.location.reload();
+        });
+
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' })
+            .then((registration) => {
+              console.log('SW registrado:', registration.scope);
+              return registration.update();
+            })
+            .catch((err) => console.warn('SW no pudo comprobar actualizaciones:', err));
+        });
+      }
+    </script>
+</body>
+</html>
