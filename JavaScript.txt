@@ -1267,8 +1267,12 @@ function updateConfigHeader() {
                 if (subtitleEl) subtitleEl.textContent = "Distribución de ingresos brutos agrupados por producto vendido.";
             }
             
-            const selectedLote = document.getElementById("loteSelector")?.value || "Todos";
+            const selectedLote = document.getElementById("doughnutLoteSelector")?.value || "Todos";
             renderCharts(selectedLote);
+        }
+
+        function changeDoughnutLote(selectedLote) {
+            renderCharts(selectedLote || "Todos");
         }
 
         function renderCharts(selectedLote) {
@@ -1281,6 +1285,9 @@ function updateConfigHeader() {
                 doughnutTypeSelector.value = currentDoughnutType;
             }
 
+            const chartLote = document.getElementById("doughnutLoteSelector")?.value || selectedLote || "Todos";
+            const chartScope = document.getElementById("doughnutLoteScope");
+            if (chartScope) chartScope.textContent = chartLote === "Todos" ? "Todos los lotes" : chartLote;
             const selectedCultivo = document.getElementById("filterCultivo") ? document.getElementById("filterCultivo").value : "Todos";
             const selectedCiclo = document.getElementById("filterCiclo") ? document.getElementById("filterCiclo").value : "Todos";
             const fechaDesde = document.getElementById("filterFechaDesde") ? document.getElementById("filterFechaDesde").value : "";
@@ -1315,9 +1322,9 @@ function updateConfigHeader() {
 
             if (currentDoughnutType === "consolidado") {
                 noDataText = "Sin datos consolidados para el filtro seleccionado";
-                const fIni = (rawData.gastosIniciales || []).filter(item => isLoteMatch(String(item.Lote || item.lote).trim(), selectedLote) && isCicloMatch(item) && isDateInRange(item.Fecha || item.fecha) && isCultivoMatch(item));
-                const fDes = (rawData.gastosDesarrollo || []).filter(item => isLoteMatch(String(item.Lote || item.lote).trim(), selectedLote) && isCicloMatch(item) && isDateInRange(item.Fecha || item.fecha) && isCultivoMatch(item));
-                const fVen = (rawData.ventas || []).filter(item => isLoteMatch(String(item.Lote || item.lote).trim(), selectedLote) && isCicloMatch(item) && isDateInRange(item.Fecha || item.fecha) && isCultivoMatch(item));
+                const fIni = (rawData.gastosIniciales || []).filter(item => isLoteMatch(String(item.Lote || item.lote).trim(), chartLote) && isCicloMatch(item) && isDateInRange(item.Fecha || item.fecha) && isCultivoMatch(item));
+                const fDes = (rawData.gastosDesarrollo || []).filter(item => isLoteMatch(String(item.Lote || item.lote).trim(), chartLote) && isCicloMatch(item) && isDateInRange(item.Fecha || item.fecha) && isCultivoMatch(item));
+                const fVen = (rawData.ventas || []).filter(item => isLoteMatch(String(item.Lote || item.lote).trim(), chartLote) && isCicloMatch(item) && isDateInRange(item.Fecha || item.fecha) && isCultivoMatch(item));
 
                 const totIni = fIni.reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
                 const totDes = fDes.reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
@@ -1330,7 +1337,7 @@ function updateConfigHeader() {
                 noDataText = "Sin gastos de desarrollo registrados";
                 const filtrados = (rawData.gastosDesarrollo || []).filter(item => {
                     const itemLote = String(item.Lote || item.lote).trim();
-                    return isLoteMatch(itemLote, selectedLote) && isCicloMatch(item) && isDateInRange(item.Fecha || item.fecha) && isCultivoMatch(item);
+                    return isLoteMatch(itemLote, chartLote) && isCicloMatch(item) && isDateInRange(item.Fecha || item.fecha) && isCultivoMatch(item);
                 });
                 filtrados.forEach(item => {
                     const tipo = String(item.Tipo_Insumo || item.tipo_insumo || "Otros").trim();
@@ -1341,7 +1348,7 @@ function updateConfigHeader() {
                 noDataText = "Sin gastos iniciales registrados";
                 const filtrados = (rawData.gastosIniciales || []).filter(item => {
                     const itemLote = String(item.Lote || item.lote).trim();
-                    return isLoteMatch(itemLote, selectedLote) && isCicloMatch(item) && isDateInRange(item.Fecha || item.fecha) && isCultivoMatch(item);
+                    return isLoteMatch(itemLote, chartLote) && isCicloMatch(item) && isDateInRange(item.Fecha || item.fecha) && isCultivoMatch(item);
                 });
                 filtrados.forEach(item => {
                     const tipo = String(item.Cultivo_Semilla || item.cultivo_semilla || "Por Definir").trim();
@@ -1352,7 +1359,7 @@ function updateConfigHeader() {
                 noDataText = "Sin ventas registradas";
                 const filtrados = (rawData.ventas || []).filter(item => {
                     const itemLote = String(item.Lote || item.lote).trim();
-                    return isLoteMatch(itemLote, selectedLote) && isCicloMatch(item) && isDateInRange(item.Fecha || item.fecha) && isCultivoMatch(item);
+                    return isLoteMatch(itemLote, chartLote) && isCicloMatch(item) && isDateInRange(item.Fecha || item.fecha) && isCultivoMatch(item);
                 });
                 filtrados.forEach(item => {
                     const tipo = String(item.Producto_Vendido || item.producto_vendido || "Otros").trim();
