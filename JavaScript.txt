@@ -296,6 +296,25 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
         let barChartInstance = null;
         let doughnutChartInstance = null;
 
+        function toggleDashboardSection(contentId, button) {
+            const content = document.getElementById(contentId);
+            if (!content || !button) return;
+
+            const isOpening = content.classList.contains("hidden");
+            content.classList.toggle("hidden", !isOpening);
+            button.setAttribute("aria-expanded", String(isOpening));
+            const icons = button.querySelectorAll("svg");
+            const toggleIcon = icons[icons.length - 1];
+            if (toggleIcon) toggleIcon.classList.toggle("rotate-180", isOpening);
+
+            if (isOpening && contentId === "dashboardChartsContent") {
+                requestAnimationFrame(() => {
+                    if (barChartInstance) barChartInstance.resize();
+                    if (doughnutChartInstance) doughnutChartInstance.resize();
+                });
+            }
+        }
+
         function formatCOP(val) {
             const num = Math.round(Number(val) || 0);
             const isNegative = num < 0;
