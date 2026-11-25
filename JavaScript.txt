@@ -293,7 +293,6 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
         const yearEl = document.getElementById('currentYear');
 if (yearEl) yearEl.textContent = new Date().getFullYear();
         let rawData = null;
-        let barChartInstance = null;
         let doughnutChartInstance = null;
 
         function toggleDashboardSection(contentId, button) {
@@ -311,7 +310,6 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
 
             if (isOpening && contentId === "dashboardChartsContent") {
                 requestAnimationFrame(() => {
-                    if (barChartInstance) barChartInstance.resize();
                     if (doughnutChartInstance) doughnutChartInstance.resize();
                 });
             }
@@ -1048,10 +1046,34 @@ function updateConfigHeader() {
             const tablaCountEl = document.getElementById("tablaCount"); if (tablaCountEl) tablaCountEl.textContent = `Mostrando ${renderedCount} ${renderedCount === 1 ? 'lote' : 'lotes'}`;
         }
 
-        let currentDoughnutType = "gastos_desarrollo";
+        let currentDoughnutType = "consolidado";
+        let selectedDoughnutIndex = 0;
+
+        function updateDoughnutSelection(index) {
+            if (!doughnutChartInstance) return;
+            const dataset = doughnutChartInstance.data.datasets[0];
+            const value = dataset.data[index];
+            if (value === undefined) return;
+
+            selectedDoughnutIndex = index;
+            dataset.offset = dataset.data.map((_, dataIndex) => dataIndex === index ? 16 : 0);
+            doughnutChartInstance.setActiveElements([{ datasetIndex: 0, index }]);
+
+            const total = dataset.data.reduce((sum, amount) => sum + Number(amount || 0), 0);
+            const percentage = total > 0 ? (Number(value) / total) * 100 : 0;
+            const labelEl = document.getElementById("doughnutCenterLabel");
+            const valueEl = document.getElementById("doughnutCenterValue");
+            const percentageEl = document.getElementById("doughnutCenterPercentage");
+            if (labelEl) labelEl.textContent = doughnutChartInstance.data.labels[index];
+            if (valueEl) valueEl.textContent = formatCOP(value);
+            if (percentageEl) percentageEl.textContent = `${percentage.toFixed(2)}% del total`;
+
+            doughnutChartInstance.update();
+        }
 
         function changeDoughnutType(type) {
             currentDoughnutType = type;
+            selectedDoughnutIndex = 0;
             const titleEl = document.getElementById("doughnutCardTitle");
             const subtitleEl = document.getElementById("doughnutCardSubtitle");
             
@@ -1074,8 +1096,14 @@ function updateConfigHeader() {
         }
 
         function renderCharts(selectedLote) {
-            if (barChartInstance) barChartInstance.destroy();
             if (doughnutChartInstance) doughnutChartInstance.destroy();
+            doughnutChartInstance = null;
+            selectedDoughnutIndex = 0;
+
+            const doughnutTypeSelector = document.getElementById("doughnutTypeSelector");
+            if (doughnutTypeSelector && doughnutTypeSelector.value !== currentDoughnutType) {
+                doughnutTypeSelector.value = currentDoughnutType;
+            }
 
             const selectedCultivo = document.getElementById("filterCultivo") ? document.getElementById("filterCultivo").value : "Todos";
             const selectedCiclo = document.getElementById("filterCiclo") ? document.getElementById("filterCiclo").value : "Todos";
@@ -1104,102 +1132,6 @@ function updateConfigHeader() {
                 const c = getCultivoForTx(item);
                 return c.toLowerCase().indexOf(selectedCultivo.toLowerCase()) !== -1;
             };
-
-            let lotes = [];
-            if (selectedLote === "Todos") {
-                for (let i = 1; i <= 16; i++) lotes.push(`Lote ${i}`);
-            } else {
-                lotes.push(selectedLote);
-            }
-
-            const datasetCostos = [];
-            const datasetVentas = [];
-            const activeLotes = [];
-
-            lotes.forEach(lote => {
-                const gIni = (rawData.gastosIniciales || [])
-                    .filter(item => isLoteMatch(item.Lote || item.lote, lote) && isCicloMatch(item) && isDateInRange(item.Fecha || item.fecha) && isCultivoMatch(item))
-                    .reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
-
-                const gDes = (rawData.gastosDesarrollo || [])
-                    .filter(item => isLoteMatch(item.Lote || item.lote, lote) && isCicloMatch(item) && isDateInRange(item.Fecha || item.fecha) && isCultivoMatch(item))
-                    .reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
-
-                const v = (rawData.ventas || [])
-                    .filter(item => isLoteMatch(item.Lote || item.lote, lote) && isCicloMatch(item) && isDateInRange(item.Fecha || item.fecha) && isCultivoMatch(item))
-                    .reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0), 0);
-
-                // If filtering is active, only show lots with data to avoid empty layout clutter
-                if ((fechaDesde || fechaHasta || selectedCultivo !== "Todos") && gIni === 0 && gDes === 0 && v === 0) {
-                    return;
-                }
-
-                activeLotes.push(lote);
-                datasetCostos.push(gIni + gDes);
-                datasetVentas.push(v);
-            });
-
-            const ctxBar = document.getElementById('barChart').getContext('2d');
-            barChartInstance = new Chart(ctxBar, {
-                type: 'bar',
-                data: {
-                    labels: activeLotes,
-                    datasets: [
-                        {
-                            label: 'Costo Total Acumulado',
-                            data: datasetCostos,
-                            backgroundColor: 'rgba(239, 68, 68, 0.85)',
-                            borderColor: 'rgb(239, 68, 68)',
-                            borderWidth: 1.5,
-                            borderRadius: 6
-                        },
-                        {
-                            label: 'Ingreso Ventas',
-                            data: datasetVentas,
-                            backgroundColor: 'rgba(16, 185, 129, 0.85)',
-                            borderColor: 'rgb(16, 185, 129)',
-                            borderWidth: 1.5,
-                            borderRadius: 6
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                font: { family: 'Plus Jakarta Sans', size: 11, weight: '600' },
-                                boxWidth: 12
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return context.dataset.label + ': ' + formatCOP(context.raw);
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: { display: false },
-                            ticks: { font: { family: 'Plus Jakarta Sans', size: 10, weight: '500' } }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                font: { family: 'Plus Jakarta Sans', size: 10 },
-                                callback: function(value) {
-                                    if (value >= 1e6) return '$' + (value / 1e6) + 'M';
-                                    return formatCOP(value);
-                                }
-                            }
-                        }
-                    }
-                }
-            });
 
             // --- CÓDIGO DINÁMICO DE DONUT CHART POR CATEGORÍA ---
             const desgloseInsumos = {};
@@ -1257,15 +1189,23 @@ function updateConfigHeader() {
             const dataDona = Object.values(desgloseInsumos);
             const colorsDona = ['#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#6b7280', '#06b6d4', '#f97316'];
 
-            const ctxDona = document.getElementById('doughnutChart').getContext('2d');
+            const centerLabelEl = document.getElementById("doughnutCenterLabel");
+            const centerValueEl = document.getElementById("doughnutCenterValue");
+            const centerPercentageEl = document.getElementById("doughnutCenterPercentage");
+            const canvas = document.getElementById('doughnutChart');
+
             if (dataDona.length === 0) {
-                ctxDona.clearRect(0, 0, 300, 300);
-                ctxDona.font = "14px 'Plus Jakarta Sans'";
-                ctxDona.fillStyle = "#94a3b8";
-                ctxDona.textAlign = "center";
-                ctxDona.fillText(noDataText, 150, 150);
+                if (centerLabelEl) centerLabelEl.textContent = noDataText;
+                if (centerValueEl) centerValueEl.textContent = formatCOP(0);
+                if (centerPercentageEl) centerPercentageEl.textContent = "0.00% del total";
             } else {
-                doughnutChartInstance = new Chart(ctxDona, {
+                const totalDona = dataDona.reduce((sum, value) => sum + Number(value || 0), 0);
+                const selectedValue = dataDona[selectedDoughnutIndex] || 0;
+                if (centerLabelEl) centerLabelEl.textContent = labelsDona[selectedDoughnutIndex];
+                if (centerValueEl) centerValueEl.textContent = formatCOP(selectedValue);
+                if (centerPercentageEl) centerPercentageEl.textContent = `${(totalDona > 0 ? selectedValue / totalDona * 100 : 0).toFixed(2)}% del total`;
+
+                doughnutChartInstance = new Chart(canvas.getContext('2d'), {
                     type: 'doughnut',
                     data: {
                         labels: labelsDona,
@@ -1273,27 +1213,34 @@ function updateConfigHeader() {
                             data: dataDona,
                             backgroundColor: colorsDona.slice(0, labelsDona.length),
                             borderWidth: 2,
-                            borderColor: '#ffffff'
+                            borderColor: '#ffffff',
+                            offset: dataDona.map((_, index) => index === selectedDoughnutIndex ? 16 : 0),
+                            hoverOffset: 10
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        onClick: (_event, elements) => {
+                            if (elements.length) updateDoughnutSelection(elements[0].index);
+                        },
                         plugins: {
                             legend: {
-                                position: 'right',
+                                position: 'bottom',
+                                onClick: (_event, legendItem) => updateDoughnutSelection(legendItem.index),
                                 labels: {
                                     font: { family: 'Plus Jakarta Sans', size: 10, weight: '500' },
-                                    boxWidth: 10
+                                    boxWidth: 10,
+                                    padding: 12
                                 }
                             },
                             tooltip: {
                                 callbacks: {
                                     label: function(context) {
-                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                        const value = context.raw;
-                                        const percentage = Math.round((value / total) * 100);
-                                        return `${context.label}: ${formatCOP(value)} (${percentage}%)`;
+                                        const total = context.dataset.data.reduce((sum, value) => sum + Number(value || 0), 0);
+                                        const value = Number(context.raw || 0);
+                                        const percentage = total > 0 ? value / total * 100 : 0;
+                                        return `${context.label}: ${formatCOP(value)} (${percentage.toFixed(2)}% del total)`;
                                     }
                                 }
                             }
