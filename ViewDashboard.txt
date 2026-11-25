@@ -2,7 +2,29 @@
         
         <!-- BARRA SUPERIOR DE ACCIÓN -->
         <div class="flex justify-end items-center mb-2">
-            <button onclick="openInformeGeneralModal()" class="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-extrabold text-xs shadow-md transition cursor-pointer border border-indigo-500/20">
+            <div class="lg:hidden w-full sm:w-72">
+                <label for="dashboardMobileLoteSelector" class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Filtrar por lote</label>
+                <select id="dashboardMobileLoteSelector" onchange="syncSelectors('dashboardMobile')" class="block w-full rounded-lg border-slate-300 bg-white text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-white py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold cursor-pointer shadow-sm">
+                    <option value="Todos">Todos los Lotes</option>
+                    <option value="Lote 1">Lote 1</option>
+                    <option value="Lote 2">Lote 2</option>
+                    <option value="Lote 3">Lote 3</option>
+                    <option value="Lote 4">Lote 4</option>
+                    <option value="Lote 5">Lote 5</option>
+                    <option value="Lote 6">Lote 6</option>
+                    <option value="Lote 7">Lote 7</option>
+                    <option value="Lote 8">Lote 8</option>
+                    <option value="Lote 9">Lote 9</option>
+                    <option value="Lote 10">Lote 10</option>
+                    <option value="Lote 11">Lote 11</option>
+                    <option value="Lote 12">Lote 12</option>
+                    <option value="Lote 13">Lote 13</option>
+                    <option value="Lote 14">Lote 14</option>
+                    <option value="Lote 15">Lote 15</option>
+                    <option value="Lote 16">Lote 16</option>
+                </select>
+            </div>
+            <button onclick="openInformeGeneralModal()" class="hidden lg:flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-extrabold text-xs shadow-md transition cursor-pointer border border-indigo-500/20">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
