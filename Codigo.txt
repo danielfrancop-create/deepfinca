@@ -16,11 +16,13 @@ function _getPublicApiFunctions_() {
     getDashboardData: getDashboardData,
     getCurrentUserRole: getCurrentUserRole,
     verificarAccesoUsuario: verificarAccesoUsuario,
+    obtenerConfiguracionGoogleGitHub: obtenerConfiguracionGoogleGitHub,
+    completarSesionGoogleGitHub: completarSesionGoogleGitHub,
+    validarSesionGoogleGitHub: validarSesionGoogleGitHub,
+    cerrarSesionGoogleGitHub: cerrarSesionGoogleGitHub,
     obtenerListaUsuarios: obtenerListaUsuarios,
     guardarUsuario: guardarUsuario,
     eliminarUsuario: eliminarUsuario,
-    iniciarSesionAdminGitHub: iniciarSesionAdminGitHub,
-    completarSesionAdminGitHub: completarSesionAdminGitHub,
     validarSesionAdminGitHub: validarSesionAdminGitHub,
     cerrarSesionAdminGitHub: cerrarSesionAdminGitHub,
     guardarRegistro: guardarRegistro,
@@ -38,7 +40,7 @@ function _getPublicApiFunctions_() {
 }
 
 function _getTokenProtectedApiActions_() {
-  return ["obtenerListaUsuarios", "guardarUsuario", "eliminarUsuario", "guardarRegistro", "guardarFotoLote", "guardarFotoLotes", "actualizarEstadoPago", "agregarCiclo", "agregarItemConfig", "getSecurityCredentials", "eliminarRegistroSeguro", "vaciarHojasGoogleSheets", "actualizarSecurityCredentials"];
+  return ["obtenerListaUsuarios", "guardarUsuario", "eliminarUsuario", "guardarRegistro", "guardarFotoLote", "guardarFotoLotes", "actualizarEstadoPago", "agregarCiclo", "agregarItemConfig", "getSecurityCredentials", "eliminarRegistroSeguro", "vaciarHojasGoogleSheets", "actualizarSecurityCredentials", "exportToExcelData"];
 }
 
 function _dispatchApiAction_(action, args) {
@@ -849,7 +851,7 @@ function guardarFotoLotes(record, sessionToken) { return guardarFotoLote(record,
 
 function exportToExcelData(sessionToken) {
   try {
-    _requireAnyModuleUser_(["Modulo_Dashboard", "Modulo_AnalisisSeguimiento"], sessionToken);
+    _requireAdminUser_(sessionToken);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var data = {
       gastosIniciales: getSheetData(ss, HOJA_GASTOS_INICIALES, sessionToken),
