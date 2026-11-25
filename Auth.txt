@@ -21,6 +21,36 @@ function _getAuthUserSheet_(ss) {
   throw new Error("No hay usuarios autorizados configurados. Agrega manualmente un administrador activo.");
 }
 
+function _getAuthorizedUserByEmail_(email) {
+  var normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!normalizedEmail) throw new Error("La identidad autenticada no está autorizada.");
+  var sheet = _getAuthUserSheet_(_getAuthSpreadsheet_());
+  var lastColumn = sheet.getLastColumn();
+  if (lastColumn < 1) throw new Error("La hoja de usuarios no tiene encabezados válidos.");
+  var headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0].map(function(value) { return String(value || "").trim().toLowerCase(); });
+  var columns = _getUserColumns_(headers);
+  if (columns.email < 0 || columns.role < 0 || columns.status < 0) throw new Error("La hoja de usuarios debe tener columnas de correo, rol y estado.");
+  var values = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, lastColumn).getValues() : [];
+  for (var r = 0; r < values.length; r++) {
+    var row = values[r];
+    if (String(row[columns.email] || "").trim().toLowerCase() !== normalizedEmail) continue;
+    var status = String(row[columns.status] || "").trim().toUpperCase();
+    if (status !== "ACTIVO" && status !== "ACTIVE") throw new Error("La cuenta está inactiva o bloqueada.");
+    var storedRole = String(row[columns.role] || "").trim().toLowerCase();
+    var role = storedRole === "view" ? "visitor" : storedRole;
+    if (role !== "admin" && role !== "visitor") throw new Error("La cuenta no tiene un rol válido asignado.");
+    return {
+      email: normalizedEmail,
+      role: role,
+      active: true,
+      permissions: role === "admin"
+        ? { Modulo_Dashboard: "Sí", Modulo_POS: "Sí", Modulo_MapaLotes: "Sí", Modulo_AnalisisSeguimiento: "Sí" }
+        : { Modulo_Dashboard: "Sí", Modulo_POS: "No", Modulo_MapaLotes: "Sí", Modulo_AnalisisSeguimiento: "Sí" }
+    };
+  }
+  throw new Error("La identidad autenticada no está autorizada.");
+}
+
 function _getAuthenticatedUser_() {
   var email = "";
   try {
@@ -28,44 +58,8 @@ function _getAuthenticatedUser_() {
   } catch (err) {
     throw new Error("No se pudo verificar la identidad de Google.");
   }
-  if (!email) throw new Error("Google Apps Script no proporcionó una identidad autenticada. Configura la aplicación para ejecutarse como el usuario que accede.");
-
-  var sheet = _getAuthUserSheet_(_getAuthSpreadsheet_());
-  var lastColumn = sheet.getLastColumn();
-  if (lastColumn < 1) throw new Error("La hoja de usuarios no tiene encabezados válidos.");
-  var headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0].map(function(value) { return String(value || "").trim().toLowerCase(); });
-  var emailColumn = headers.findIndex(function(value) { return ["correo_electronico", "email", "correo", "usuario"].indexOf(value) !== -1; });
-  var roleColumn = headers.findIndex(function(value) { return ["rol", "role"].indexOf(value) !== -1; });
-  var statusColumn = headers.findIndex(function(value) { return ["estado", "status"].indexOf(value) !== -1; });
-  if (emailColumn < 0 || roleColumn < 0 || statusColumn < 0) throw new Error("La hoja de usuarios debe tener columnas de correo, rol y estado.");
-
-  var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastColumn).getValues();
-  for (var r = 0; r < values.length; r++) {
-    var row = values[r];
-    if (String(row[emailColumn] || "").trim().toLowerCase() !== email) continue;
-    var role = String(row[roleColumn] || "").trim().toLowerCase();
-    var status = String(row[statusColumn] || "").trim().toUpperCase();
-    if (status !== "ACTIVO" && status !== "ACTIVE") throw new Error("La cuenta está inactiva o bloqueada.");
-    if (role !== "admin" && role !== "view") throw new Error("La cuenta no tiene un rol válido asignado.");
-    var permission = function(primary, fallback) {
-      var index = headers.indexOf(primary);
-      if (index < 0 && fallback) index = headers.indexOf(fallback);
-      if (index < 0 || row[index] === "" || row[index] === null) return role === "admin" ? "Sí" : "No";
-      return String(row[index]).trim();
-    };
-    return {
-      email: email,
-      role: role,
-      active: true,
-      permissions: {
-        Modulo_Dashboard: permission("modulo_dashboard", "modulo_inicio"),
-        Modulo_POS: permission("modulo_pos", "modulo_gastos"),
-        Modulo_MapaLotes: permission("modulo_mapalotes", "modulo_lotes"),
-        Modulo_AnalisisSeguimiento: permission("modulo_analisisseguimiento", "modulo_dashboard")
-      }
-    };
-  }
-  throw new Error("La identidad autenticada no está autorizada.");
+  if (!email) throw new Error("Google Apps Script no proporcionó una identidad autenticada. Inicia sesión con Google.");
+  return _getAuthorizedUserByEmail_(email);
 }
 
 function _requireAuthenticatedUser_() {
@@ -110,28 +104,88 @@ function _getActiveAdminByEmail_(email) {
   throw new Error("Credenciales inválidas o cuenta no autorizada.");
 }
 
-function _getAdminSessionUser_(sessionToken) {
+function _getSessionUser_(sessionToken) {
   var token = String(sessionToken || "").trim();
-  if (!token) throw new Error("La sesión de administrador expiró. Inicia sesión nuevamente.");
+  if (!token) throw new Error("La sesión de Google expiró o no es válida. Inicia sesión nuevamente.");
   var properties = _authProperties_();
-  var propertyKey = "GHP_ADMIN_SESSION_" + _authSha256Hex_(token);
-  var sessionJson = properties.getProperty(propertyKey);
-  if (!sessionJson) throw new Error("La sesión de administrador expiró o no es válida. Inicia sesión nuevamente.");
-  var session;
-  try { session = JSON.parse(sessionJson); } catch (err) { properties.deleteProperty(propertyKey); throw new Error("La sesión de administrador no es válida."); }
-  if (!session.expiresAt || Number(session.expiresAt) <= Date.now()) {
-    properties.deleteProperty(propertyKey);
-    throw new Error("La sesión de administrador expiró. Inicia sesión nuevamente.");
+  var appKey = "GHP_SESSION_" + _authSha256Hex_(token);
+  var sessionJson = properties.getProperty(appKey);
+  if (!sessionJson) throw new Error("La sesión de Google expiró o no es válida. Inicia sesión nuevamente.");
+  var appSession;
+  try { appSession = JSON.parse(sessionJson); } catch (err) { properties.deleteProperty(appKey); throw new Error("La sesión de Google no es válida."); }
+  if (!appSession.expiresAt || Number(appSession.expiresAt) <= Date.now()) {
+    properties.deleteProperty(appKey);
+    throw new Error("La sesión de Google expiró. Inicia sesión nuevamente.");
   }
-  var currentCredential = String(properties.getProperty(_adminCredentialKey_(session.email)) || "").split(":");
-  if (currentCredential.length !== 2 || currentCredential[1] !== session.credentialVersion) {
-    properties.deleteProperty(propertyKey);
-    throw new Error("La credencial de administrador cambió. Inicia sesión nuevamente.");
-  }
-  return _getActiveAdminByEmail_(session.email);
+  return _getAuthorizedUserByEmail_(appSession.email);
 }
 
-function iniciarSesionAdminGitHub(email) {
+function _getAdminSessionUser_(sessionToken) {
+  var user = _getSessionUser_(sessionToken);
+  if (user.role !== "admin") throw new Error("Acceso denegado. Se requiere rol administrador.");
+  return user;
+}
+
+function obtenerConfiguracionGoogleGitHub() {
+  var clientId = String(_authProperties_().getProperty("GHP_GOOGLE_OAUTH_CLIENT_ID") || "").trim();
+  if (!clientId) return { success: false, error: "Falta configurar GHP_GOOGLE_OAUTH_CLIENT_ID en las propiedades de Apps Script." };
+  return { success: true, clientId: clientId };
+}
+
+function completarSesionGoogleGitHub(authorizationCode) {
+  try {
+    var properties = _authProperties_();
+    var clientId = String(properties.getProperty("GHP_GOOGLE_OAUTH_CLIENT_ID") || "").trim();
+    var clientSecret = String(properties.getProperty("GHP_GOOGLE_OAUTH_CLIENT_SECRET") || "").trim();
+    var code = String(authorizationCode || "").trim();
+    if (!clientId || !clientSecret) throw new Error("Configura el cliente OAuth de Google en las propiedades de Apps Script.");
+    if (!code) throw new Error("Google no devolvió un código de autorización.");
+    var tokenResponse = UrlFetchApp.fetch("https://oauth2.googleapis.com/token", {
+      method: "post",
+      payload: { code: code, client_id: clientId, client_secret: clientSecret, redirect_uri: "postmessage", grant_type: "authorization_code" },
+      muteHttpExceptions: true
+    });
+    if (tokenResponse.getResponseCode() !== 200) throw new Error("Google rechazó el inicio de sesión. Vuelve a intentarlo.");
+    var tokenData = JSON.parse(tokenResponse.getContentText());
+    if (!tokenData.id_token) throw new Error("Google no devolvió una identidad verificable.");
+    var identityResponse = UrlFetchApp.fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(tokenData.id_token), { muteHttpExceptions: true });
+    if (identityResponse.getResponseCode() !== 200) throw new Error("No se pudo verificar la identidad de Google.");
+    var identity = JSON.parse(identityResponse.getContentText());
+    var expiresAt = Number(identity.exp) * 1000;
+    var verifiedEmail = identity.email_verified === true || String(identity.email_verified).toLowerCase() === "true";
+    if (identity.aud !== clientId || !verifiedEmail || !identity.email || expiresAt <= Date.now() || ["accounts.google.com", "https://accounts.google.com"].indexOf(identity.iss) === -1) {
+      throw new Error("La identidad de Google no superó la verificación del servidor.");
+    }
+    var user = _getAuthorizedUserByEmail_(identity.email);
+    var existingSessions = properties.getProperties();
+    Object.keys(existingSessions).forEach(function(key) {
+      if (key.indexOf("GHP_SESSION_") !== 0) return;
+      try {
+        var existingSession = JSON.parse(existingSessions[key]);
+        if (!existingSession.expiresAt || Number(existingSession.expiresAt) <= Date.now()) properties.deleteProperty(key);
+      } catch (err) { properties.deleteProperty(key); }
+    });
+    var sessionToken = Utilities.getUuid().replace(/-/g, "") + Utilities.getUuid().replace(/-/g, "");
+    var sessionExpiresAt = Date.now() + 8 * 60 * 60 * 1000;
+    properties.setProperty("GHP_SESSION_" + _authSha256Hex_(sessionToken), JSON.stringify({ email: user.email, expiresAt: sessionExpiresAt, provider: "google" }));
+    return { success: true, token: sessionToken, email: user.email, role: user.role, expiresAt: sessionExpiresAt };
+  } catch (err) { return { success: false, error: err.message || String(err) }; }
+}
+
+function validarSesionGoogleGitHub(sessionToken) {
+  try {
+    var user = _getSessionUser_(sessionToken);
+    return { success: true, email: user.email, role: user.role };
+  } catch (err) { return { success: false, error: err.message || String(err) }; }
+}
+
+function cerrarSesionGoogleGitHub(sessionToken) {
+  var token = String(sessionToken || "").trim();
+  if (token) _authProperties_().deleteProperty("GHP_SESSION_" + _authSha256Hex_(token));
+  return { success: true };
+}
+
+function _iniciarSesionAdminGitHub_(email) {
   try {
     var user = _getActiveAdminByEmail_(email);
     var credential = _authProperties_().getProperty(_adminCredentialKey_(user.email));
@@ -144,7 +198,7 @@ function iniciarSesionAdminGitHub(email) {
   } catch (err) { return { success: false, error: err.message || String(err) }; }
 }
 
-function completarSesionAdminGitHub(email, challengeId, proof) {
+function _completarSesionAdminGitHub_(email, challengeId, proof) {
   try {
     var properties = _authProperties_();
     var challengeKey = "GHP_ADMIN_CHALLENGE_" + _authSha256Hex_(String(challengeId || ""));
@@ -189,7 +243,7 @@ function completarSesionAdminGitHub(email, challengeId, proof) {
 
 function validarSesionAdminGitHub(sessionToken) {
   try {
-    var user = _getAdminSessionUser_(sessionToken);
+    var user = sessionToken ? _getAdminSessionUser_(sessionToken) : _requireAdminUser_();
     return { success: true, email: user.email, role: "admin" };
   } catch (err) { return { success: false, error: err.message || String(err) }; }
 }
@@ -217,12 +271,12 @@ function configurarCredencialAdminGitHub_() {
 
 function _hasUserModuleAccess_(user, moduleName) {
   if (user.role === "admin") return true;
-  var value = String((user.permissions || {})[moduleName] || "").trim().toLowerCase();
-  return ["sí", "si", "true", "1", "activo"].indexOf(value) !== -1;
+  if (user.role === "visitor") return ["Modulo_Dashboard", "Modulo_MapaLotes", "Modulo_AnalisisSeguimiento"].indexOf(moduleName) !== -1;
+  return false;
 }
 
 function _requireAnyModuleUser_(moduleNames, sessionToken) {
-  var user = sessionToken ? _getAdminSessionUser_(sessionToken) : _requireAuthenticatedUser_();
+  var user = sessionToken ? _getSessionUser_(sessionToken) : _requireAuthenticatedUser_();
   if (user.role === "admin") return user;
   if (!Array.isArray(moduleNames) || !moduleNames.some(function(name) { return _hasUserModuleAccess_(user, name); })) {
     throw new Error("Acceso denegado al módulo solicitado.");
@@ -236,16 +290,16 @@ function _requireModuleUser_(moduleName) {
 
 function getCurrentUserRole(sessionToken) {
   try {
-    var user = sessionToken ? _getAdminSessionUser_(sessionToken) : _getAuthenticatedUser_();
+    var user = sessionToken ? _getSessionUser_(sessionToken) : _getAuthenticatedUser_();
     return { success: true, registered: true, active: true, email: user.email, role: user.role, permissions: user.permissions };
   } catch (err) {
-    return { success: false, registered: false, active: false, email: "", role: "view", permissions: { Modulo_Dashboard: "No", Modulo_POS: "No", Modulo_MapaLotes: "No", Modulo_AnalisisSeguimiento: "No" }, error: err.message };
+    return { success: false, registered: false, active: false, email: "", role: "visitor", permissions: { Modulo_Dashboard: "No", Modulo_POS: "No", Modulo_MapaLotes: "No", Modulo_AnalisisSeguimiento: "No" }, error: err.message };
   }
 }
 
 function verificarAccesoUsuario(sessionToken) {
   try {
-    var user = sessionToken ? _getAdminSessionUser_(sessionToken) : _requireAuthenticatedUser_();
+    var user = sessionToken ? _getSessionUser_(sessionToken) : _requireAuthenticatedUser_();
     return { success: true, autorizado: true, email: user.email, role: user.role, permissions: user.permissions };
   } catch (err) {
     return { success: false, autorizado: false, email: "", role: "denied", permissions: {}, error: err.message };
@@ -281,7 +335,7 @@ function obtenerListaUsuarios(sessionToken) {
         id: columns.id >= 0 ? row[columns.id] : "",
         email: row[columns.email],
         nombre: columns.name >= 0 ? row[columns.name] : "",
-        rol: String(row[columns.role] || "view").trim().toLowerCase(),
+        rol: String(row[columns.role] || "visitor").trim().toLowerCase() === "view" ? "visitor" : String(row[columns.role] || "visitor").trim().toLowerCase(),
         estado: String(row[columns.status] || "INACTIVO").trim().toUpperCase(),
         moduloDashboard: columns.dashboard >= 0 ? row[columns.dashboard] : "No",
         moduloPOS: columns.pos >= 0 ? row[columns.pos] : "No",
@@ -298,9 +352,10 @@ function guardarUsuario(datos, sessionToken) {
     if (typeof datos === "string") datos = JSON.parse(datos);
     if (!datos || typeof datos !== "object") throw new Error("Los datos del usuario no son válidos.");
     var email = String(datos.email || datos.Email || datos.Correo_Electronico || "").trim().toLowerCase();
-    var role = String(datos.rol || datos.Rol || "view").trim().toLowerCase();
+    var role = String(datos.rol || datos.Rol || "visitor").trim().toLowerCase();
+    if (role === "view") role = "visitor";
     var status = String(datos.estado || datos.Estado || "ACTIVO").trim().toUpperCase();
-    if (!email || (role !== "admin" && role !== "view") || (status !== "ACTIVO" && status !== "INACTIVO")) throw new Error("Correo, rol o estado inválido.");
+    if (!email || (role !== "admin" && role !== "visitor") || (status !== "ACTIVO" && status !== "INACTIVO")) throw new Error("Correo, rol o estado inválido.");
     if (email === actor.email && (role !== "admin" || status !== "ACTIVO")) throw new Error("No puedes quitarte el rol de administrador ni desactivar tu propia cuenta.");
 
     var sheet = _getAuthUserSheet_(_getAuthSpreadsheet_());
@@ -319,9 +374,9 @@ function guardarUsuario(datos, sessionToken) {
     set(columns.name, datos.nombre || datos.Nombre || email.split("@")[0]);
     set(columns.role, role);
     set(columns.status, status);
-    set(columns.dashboard, datos.Modulo_Dashboard || datos.moduloDashboard || "No");
-    set(columns.pos, datos.Modulo_POS || datos.moduloPOS || "No");
-    set(columns.lots, datos.Modulo_MapaLotes || datos.moduloMapaLotes || "No");
+    set(columns.dashboard, role === "admin" || role === "visitor" ? "Sí" : "No");
+    set(columns.pos, role === "admin" ? "Sí" : "No");
+    set(columns.lots, role === "admin" || role === "visitor" ? "Sí" : "No");
     if (columns.id >= 0 && !row[columns.id]) row[columns.id] = "USR-" + new Date().getTime();
     if (targetRow > 0) sheet.getRange(targetRow, 1, 1, lastColumn).setValues([row]);
     else sheet.appendRow(row);
