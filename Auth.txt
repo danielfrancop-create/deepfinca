@@ -72,10 +72,147 @@ function _requireAuthenticatedUser_() {
   return _getAuthenticatedUser_();
 }
 
-function _requireAdminUser_() {
-  var user = _requireAuthenticatedUser_();
+function _requireAdminUser_(sessionToken) {
+  var user = sessionToken ? _getAdminSessionUser_(sessionToken) : _requireAuthenticatedUser_();
   if (user.role !== "admin") throw new Error("Acceso denegado. Se requiere rol administrador.");
   return user;
+}
+
+function _authProperties_() {
+  return PropertiesService.getScriptProperties();
+}
+
+function _authSha256Hex_(value) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(value), Utilities.Charset.UTF_8)
+    .map(function(byte) { return (byte < 0 ? byte + 256 : byte).toString(16).padStart(2, "0"); }).join("");
+}
+
+function _adminCredentialKey_(email) {
+  return "GHP_ADMIN_CREDENTIAL_" + _authSha256Hex_(String(email || "").trim().toLowerCase());
+}
+
+function _getActiveAdminByEmail_(email) {
+  var normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!normalizedEmail) throw new Error("Credenciales inválidas o cuenta no autorizada.");
+  var sheet = _getAuthUserSheet_(_getAuthSpreadsheet_());
+  var lastColumn = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0].map(function(value) { return String(value || "").trim().toLowerCase(); });
+  var emailColumn = headers.findIndex(function(value) { return ["correo_electronico", "email", "correo", "usuario"].indexOf(value) !== -1; });
+  var roleColumn = headers.findIndex(function(value) { return ["rol", "role"].indexOf(value) !== -1; });
+  var statusColumn = headers.findIndex(function(value) { return ["estado", "status"].indexOf(value) !== -1; });
+  if (emailColumn < 0 || roleColumn < 0 || statusColumn < 0) throw new Error("La hoja de usuarios no tiene las columnas requeridas.");
+  var rows = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, lastColumn).getValues() : [];
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][emailColumn] || "").trim().toLowerCase() !== normalizedEmail) continue;
+    if (String(rows[i][roleColumn] || "").trim().toLowerCase() !== "admin" || !["ACTIVO", "ACTIVE"].includes(String(rows[i][statusColumn] || "").trim().toUpperCase())) break;
+    return { email: normalizedEmail, role: "admin", active: true, permissions: { Modulo_Dashboard: "Sí", Modulo_POS: "Sí", Modulo_MapaLotes: "Sí", Modulo_AnalisisSeguimiento: "Sí" } };
+  }
+  throw new Error("Credenciales inválidas o cuenta no autorizada.");
+}
+
+function _getAdminSessionUser_(sessionToken) {
+  var token = String(sessionToken || "").trim();
+  if (!token) throw new Error("La sesión de administrador expiró. Inicia sesión nuevamente.");
+  var properties = _authProperties_();
+  var propertyKey = "GHP_ADMIN_SESSION_" + _authSha256Hex_(token);
+  var sessionJson = properties.getProperty(propertyKey);
+  if (!sessionJson) throw new Error("La sesión de administrador expiró o no es válida. Inicia sesión nuevamente.");
+  var session;
+  try { session = JSON.parse(sessionJson); } catch (err) { properties.deleteProperty(propertyKey); throw new Error("La sesión de administrador no es válida."); }
+  if (!session.expiresAt || Number(session.expiresAt) <= Date.now()) {
+    properties.deleteProperty(propertyKey);
+    throw new Error("La sesión de administrador expiró. Inicia sesión nuevamente.");
+  }
+  var currentCredential = String(properties.getProperty(_adminCredentialKey_(session.email)) || "").split(":");
+  if (currentCredential.length !== 2 || currentCredential[1] !== session.credentialVersion) {
+    properties.deleteProperty(propertyKey);
+    throw new Error("La credencial de administrador cambió. Inicia sesión nuevamente.");
+  }
+  return _getActiveAdminByEmail_(session.email);
+}
+
+function iniciarSesionAdminGitHub(email) {
+  try {
+    var user = _getActiveAdminByEmail_(email);
+    var credential = _authProperties_().getProperty(_adminCredentialKey_(user.email));
+    var parts = String(credential || "").split(":");
+    if (parts.length !== 2 || !parts[0] || !/^[a-f0-9]{64}$/i.test(parts[1])) throw new Error("La credencial de acceso de este administrador no está configurada en Apps Script.");
+    var challengeId = Utilities.getUuid() + Utilities.getUuid();
+    var nonce = Utilities.getUuid() + Utilities.getUuid();
+    CacheService.getScriptCache().put("GHP_ADMIN_CHALLENGE_" + _authSha256Hex_(challengeId), JSON.stringify({ email: user.email, nonce: nonce }), 120);
+    return { success: true, challengeId: challengeId, nonce: nonce, salt: parts[0] };
+  } catch (err) { return { success: false, error: err.message || String(err) }; }
+}
+
+function completarSesionAdminGitHub(email, challengeId, proof) {
+  try {
+    var properties = _authProperties_();
+    var challengeKey = "GHP_ADMIN_CHALLENGE_" + _authSha256Hex_(String(challengeId || ""));
+    var cache = CacheService.getScriptCache();
+    var lock = LockService.getScriptLock();
+    lock.waitLock(5000);
+    var challengeJson;
+    try {
+      challengeJson = cache.get(challengeKey);
+      cache.remove(challengeKey);
+    } finally {
+      lock.releaseLock();
+    }
+    if (!challengeJson) throw new Error("El intento de inicio de sesión expiró. Intenta nuevamente.");
+    var challenge = JSON.parse(challengeJson);
+    var normalizedEmail = String(email || "").trim().toLowerCase();
+    if (challenge.email !== normalizedEmail) throw new Error("El intento de inicio de sesión expiró o no es válido.");
+    var user = _getActiveAdminByEmail_(normalizedEmail);
+    var credential = String(properties.getProperty(_adminCredentialKey_(user.email)) || "").split(":");
+    if (credential.length !== 2 || !/^[a-f0-9]{64}$/i.test(credential[1])) throw new Error("La credencial de acceso no está configurada.");
+    var keyBytes = credential[1].match(/.{2}/g).map(function(hex) { return parseInt(hex, 16); });
+    var expected = Utilities.computeHmacSha256Signature(challenge.nonce, keyBytes)
+      .map(function(byte) { return (byte < 0 ? byte + 256 : byte).toString(16).padStart(2, "0"); }).join("");
+    var supplied = String(proof || "").toLowerCase();
+    var mismatch = expected.length ^ supplied.length;
+    for (var i = 0; i < Math.max(expected.length, supplied.length); i++) mismatch |= (expected.charCodeAt(i) || 0) ^ (supplied.charCodeAt(i) || 0);
+    if (mismatch !== 0) throw new Error("Credenciales inválidas o cuenta no autorizada.");
+    var existingProperties = properties.getProperties();
+    Object.keys(existingProperties).forEach(function(key) {
+      if (key.indexOf("GHP_ADMIN_SESSION_") !== 0) return;
+      try {
+        var existingSession = JSON.parse(existingProperties[key]);
+        if (!existingSession.expiresAt || Number(existingSession.expiresAt) <= Date.now()) properties.deleteProperty(key);
+      } catch (err) { properties.deleteProperty(key); }
+    });
+    var token = Utilities.getUuid().replace(/-/g, "") + Utilities.getUuid().replace(/-/g, "");
+    var expiresAt = Date.now() + 15 * 60 * 1000;
+    properties.setProperty("GHP_ADMIN_SESSION_" + _authSha256Hex_(token), JSON.stringify({ email: user.email, expiresAt: expiresAt, credentialVersion: credential[1] }));
+    return { success: true, token: token, email: user.email, role: "admin", expiresAt: expiresAt };
+  } catch (err) { return { success: false, error: err.message || String(err) }; }
+}
+
+function validarSesionAdminGitHub(sessionToken) {
+  try {
+    var user = _getAdminSessionUser_(sessionToken);
+    return { success: true, email: user.email, role: "admin" };
+  } catch (err) { return { success: false, error: err.message || String(err) }; }
+}
+
+function cerrarSesionAdminGitHub(sessionToken) {
+  var token = String(sessionToken || "").trim();
+  if (token) _authProperties_().deleteProperty("GHP_ADMIN_SESSION_" + _authSha256Hex_(token));
+  return { success: true };
+}
+
+function configurarCredencialAdminGitHub_() {
+  var actor = _requireAdminUser_();
+  var properties = _authProperties_();
+  var target = String(properties.getProperty("GHP_SETUP_ADMIN_EMAIL") || "").trim().toLowerCase();
+  var code = String(properties.getProperty("GHP_SETUP_ADMIN_CODE") || "");
+  if (target !== actor.email) throw new Error("Configura el correo del administrador activo en GHP_SETUP_ADMIN_EMAIL.");
+  if (code.length < 32) throw new Error("GHP_SETUP_ADMIN_CODE debe contener un código aleatorio de al menos 32 caracteres.");
+  _getActiveAdminByEmail_(target);
+  var salt = Utilities.getUuid() + Utilities.getUuid();
+  properties.setProperty(_adminCredentialKey_(target), salt + ":" + _authSha256Hex_(salt + ":" + code));
+  properties.deleteProperty("GHP_SETUP_ADMIN_CODE");
+  properties.deleteProperty("GHP_SETUP_ADMIN_EMAIL");
+  return { success: true };
 }
 
 function _hasUserModuleAccess_(user, moduleName) {
@@ -84,8 +221,8 @@ function _hasUserModuleAccess_(user, moduleName) {
   return ["sí", "si", "true", "1", "activo"].indexOf(value) !== -1;
 }
 
-function _requireAnyModuleUser_(moduleNames) {
-  var user = _requireAuthenticatedUser_();
+function _requireAnyModuleUser_(moduleNames, sessionToken) {
+  var user = sessionToken ? _getAdminSessionUser_(sessionToken) : _requireAuthenticatedUser_();
   if (user.role === "admin") return user;
   if (!Array.isArray(moduleNames) || !moduleNames.some(function(name) { return _hasUserModuleAccess_(user, name); })) {
     throw new Error("Acceso denegado al módulo solicitado.");
@@ -97,21 +234,21 @@ function _requireModuleUser_(moduleName) {
   return _requireAnyModuleUser_([moduleName]);
 }
 
-function getCurrentUserRole() {
+function getCurrentUserRole(sessionToken) {
   try {
-    var user = _getAuthenticatedUser_();
+    var user = sessionToken ? _getAdminSessionUser_(sessionToken) : _getAuthenticatedUser_();
     return { success: true, registered: true, active: true, email: user.email, role: user.role, permissions: user.permissions };
   } catch (err) {
     return { success: false, registered: false, active: false, email: "", role: "view", permissions: { Modulo_Dashboard: "No", Modulo_POS: "No", Modulo_MapaLotes: "No", Modulo_AnalisisSeguimiento: "No" }, error: err.message };
   }
 }
 
-function verificarAccesoUsuario() {
+function verificarAccesoUsuario(sessionToken) {
   try {
-    var user = _requireAuthenticatedUser_();
-    return { autorizado: true, email: user.email, role: user.role, permissions: user.permissions };
+    var user = sessionToken ? _getAdminSessionUser_(sessionToken) : _requireAuthenticatedUser_();
+    return { success: true, autorizado: true, email: user.email, role: user.role, permissions: user.permissions };
   } catch (err) {
-    return { autorizado: false, email: "", role: "denied", permissions: {}, error: err.message };
+    return { success: false, autorizado: false, email: "", role: "denied", permissions: {}, error: err.message };
   }
 }
 
@@ -130,9 +267,9 @@ function _getUserColumns_(headers) {
   };
 }
 
-function obtenerListaUsuarios() {
+function obtenerListaUsuarios(sessionToken) {
   try {
-    _requireAdminUser_();
+    _requireAdminUser_(sessionToken);
     var sheet = _getAuthUserSheet_(_getAuthSpreadsheet_());
     var lastColumn = sheet.getLastColumn();
     var headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
@@ -155,9 +292,9 @@ function obtenerListaUsuarios() {
   } catch (err) { return { success: false, error: err.message || String(err) }; }
 }
 
-function guardarUsuario(datos) {
+function guardarUsuario(datos, sessionToken) {
   try {
-    var actor = _requireAdminUser_();
+    var actor = _requireAdminUser_(sessionToken);
     if (typeof datos === "string") datos = JSON.parse(datos);
     if (!datos || typeof datos !== "object") throw new Error("Los datos del usuario no son válidos.");
     var email = String(datos.email || datos.Email || datos.Correo_Electronico || "").trim().toLowerCase();
@@ -192,9 +329,9 @@ function guardarUsuario(datos) {
   } catch (err) { return { success: false, error: err.message || String(err) }; }
 }
 
-function eliminarUsuario(email) {
+function eliminarUsuario(email, sessionToken) {
   try {
-    var actor = _requireAdminUser_();
+    var actor = _requireAdminUser_(sessionToken);
     var target = String(email || "").trim().toLowerCase();
     if (!target) throw new Error("Especifica un correo válido.");
     if (target === actor.email) throw new Error("No puedes eliminar tu propia cuenta de administrador.");
