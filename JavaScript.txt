@@ -176,6 +176,13 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
             }
         }
 
+        function closeNavigationMenus() {
+            const drawer = document.getElementById("mobileMenuDrawer");
+            const desktopMenu = document.getElementById("desktopNavDropdownMenu");
+            if (drawer) drawer.classList.add("hidden");
+            if (desktopMenu) desktopMenu.classList.add("hidden");
+        }
+
         // Close desktop dropdown on click outside
         document.addEventListener("click", function(event) {
             const dropdownBtn = document.getElementById("desktopNavDropdownBtn");
@@ -1605,12 +1612,7 @@ function updateConfigHeader() {
 
         function showView(viewName) {
             currentView = viewName;
-            
-            // Auto close mobile drawer when selecting any view
-            const drawer = document.getElementById("mobileMenuDrawer");
-            if (drawer && !drawer.classList.contains("hidden")) {
-                drawer.classList.add("hidden");
-            }
+            closeNavigationMenus();
 
             const dashboardView = document.getElementById("dashboardView");
             const dataEntryView = document.getElementById("dataEntryView");
