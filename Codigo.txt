@@ -6,140 +6,57 @@ var HOJA_VENTAS = "ventas";
 var HOJA_CONFIGURACION = "configuracion";
 var HOJA_CICLOS = "ciclos";
 var HOJA_FOTOS_LOTES = "fotosLotes";
-var HOJA_USUARIOS = "usuarios"; // Requerido para Gestión de Usuarios
+var HOJA_USUARIOS = "Usuarios_Autorizados";
 
 // ==========================================
 // 1. FUNCIÓN DE CONEXIÓN CON GITHUB (JSONP Y REST API)
 // ==========================================
+function _getReadOnlyEndpointFunctions_() {
+  return {
+    getDashboardData: getDashboardData,
+    getCurrentUserRole: getCurrentUserRole,
+    obtenerListaUsuarios: obtenerListaUsuarios,
+    getSecurityCredentials: getSecurityCredentials,
+    exportToExcelData: exportToExcelData
+  };
+}
+
 function doGet(e) {
   if (e && e.parameter && e.parameter.callback) {
-    var action = e.parameter.action;
-    var providedEmail = (e.parameter.email || e.parameter.userEmail || "").toString().trim().toLowerCase();
-    var args = e.parameter.args ? JSON.parse(e.parameter.args) : [];
-    
-    if (!providedEmail && args.length > 0) {
-      if (typeof args[0] === 'string' && args[0].indexOf('@') !== -1) {
-        providedEmail = args[0].trim().toLowerCase();
-      } else if (typeof args[0] === 'object' && args[0] !== null) {
-        providedEmail = (args[0].email || args[0].Usuario || args[0].userEmail || "").toString().trim().toLowerCase();
-      }
+    var callback = String(e.parameter.callback || "");
+    if (!/^jsonpCallback_\d+$/.test(callback)) {
+      return ContentService.createTextOutput("Callback no válido.").setMimeType(ContentService.MimeType.TEXT);
     }
-    
-    if (action !== 'getCurrentUserRole') {
-      var authCheck = verificarAccesoUsuario(providedEmail);
-      if (!authCheck || !authCheck.autorizado) {
-        var errorObj = {
-          success: false,
-          unauthorized: true,
-          error: (authCheck && authCheck.error) ? authCheck.error : "Acceso no autorizado: la cuenta no se encuentra registrada o activa en el sistema."
-        };
-        return ContentService.createTextOutput(e.parameter.callback + '(' + JSON.stringify(errorObj) + ')')
-          .setMimeType(ContentService.MimeType.JAVASCRIPT);
-      }
-    }
-
+    var action = String(e.parameter.action || "");
     var resultado;
-    
-    if (action === 'ventas' || action === 'gastosIniciales' || action === 'gastosDesarrollo') {
-      try {
-        resultado = guardarRegistro(action, args[0]);
-      } catch (err) {
-        resultado = { success: false, error: err.toString() };
-      }
-    } else {
-      var funciones = {
-        'getDashboardData': getDashboardData,
-        'guardarRegistro': guardarRegistro,
-        'guardarFotoLote': guardarFotoLote,
-        'guardarFotoLotes': guardarFotoLotes,
-        'actualizarEstadoPago': actualizarEstadoPago,
-        'agregarCiclo': agregarCiclo,
-        'agregarItemConfig': agregarItemConfig,
-        'getCurrentUserRole': getCurrentUserRole,
-        'obtenerListaUsuarios': obtenerListaUsuarios,
-        'guardarUsuario': guardarUsuario,
-        'eliminarUsuario': eliminarUsuario,
-        'verificarAccesoUsuario': verificarAccesoUsuario,
-        'eliminarRegistroSeguro': eliminarRegistroSeguro,
-        'vaciarHojasGoogleSheets': vaciarHojasGoogleSheets,
-        'getSecurityCredentials': getSecurityCredentials,
-        'actualizarSecurityCredentials': actualizarSecurityCredentials,
-        'exportToExcelData': exportToExcelData
-      };
-      
-      if (funciones[action]) {
-        try {
-          resultado = funciones[action].apply(null, args);
-        } catch (err) {
-          resultado = { success: false, error: err.toString() };
-        }
-      } else {
-        resultado = { success: false, error: "Acción no encontrada: " + action };
-      }
+    try {
+      var funciones = _getReadOnlyEndpointFunctions_();
+      if (!funciones[action]) throw new Error("La API pública solo permite consultas de lectura.");
+      var args = e.parameter.args ? JSON.parse(e.parameter.args) : [];
+      if (!Array.isArray(args)) throw new Error("Los argumentos de la solicitud no son válidos.");
+      resultado = funciones[action].apply(null, args);
+    } catch (err) {
+      resultado = { success: false, unauthorized: true, error: err.message || String(err) };
     }
-    
-    return ContentService.createTextOutput(e.parameter.callback + '(' + JSON.stringify(resultado) + ')')
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(resultado) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
-
   return ContentService.createTextOutput("API de Finca Los Sauces en línea.")
     .setMimeType(ContentService.MimeType.TEXT);
 }
 
 function doPost(e) {
   try {
-    var params = (e && e.parameter) ? e.parameter : {};
-    var action = params.action;
-    var providedEmail = (params.email || params.userEmail || "").toString().trim().toLowerCase();
+    var params = e && e.parameter ? e.parameter : {};
+    var action = String(params.action || "");
+    var funciones = _getReadOnlyEndpointFunctions_();
+    if (!funciones[action]) throw new Error("La API pública solo permite consultas de lectura.");
     var args = params.args ? JSON.parse(params.args) : [];
-    
-    if (!providedEmail && args.length > 0) {
-      if (typeof args[0] === 'string' && args[0].indexOf('@') !== -1) {
-        providedEmail = args[0].trim().toLowerCase();
-      } else if (typeof args[0] === 'object' && args[0] !== null) {
-        providedEmail = (args[0].email || args[0].Usuario || args[0].userEmail || "").toString().trim().toLowerCase();
-      }
-    }
-    
-    if (action !== 'getCurrentUserRole') {
-      var authCheck = verificarAccesoUsuario(providedEmail);
-      if (!authCheck || !authCheck.autorizado) {
-        return ContentService.createTextOutput(JSON.stringify({
-          success: false,
-          unauthorized: true,
-          error: (authCheck && authCheck.error) ? authCheck.error : "Acceso no autorizado: la cuenta no se encuentra registrada o activa en el sistema."
-        })).setMimeType(ContentService.MimeType.JSON);
-      }
-    }
-
-    var funciones = {
-      'getDashboardData': getDashboardData,
-      'guardarRegistro': guardarRegistro,
-      'guardarFotoLote': guardarFotoLote,
-      'guardarFotoLotes': guardarFotoLotes,
-      'actualizarEstadoPago': actualizarEstadoPago,
-      'agregarCiclo': agregarCiclo,
-      'agregarItemConfig': agregarItemConfig,
-      'getCurrentUserRole': getCurrentUserRole,
-      'obtenerListaUsuarios': obtenerListaUsuarios,
-      'guardarUsuario': guardarUsuario,
-      'eliminarUsuario': eliminarUsuario,
-      'verificarAccesoUsuario': verificarAccesoUsuario,
-      'eliminarRegistroSeguro': eliminarRegistroSeguro,
-      'vaciarHojasGoogleSheets': vaciarHojasGoogleSheets,
-      'getSecurityCredentials': getSecurityCredentials,
-      'actualizarSecurityCredentials': actualizarSecurityCredentials,
-      'exportToExcelData': exportToExcelData
-    };
-
-    if (funciones[action]) {
-      var resultado = funciones[action].apply(null, args);
-      return ContentService.createTextOutput(JSON.stringify(resultado)).setMimeType(ContentService.MimeType.JSON);
-    } else {
-      return ContentService.createTextOutput(JSON.stringify({ success: false, error: "Acción no encontrada: " + action })).setMimeType(ContentService.MimeType.JSON);
-    }
+    if (!Array.isArray(args)) throw new Error("Los argumentos de la solicitud no son válidos.");
+    var resultado = funciones[action].apply(null, args);
+    return ContentService.createTextOutput(JSON.stringify(resultado)).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ success: false, error: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ success: false, unauthorized: true, error: err.message || String(err) })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
@@ -171,6 +88,7 @@ function formatDateNative(date) {
 }
 
 function asegurarColumnas(sheet, headersNeeded) {
+  _requireAdminUser_();
   var lastCol = sheet.getLastColumn();
   if (lastCol === 0) { sheet.appendRow(headersNeeded); return; }
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
@@ -182,62 +100,15 @@ function asegurarColumnas(sheet, headersNeeded) {
   }
 }
 
-function verificarAccesoUsuario(email) {
-  try {
-    if (!email) return { autorizado: false, error: "Email no proporcionado." };
-    var cleanEmail = email.toString().trim().toLowerCase();
-    
-    // Usuario maestro por defecto definido en credenciales
-    var creds = getSecurityCredentials();
-    if (cleanEmail === (creds.masterUser || "danielfrancop").toLowerCase() || cleanEmail.indexOf("danielfrancop") !== -1) {
-      return { autorizado: true, rol: "ADMINISTRADOR" };
-    }
-
-    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var sheet = ss.getSheetByName(HOJA_USUARIOS);
-    if (!sheet) {
-      // Si la hoja no existe aún, permitimos el acceso inicial o creamos estructura básica
-      return { autorizado: true, rol: "ADMINISTRADOR" };
-    }
-
-    var lastRow = sheet.getLastRow();
-    if (lastRow < 2) return { autorizado: true, rol: "ADMINISTRADOR" };
-
-    var values = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
-    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    
-    var emailCol = -1, statusCol = -1, rolCol = -1;
-    for (var c = 0; c < headers.length; c++) {
-      var h = headers[c].toString().trim().toLowerCase();
-      if (h.indexOf('email') !== -1 || h.indexOf('usuario') !== -1) emailCol = c;
-      if (h.indexOf('estado') !== -1 || h.indexOf('status') !== -1) statusCol = c;
-      if (h.indexOf('rol') !== -1 || h.indexOf('perfil') !== -1) rolCol = c;
-    }
-
-    for (var r = 0; r < values.length; r++) {
-      var rowEmail = emailCol >= 0 ? String(values[r][emailCol]).trim().toLowerCase() : "";
-      if (rowEmail === cleanEmail) {
-        var status = statusCol >= 0 ? String(values[r][statusCol]).trim().toUpperCase() : "ACTIVO";
-        if (status === "INACTIVO" || status === "BLOQUEADO") {
-          return { autorizado: false, error: "Su cuenta se encuentra inactiva o bloqueada." };
-        }
-        var rol = rolCol >= 0 ? String(values[r][rolCol]).trim().toUpperCase() : "CONSULTA";
-        return { autorizado: true, rol: rol };
-      }
-    }
-
-    return { autorizado: false, error: "La cuenta de correo no está autorizada en el sistema." };
-  } catch (err) {
-    return { autorizado: true, rol: "ADMINISTRADOR" }; // Fallback seguro
-  }
+function codeLegacyVerificarAccesoUsuario_() {
+  return verificarAccesoUsuario();
 }
 
-function getCurrentUserRole(email) {
-  var check = verificarAccesoUsuario(email);
-  return { success: true, role: check.rol || "ADMINISTRADOR", autorizado: check.autorizado };
+function codeLegacyGetCurrentUserRole_() {
+  return getCurrentUserRole();
 }
 
-function obtenerListaUsuarios() {
+function codeLegacyObtenerListaUsuarios_() {
   try {
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(HOJA_USUARIOS);
@@ -248,7 +119,7 @@ function obtenerListaUsuarios() {
   }
 }
 
-function guardarUsuario(datos) {
+function codeLegacyGuardarUsuario_(datos) {
   try {
     if (typeof datos === 'string') datos = JSON.parse(datos);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -270,7 +141,7 @@ function guardarUsuario(datos) {
   }
 }
 
-function eliminarUsuario(email) {
+function codeLegacyEliminarUsuario_(email) {
   try {
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(HOJA_USUARIOS);
@@ -293,20 +164,29 @@ function eliminarUsuario(email) {
 // ==========================================
 function getDashboardData() {
   try {
+    var user = _requireAnyModuleUser_(["Modulo_Dashboard", "Modulo_POS", "Modulo_MapaLotes", "Modulo_AnalisisSeguimiento"]);
+    var canFinance = user.role === "admin" || _hasUserModuleAccess_(user, "Modulo_Dashboard") || _hasUserModuleAccess_(user, "Modulo_POS") || _hasUserModuleAccess_(user, "Modulo_AnalisisSeguimiento");
+    var canMap = user.role === "admin" || _hasUserModuleAccess_(user, "Modulo_MapaLotes") || _hasUserModuleAccess_(user, "Modulo_Dashboard") || _hasUserModuleAccess_(user, "Modulo_AnalisisSeguimiento");
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var data = {
-      gastosIniciales: getSheetData(ss, HOJA_GASTOS_INICIALES),
-      gastosDesarrollo: getSheetData(ss, HOJA_GASTOS_DESARROLLO),
-      ventas: getSheetData(ss, HOJA_VENTAS),
+      gastosIniciales: canFinance ? getSheetData(ss, HOJA_GASTOS_INICIALES) : [],
+      gastosDesarrollo: canFinance ? getSheetData(ss, HOJA_GASTOS_DESARROLLO) : [],
+      ventas: canFinance ? getSheetData(ss, HOJA_VENTAS) : [],
       configuracion: getSheetData(ss, HOJA_CONFIGURACION),
       ciclos: getSheetData(ss, HOJA_CICLOS),
-      fotosLotes: getSheetData(ss, HOJA_FOTOS_LOTES)
+      fotosLotes: canMap ? getSheetData(ss, HOJA_FOTOS_LOTES) : []
     };
     return { success: true, data: data };
   } catch (err) { return { success: false, error: err.toString() }; }
 }
 
 function getSheetData(ss, sheetName) {
+  var user = _requireAnyModuleUser_(["Modulo_Dashboard", "Modulo_POS", "Modulo_MapaLotes", "Modulo_AnalisisSeguimiento"]);
+  var allowedSheets = [HOJA_GASTOS_INICIALES, HOJA_GASTOS_DESARROLLO, HOJA_VENTAS, HOJA_CONFIGURACION, HOJA_CICLOS, HOJA_FOTOS_LOTES, HOJA_USUARIOS, "usuarios", "Usuarios"];
+  if (allowedSheets.indexOf(sheetName) === -1) throw new Error("Hoja no disponible para lectura.");
+  if ([HOJA_USUARIOS, "usuarios", "Usuarios"].indexOf(sheetName) !== -1) _requireAdminUser_();
+  if (sheetName === HOJA_FOTOS_LOTES && !_hasUserModuleAccess_(user, "Modulo_MapaLotes") && !_hasUserModuleAccess_(user, "Modulo_Dashboard") && !_hasUserModuleAccess_(user, "Modulo_AnalisisSeguimiento")) throw new Error("Acceso denegado a fotografías de lotes.");
+  if ([HOJA_GASTOS_INICIALES, HOJA_GASTOS_DESARROLLO, HOJA_VENTAS].indexOf(sheetName) !== -1 && !_hasUserModuleAccess_(user, "Modulo_POS") && !_hasUserModuleAccess_(user, "Modulo_Dashboard") && !_hasUserModuleAccess_(user, "Modulo_AnalisisSeguimiento")) throw new Error("Acceso denegado a información financiera.");
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) return [];
   var lastRow = sheet.getLastRow();
@@ -316,6 +196,7 @@ function getSheetData(ss, sheetName) {
   var values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   var result = [];
   for (var r = 0; r < values.length; r++) {
+    if (sheetName === HOJA_CONFIGURACION && ["Security_Code", "Master_User", "Master_Key"].indexOf(String(values[r][0] || "").trim()) !== -1) continue;
     var rowData = {}, hasData = false;
     for (var c = 0; c < headers.length; c++) {
       var headerName = headers[c].toString().trim();
@@ -335,6 +216,7 @@ function getSheetData(ss, sheetName) {
 // ==========================================
 function guardarRegistro(tipo, datos) {
   try {
+    _requireAdminUser_();
     if (typeof datos === 'string') datos = JSON.parse(datos);
     if (tipo === "finalizarCiclo") {
       var cierreDatos = datos || {};
@@ -492,6 +374,7 @@ function guardarRegistro(tipo, datos) {
 }
 
 function obtenerListaLotesActivos(ss) {
+  _requireAnyModuleUser_(["Modulo_Dashboard", "Modulo_POS", "Modulo_MapaLotes", "Modulo_AnalisisSeguimiento"]);
   if (!ss) ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var list = [];
   var ciclosSheet = ss.getSheetByName(HOJA_CICLOS);
@@ -513,6 +396,7 @@ function obtenerListaLotesActivos(ss) {
 
 function actualizarEstadoPago(tipoTabla, filaId, nuevoEstado, fechaPago, extraInfo) {
   try {
+    _requireAdminUser_();
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheetName = "";
     if (tipoTabla === "gastosIniciales" || tipoTabla === "inicial") sheetName = HOJA_GASTOS_INICIALES;
@@ -582,6 +466,7 @@ function actualizarEstadoPago(tipoTabla, filaId, nuevoEstado, fechaPago, extraIn
 
 function agregarCiclo(lotePrincipal, subLote, cultivo, codigoGeneral, codigoInicial, codigoDesarrollo, codigoVentas, estado, fechaInicio, fechaFin) {
   try {
+    _requireAdminUser_();
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(HOJA_CICLOS);
     var columnsNeeded = ["Lote_Principal", "Sub_Lote", "Lote", "Cultivo", "Codigo_General", "Codigo_Inicial", "Codigo_Desarrollo", "Codigo_Ventas", "Estado", "Fecha_Inicio", "Fecha_Fin"];
@@ -604,6 +489,7 @@ function agregarCiclo(lotePrincipal, subLote, cultivo, codigoGeneral, codigoInic
 
 function finalizarCiclo(codigoGeneral, fechaFin, loteReferencia) {
   try {
+    _requireAdminUser_();
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(HOJA_CICLOS);
     if (!sheet) return { success: false, error: "No existe la hoja de ciclos.", cerrados: 0 };
@@ -697,6 +583,7 @@ function finalizarCiclo(codigoGeneral, fechaFin, loteReferencia) {
 
 function agregarItemConfig(columna, nuevoValor) {
   try {
+    _requireAdminUser_();
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(HOJA_CONFIGURACION);
     if (!sheet) {
@@ -741,59 +628,32 @@ function agregarItemConfig(columna, nuevoValor) {
 
 function getSecurityCredentials() {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var sheet = ss.getSheetByName(HOJA_CONFIGURACION);
-    if (!sheet) {
-      return { securityCode: "191385", masterUser: "danielfrancop" };
-    }
-
-    var lastRow = sheet.getLastRow();
-    if (lastRow <= 0) {
-      sheet.appendRow(["Parametro", "Valor"]);
-      lastRow = 1;
-    }
-    var values = sheet.getRange(1, 1, lastRow, 2).getValues();
-
-    var securityCode = "";
-    var masterUser = "";
-    var masterKey = "";
-
+    _requireAdminUser_();
+    var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(HOJA_CONFIGURACION);
+    if (!sheet) return { success: true, configured: false };
+    var values = sheet.getLastRow() > 0 ? sheet.getRange(1, 1, sheet.getLastRow(), 2).getValues() : [];
+    var configured = { securityCode: false, masterUser: false, masterKey: false };
     for (var i = 1; i < values.length; i++) {
-      var param = values[i][0].toString().trim();
-      var val = values[i][1].toString().trim();
-      if (param === "Security_Code") securityCode = val;
-      if (param === "Master_User") masterUser = val;
-      if (param === "Master_Key") masterKey = val;
+      var param = String(values[i][0] || "").trim();
+      var value = String(values[i][1] || "").trim();
+      if (param === "Security_Code") configured.securityCode = !!value;
+      if (param === "Master_User") configured.masterUser = !!value;
+      if (param === "Master_Key") configured.masterKey = !!value;
     }
-
-    if (!securityCode) {
-      securityCode = "191385";
-      sheet.appendRow(["Security_Code", securityCode]);
-    }
-    if (!masterUser) {
-      masterUser = "danielfrancop";
-      sheet.appendRow(["Master_User", masterUser]);
-    }
-    if (!masterKey) {
-      masterKey = "1113619524";
-      sheet.appendRow(["Master_Key", masterKey]);
-    }
-
-    return { securityCode: securityCode, masterUser: masterUser };
+    return { success: true, configured: configured };
   } catch (err) {
-    return { securityCode: "191385", masterUser: "danielfrancop" };
+    return { success: false, error: err.message || String(err) };
   }
 }
 
 function actualizarSecurityCredentials(newCode, user, key) {
   try {
+    _requireAdminUser_();
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(HOJA_CONFIGURACION);
     if (!sheet) {
       return { success: false, error: "La hoja de configuración no existe." };
     }
-
-    getSecurityCredentials();
 
     var lastRow = sheet.getLastRow();
     var range = sheet.getRange(1, 1, lastRow, 2);
@@ -820,11 +680,7 @@ function actualizarSecurityCredentials(newCode, user, key) {
 
 function eliminarRegistroSeguro(tipoTabla, idRegistro, codigoSeguridad) {
   try {
-    var creds = getSecurityCredentials();
-    if (!codigoSeguridad || codigoSeguridad.toString().trim() !== creds.securityCode.toString().trim()) {
-      return { success: false, message: "Código de seguridad incorrecto. Operación cancelada." };
-    }
-
+    _requireAdminUser_();
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheetName = "";
     if (tipoTabla === "gastosIniciales" || tipoTabla === "inicial") sheetName = HOJA_GASTOS_INICIALES;
@@ -891,11 +747,7 @@ function eliminarRegistroSeguro(tipoTabla, idRegistro, codigoSeguridad) {
 
 function vaciarHojasGoogleSheets(securityCode) {
   try {
-    var creds = getSecurityCredentials();
-    if (securityCode.toString().trim() !== creds.securityCode.toString().trim()) {
-      return { success: false, error: "Código de seguridad incorrecto. No se pudo borrar la información." };
-    }
-
+    _requireAdminUser_();
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var hojasABorrar = [HOJA_GASTOS_INICIALES, HOJA_GASTOS_DESARROLLO, HOJA_VENTAS, HOJA_CICLOS, HOJA_FOTOS_LOTES];
 
@@ -917,6 +769,7 @@ function vaciarHojasGoogleSheets(securityCode) {
 
 function guardarFotoLote(record) {
   try {
+    _requireAdminUser_();
     if (typeof record === 'string') record = JSON.parse(record);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(HOJA_FOTOS_LOTES);
@@ -968,6 +821,7 @@ function guardarFotoLotes(record) { return guardarFotoLote(record); }
 
 function exportToExcelData() {
   try {
+    _requireAnyModuleUser_(["Modulo_Dashboard", "Modulo_AnalisisSeguimiento"]);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var data = {
       gastosIniciales: getSheetData(ss, HOJA_GASTOS_INICIALES),
