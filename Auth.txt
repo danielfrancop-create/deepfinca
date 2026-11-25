@@ -13,9 +13,7 @@ var HEADERS_USUARIOS = [
   "Estado", 
   "Modulo_Dashboard", 
   "Modulo_POS", 
-  "Modulo_EstadoResultados", 
-  "Modulo_MapaLotes", 
-  "Modulo_CajaGeneral"
+  "Modulo_MapaLotes"
 ];
 
 /**
@@ -27,17 +25,13 @@ function getCurrentUserRole(providedEmail) {
   var defaultNoPerms = {
     Modulo_Dashboard: "No",
     Modulo_POS: "No",
-    Modulo_EstadoResultados: "No",
-    Modulo_MapaLotes: "No",
-    Modulo_CajaGeneral: "No"
+    Modulo_MapaLotes: "No"
   };
 
   var defaultAdminPerms = {
     Modulo_Dashboard: "Sí",
     Modulo_POS: "Sí",
-    Modulo_EstadoResultados: "Sí",
-    Modulo_MapaLotes: "Sí",
-    Modulo_CajaGeneral: "Sí"
+    Modulo_MapaLotes: "Sí"
   };
 
   try {
@@ -161,9 +155,7 @@ function getCurrentUserRole(providedEmail) {
         var perms = {
           Modulo_Dashboard: getPerm("modulo_dashboard", "modulo_inicio"),
           Modulo_POS: getPerm("modulo_pos", "modulo_gastos"),
-          Modulo_EstadoResultados: getPerm("modulo_estadoresultados", "modulo_finanzas"),
-          Modulo_MapaLotes: getPerm("modulo_mapalotes", "modulo_lotes"),
-          Modulo_CajaGeneral: getPerm("modulo_cajageneral", "modulo_finanzas")
+          Modulo_MapaLotes: getPerm("modulo_mapalotes", "modulo_lotes")
         };
 
         foundUser = {
@@ -232,9 +224,7 @@ function verificarAccesoUsuario(emailOpcional) {
     permissions: {
       Modulo_Dashboard: "No",
       Modulo_POS: "No",
-      Modulo_EstadoResultados: "No",
-      Modulo_MapaLotes: "No",
-      Modulo_CajaGeneral: "No"
+      Modulo_MapaLotes: "No"
     },
     error: roleInfo && roleInfo.error ? roleInfo.error : "Acceso No Autorizado: La cuenta no se encuentra registrada o activa en el sistema."
   };
@@ -281,9 +271,7 @@ function obtenerListaUsuarios() {
           estado: (userObj.Estado || userObj.Status || "ACTIVO").toUpperCase(),
           moduloDashboard: userObj.Modulo_Dashboard || userObj.Modulo_Inicio || "Sí",
           moduloPOS: userObj.Modulo_POS || userObj.Modulo_Gastos || "Sí",
-          moduloEstadoResultados: userObj.Modulo_EstadoResultados || userObj.Modulo_Finanzas || "Sí",
-          moduloMapaLotes: userObj.Modulo_MapaLotes || userObj.Modulo_Lotes || "Sí",
-          moduloCajaGeneral: userObj.Modulo_CajaGeneral || userObj.Modulo_Finanzas || "Sí"
+          moduloMapaLotes: userObj.Modulo_MapaLotes || userObj.Modulo_Lotes || "Sí"
         });
       }
     }
@@ -306,9 +294,7 @@ function guardarUsuario(datos) {
 
     var modDashboard = datos.Modulo_Dashboard || datos.moduloDashboard || "Sí";
     var modPOS = datos.Modulo_POS || datos.moduloPOS || "Sí";
-    var modEstadoResultados = datos.Modulo_EstadoResultados || datos.moduloEstadoResultados || "Sí";
     var modMapaLotes = datos.Modulo_MapaLotes || datos.moduloMapaLotes || "Sí";
-    var modCajaGeneral = datos.Modulo_CajaGeneral || datos.moduloCajaGeneral || "Sí";
 
     email = email.trim().toLowerCase();
     if (!email) return { success: false, error: "El correo electrónico es obligatorio." };
@@ -356,9 +342,7 @@ function guardarUsuario(datos) {
       "Estado": estado,
       "Modulo_Dashboard": modDashboard,
       "Modulo_POS": modPOS,
-      "Modulo_EstadoResultados": modEstadoResultados,
-      "Modulo_MapaLotes": modMapaLotes,
-      "Modulo_CajaGeneral": modCajaGeneral
+      "Modulo_MapaLotes": modMapaLotes
     };
 
     if (emailRowIdx !== -1) {
