@@ -198,34 +198,22 @@
         </section>
 
         <section id="dashboardChartsSection" class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-            <button type="button" onclick="toggleDashboardSection('dashboardChartsContent', this)" aria-expanded="false" aria-controls="dashboardChartsContent" class="w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+            <button type="button" onclick="toggleDashboardSection('dashboardChartsContent', this)" aria-expanded="true" aria-controls="dashboardChartsContent" class="w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
                 <span class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">Gráficos del Dashboard</span>
-                <span class="flex shrink-0 items-center gap-2 text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400"><span data-dashboard-toggle-label>Mostrar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
+                <span class="flex shrink-0 items-center gap-2 text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400"><span data-dashboard-toggle-label>Ocultar</span><svg class="h-5 w-5 rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
             </button>
-            <div id="dashboardChartsContent" class="hidden p-3 sm:p-5">
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6">
-            
-            <div class="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 flex flex-col h-[300px] sm:h-[440px]">
-                <div class="mb-4">
-                    <h3 class="text-lg sm:text-base font-bold text-slate-900">Análisis Financiero por Lote</h3>
-                    <p class="text-xs text-slate-400 mt-0.5">Comparativa directa de Costo Total acumulado frente a Ventas generadas.</p>
-                </div>
-                <div class="relative flex-grow min-h-0 w-full">
-                    <canvas id="barChart"></canvas>
-                </div>
-            </div>
-
-            
-            <div class="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 flex flex-col h-[320px] sm:h-[460px]">
+            <div id="dashboardChartsContent" class="p-3 sm:p-5">
+        <section class="grid grid-cols-1 gap-3 sm:gap-6">
+            <div class="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 flex flex-col h-[360px] sm:h-[460px]">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                     <div>
-                        <h3 id="doughnutCardTitle" class="text-lg sm:text-base font-bold text-slate-900">Insumos y Gastos de Desarrollo</h3>
-                        <p id="doughnutCardSubtitle" class="text-xs text-slate-400 mt-0.5">Distribución de egresos operacionales agrupados por categoría de insumo.</p>
+                        <h3 id="doughnutCardTitle" class="text-lg sm:text-base font-bold text-slate-900">Consolidado General de Módulos</h3>
+                        <p id="doughnutCardSubtitle" class="text-xs text-slate-400 mt-0.5">Comparativa total acumulada: Gastos Iniciales vs. Gastos de Desarrollo vs. Ventas.</p>
                     </div>
                     <div>
                         <select id="doughnutTypeSelector" onchange="changeDoughnutType(this.value)" class="block w-full sm:w-auto rounded-xl border-slate-200 bg-slate-50 text-slate-700 py-3 sm:py-1.5 px-3 text-base sm:text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer border shadow-sm min-h-[48px] sm:min-h-0">
-                            <option value="consolidado">📊 Consolidado General (Todos los Módulos)</option>
-                            <option value="gastos_desarrollo" selected>Gastos de Desarrollo</option>
+                            <option value="consolidado" selected>📊 Consolidado General (Todos los Módulos)</option>
+                            <option value="gastos_desarrollo">Gastos de Desarrollo</option>
                             <option value="gastos_iniciales">Gastos Iniciales</option>
                             <option value="ventas">Ventas</option>
                         </select>
@@ -233,6 +221,13 @@
                 </div>
                 <div class="relative flex-grow min-h-0 w-full flex justify-center items-center">
                     <canvas id="doughnutChart"></canvas>
+                    <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+                        <div class="w-28 sm:w-36 text-center">
+                            <p id="doughnutCenterLabel" class="text-[9px] sm:text-xs font-bold text-slate-500 leading-tight">Gastos Iniciales</p>
+                            <p id="doughnutCenterValue" class="text-xs sm:text-lg font-extrabold text-slate-900 leading-tight mt-1">$0</p>
+                            <p id="doughnutCenterPercentage" class="text-[9px] sm:text-xs font-bold text-emerald-700 mt-0.5">0.00% del total</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
