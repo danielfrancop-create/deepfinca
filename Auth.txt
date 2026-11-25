@@ -5,6 +5,222 @@
 var HOJA_USUARIOS = "Usuarios_Autorizados";
 var HOJA_USUARIOS_LEGACY = "Usuarios";
 
+function _getAuthSpreadsheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss && typeof SPREADSHEET_ID !== "undefined") ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  if (!ss) throw new Error("No se pudo acceder a la hoja de usuarios.");
+  return ss;
+}
+
+function _getAuthUserSheet_(ss) {
+  var names = [HOJA_USUARIOS, "Usuarios_Autorizados", "usuarios", "Usuarios"];
+  for (var i = 0; i < names.length; i++) {
+    var sheet = ss.getSheetByName(names[i]);
+    if (sheet && sheet.getLastRow() >= 2) return sheet;
+  }
+  throw new Error("No hay usuarios autorizados configurados. Agrega manualmente un administrador activo.");
+}
+
+function _getAuthenticatedUser_() {
+  var email = "";
+  try {
+    if (typeof Session !== "undefined" && Session.getActiveUser) email = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase();
+  } catch (err) {
+    throw new Error("No se pudo verificar la identidad de Google.");
+  }
+  if (!email) throw new Error("Google Apps Script no proporcionó una identidad autenticada. Configura la aplicación para ejecutarse como el usuario que accede.");
+
+  var sheet = _getAuthUserSheet_(_getAuthSpreadsheet_());
+  var lastColumn = sheet.getLastColumn();
+  if (lastColumn < 1) throw new Error("La hoja de usuarios no tiene encabezados válidos.");
+  var headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0].map(function(value) { return String(value || "").trim().toLowerCase(); });
+  var emailColumn = headers.findIndex(function(value) { return ["correo_electronico", "email", "correo", "usuario"].indexOf(value) !== -1; });
+  var roleColumn = headers.findIndex(function(value) { return ["rol", "role"].indexOf(value) !== -1; });
+  var statusColumn = headers.findIndex(function(value) { return ["estado", "status"].indexOf(value) !== -1; });
+  if (emailColumn < 0 || roleColumn < 0 || statusColumn < 0) throw new Error("La hoja de usuarios debe tener columnas de correo, rol y estado.");
+
+  var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastColumn).getValues();
+  for (var r = 0; r < values.length; r++) {
+    var row = values[r];
+    if (String(row[emailColumn] || "").trim().toLowerCase() !== email) continue;
+    var role = String(row[roleColumn] || "").trim().toLowerCase();
+    var status = String(row[statusColumn] || "").trim().toUpperCase();
+    if (status !== "ACTIVO" && status !== "ACTIVE") throw new Error("La cuenta está inactiva o bloqueada.");
+    if (role !== "admin" && role !== "view") throw new Error("La cuenta no tiene un rol válido asignado.");
+    var permission = function(primary, fallback) {
+      var index = headers.indexOf(primary);
+      if (index < 0 && fallback) index = headers.indexOf(fallback);
+      if (index < 0 || row[index] === "" || row[index] === null) return role === "admin" ? "Sí" : "No";
+      return String(row[index]).trim();
+    };
+    return {
+      email: email,
+      role: role,
+      active: true,
+      permissions: {
+        Modulo_Dashboard: permission("modulo_dashboard", "modulo_inicio"),
+        Modulo_POS: permission("modulo_pos", "modulo_gastos"),
+        Modulo_MapaLotes: permission("modulo_mapalotes", "modulo_lotes"),
+        Modulo_AnalisisSeguimiento: permission("modulo_analisisseguimiento", "modulo_dashboard")
+      }
+    };
+  }
+  throw new Error("La identidad autenticada no está autorizada.");
+}
+
+function _requireAuthenticatedUser_() {
+  return _getAuthenticatedUser_();
+}
+
+function _requireAdminUser_() {
+  var user = _requireAuthenticatedUser_();
+  if (user.role !== "admin") throw new Error("Acceso denegado. Se requiere rol administrador.");
+  return user;
+}
+
+function _hasUserModuleAccess_(user, moduleName) {
+  if (user.role === "admin") return true;
+  var value = String((user.permissions || {})[moduleName] || "").trim().toLowerCase();
+  return ["sí", "si", "true", "1", "activo"].indexOf(value) !== -1;
+}
+
+function _requireAnyModuleUser_(moduleNames) {
+  var user = _requireAuthenticatedUser_();
+  if (user.role === "admin") return user;
+  if (!Array.isArray(moduleNames) || !moduleNames.some(function(name) { return _hasUserModuleAccess_(user, name); })) {
+    throw new Error("Acceso denegado al módulo solicitado.");
+  }
+  return user;
+}
+
+function _requireModuleUser_(moduleName) {
+  return _requireAnyModuleUser_([moduleName]);
+}
+
+function getCurrentUserRole() {
+  try {
+    var user = _getAuthenticatedUser_();
+    return { success: true, registered: true, active: true, email: user.email, role: user.role, permissions: user.permissions };
+  } catch (err) {
+    return { success: false, registered: false, active: false, email: "", role: "view", permissions: { Modulo_Dashboard: "No", Modulo_POS: "No", Modulo_MapaLotes: "No", Modulo_AnalisisSeguimiento: "No" }, error: err.message };
+  }
+}
+
+function verificarAccesoUsuario() {
+  try {
+    var user = _requireAuthenticatedUser_();
+    return { autorizado: true, email: user.email, role: user.role, permissions: user.permissions };
+  } catch (err) {
+    return { autorizado: false, email: "", role: "denied", permissions: {}, error: err.message };
+  }
+}
+
+function _getUserColumns_(headers) {
+  var lower = headers.map(function(value) { return String(value || "").trim().toLowerCase(); });
+  var find = function(names) { return lower.findIndex(function(value) { return names.indexOf(value) !== -1; }); };
+  return {
+    email: find(["correo_electronico", "email", "correo", "usuario"]),
+    name: find(["nombre", "name"]),
+    role: find(["rol", "role"]),
+    status: find(["estado", "status"]),
+    id: find(["id", "id_usuario"]),
+    dashboard: find(["modulo_dashboard", "modulo_inicio"]),
+    pos: find(["modulo_pos", "modulo_gastos"]),
+    lots: find(["modulo_mapalotes", "modulo_lotes"])
+  };
+}
+
+function obtenerListaUsuarios() {
+  try {
+    _requireAdminUser_();
+    var sheet = _getAuthUserSheet_(_getAuthSpreadsheet_());
+    var lastColumn = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+    var columns = _getUserColumns_(headers);
+    if (columns.email < 0 || columns.role < 0 || columns.status < 0) throw new Error("La hoja de usuarios no tiene las columnas requeridas.");
+    var values = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, lastColumn).getValues() : [];
+    var data = values.map(function(row) {
+      return {
+        id: columns.id >= 0 ? row[columns.id] : "",
+        email: row[columns.email],
+        nombre: columns.name >= 0 ? row[columns.name] : "",
+        rol: String(row[columns.role] || "view").trim().toLowerCase(),
+        estado: String(row[columns.status] || "INACTIVO").trim().toUpperCase(),
+        moduloDashboard: columns.dashboard >= 0 ? row[columns.dashboard] : "No",
+        moduloPOS: columns.pos >= 0 ? row[columns.pos] : "No",
+        moduloMapaLotes: columns.lots >= 0 ? row[columns.lots] : "No"
+      };
+    }).filter(function(user) { return String(user.email || "").trim() !== ""; });
+    return { success: true, data: data };
+  } catch (err) { return { success: false, error: err.message || String(err) }; }
+}
+
+function guardarUsuario(datos) {
+  try {
+    var actor = _requireAdminUser_();
+    if (typeof datos === "string") datos = JSON.parse(datos);
+    if (!datos || typeof datos !== "object") throw new Error("Los datos del usuario no son válidos.");
+    var email = String(datos.email || datos.Email || datos.Correo_Electronico || "").trim().toLowerCase();
+    var role = String(datos.rol || datos.Rol || "view").trim().toLowerCase();
+    var status = String(datos.estado || datos.Estado || "ACTIVO").trim().toUpperCase();
+    if (!email || (role !== "admin" && role !== "view") || (status !== "ACTIVO" && status !== "INACTIVO")) throw new Error("Correo, rol o estado inválido.");
+    if (email === actor.email && (role !== "admin" || status !== "ACTIVO")) throw new Error("No puedes quitarte el rol de administrador ni desactivar tu propia cuenta.");
+
+    var sheet = _getAuthUserSheet_(_getAuthSpreadsheet_());
+    var lastColumn = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+    var columns = _getUserColumns_(headers);
+    if (columns.email < 0 || columns.role < 0 || columns.status < 0) throw new Error("La hoja de usuarios no tiene las columnas requeridas.");
+    var values = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, lastColumn).getValues() : [];
+    var targetRow = -1;
+    for (var i = 0; i < values.length; i++) {
+      if (String(values[i][columns.email] || "").trim().toLowerCase() === email) { targetRow = i + 2; break; }
+    }
+    var row = targetRow > 0 ? values[targetRow - 2].slice() : new Array(lastColumn).fill("");
+    var set = function(index, value) { if (index >= 0) row[index] = value; };
+    set(columns.email, email);
+    set(columns.name, datos.nombre || datos.Nombre || email.split("@")[0]);
+    set(columns.role, role);
+    set(columns.status, status);
+    set(columns.dashboard, datos.Modulo_Dashboard || datos.moduloDashboard || "No");
+    set(columns.pos, datos.Modulo_POS || datos.moduloPOS || "No");
+    set(columns.lots, datos.Modulo_MapaLotes || datos.moduloMapaLotes || "No");
+    if (columns.id >= 0 && !row[columns.id]) row[columns.id] = "USR-" + new Date().getTime();
+    if (targetRow > 0) sheet.getRange(targetRow, 1, 1, lastColumn).setValues([row]);
+    else sheet.appendRow(row);
+    return { success: true, message: "Usuario guardado con éxito." };
+  } catch (err) { return { success: false, error: err.message || String(err) }; }
+}
+
+function eliminarUsuario(email) {
+  try {
+    var actor = _requireAdminUser_();
+    var target = String(email || "").trim().toLowerCase();
+    if (!target) throw new Error("Especifica un correo válido.");
+    if (target === actor.email) throw new Error("No puedes eliminar tu propia cuenta de administrador.");
+    var sheet = _getAuthUserSheet_(_getAuthSpreadsheet_());
+    var lastColumn = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+    var columns = _getUserColumns_(headers);
+    if (columns.email < 0 || columns.role < 0 || columns.status < 0) throw new Error("La hoja de usuarios no tiene las columnas requeridas.");
+    var values = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, lastColumn).getValues() : [];
+    var targetRow = -1;
+    var activeAdmins = 0;
+    var targetIsAdmin = false;
+    for (var i = 0; i < values.length; i++) {
+      var rowEmail = String(values[i][columns.email] || "").trim().toLowerCase();
+      var role = String(values[i][columns.role] || "").trim().toLowerCase();
+      var status = String(values[i][columns.status] || "").trim().toUpperCase();
+      if (rowEmail === target) { targetRow = i + 2; targetIsAdmin = role === "admin" && (status === "ACTIVO" || status === "ACTIVE"); }
+      if (role === "admin" && (status === "ACTIVO" || status === "ACTIVE")) activeAdmins++;
+    }
+    if (targetRow < 0) throw new Error("No se encontró el usuario solicitado.");
+    if (targetIsAdmin && activeAdmins <= 1) throw new Error("No se puede eliminar el último administrador activo.");
+    sheet.deleteRow(targetRow);
+    return { success: true, message: "Usuario eliminado correctamente." };
+  } catch (err) { return { success: false, error: err.message || String(err) }; }
+}
+
 var HEADERS_USUARIOS = [
   "ID", 
   "Correo_Electronico", 
@@ -21,7 +237,8 @@ var HEADERS_USUARIOS = [
  * @param {string} [providedEmail] Correo opcional enviado desde la vista para verificación
  * @return {Object} Objeto JSON con success, registered, active, email, role y permissions por módulo
  */
-function getCurrentUserRole(providedEmail) {
+function legacyGetCurrentUserRole_(providedEmail) {
+  return getCurrentUserRole();
   var defaultNoPerms = {
     Modulo_Dashboard: "No",
     Modulo_POS: "No",
@@ -207,7 +424,7 @@ function getCurrentUserRole(providedEmail) {
 /**
  * Helper estricto de validación backend.
  */
-function verificarAccesoUsuario(emailOpcional) {
+function legacyVerificarAccesoUsuario_(emailOpcional) {
   var roleInfo = getCurrentUserRole(emailOpcional);
   if (roleInfo && roleInfo.registered && roleInfo.active && roleInfo.email) {
     return {
@@ -233,7 +450,7 @@ function verificarAccesoUsuario(emailOpcional) {
 /**
  * Obtiene la lista completa de usuarios registrados en la hoja Usuarios_Autorizados.
  */
-function obtenerListaUsuarios() {
+function legacyObtenerListaUsuarios_() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     if (!ss) return { success: false, error: "No se pudo obtener la hoja de cálculo activa." };
@@ -285,7 +502,7 @@ function obtenerListaUsuarios() {
 /**
  * Agrega o actualiza un usuario en la hoja Usuarios_Autorizados.
  */
-function guardarUsuario(datos) {
+function legacyGuardarUsuario_(datos) {
   try {
     var email = datos.email || datos.Email || datos.Correo_Electronico || "";
     var nombre = datos.nombre || datos.Nombre || (email ? email.split('@')[0] : "");
@@ -375,7 +592,7 @@ function guardarUsuario(datos) {
 /**
  * Elimina un usuario de la hoja Usuarios_Autorizados por correo electrónico.
  */
-function eliminarUsuario(email) {
+function legacyEliminarUsuario_(email) {
   try {
     var targetEmail = String(email || "").trim().toLowerCase();
     if (!targetEmail) return { success: false, error: "Especifica un correo válido." };
