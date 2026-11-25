@@ -315,6 +315,16 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             }
         }
 
+        function moveDashboardSectionsToEnd() {
+            const dashboard = document.getElementById("dashboardView");
+            const chartsSection = document.getElementById("dashboardChartsSection");
+            const profitSummarySection = document.getElementById("dashboardProfitSummarySection");
+            if (!dashboard || !chartsSection || !profitSummarySection) return;
+
+            dashboard.appendChild(chartsSection);
+            dashboard.appendChild(profitSummarySection);
+        }
+
         function formatCOP(val) {
             const num = Math.round(Number(val) || 0);
             const isNegative = num < 0;
@@ -1357,12 +1367,13 @@ function updateConfigHeader() {
             let valPorPagar = 0;
 
             const todayStr = new Date().toISOString().split('T')[0];
+            const selectedLote = document.getElementById("filterLote")?.value || document.getElementById("loteSelector")?.value || "Todos";
             let pendingItems = [];
 
             // 1. Pending Sales (Cuentas por Cobrar)
             (rawData.ventas || []).forEach((v, idx) => {
                 const estado = String(v.Estado_Pago || v.estado_pago || '').toUpperCase();
-                if (estado === 'PENDIENTE') {
+                if (estado === 'PENDIENTE' && isLoteMatch(v.Lote || v.lote, selectedLote)) {
                     const monto = Number(v.Ingreso_Total_COP || v.ingreso_total_cop) || 0;
                     const venc = String(v.Fecha_Vencimiento || v.fecha_vencimiento || '').trim();
                     const isVencida = venc && venc < todayStr;
@@ -1392,7 +1403,7 @@ function updateConfigHeader() {
             // 2. Pending Initial Expenses (Cuentas por Pagar)
             (rawData.gastosIniciales || []).forEach((ini, idx) => {
                 const estado = String(ini.Estado_Pago || ini.estado_pago || '').toUpperCase();
-                if (estado === 'PENDIENTE') {
+                if (estado === 'PENDIENTE' && isLoteMatch(ini.Lote || ini.lote, selectedLote)) {
                     const monto = Number(ini.Costo_Total_COP || ini.costo_total_cop) || 0;
                     const venc = String(ini.Fecha_Vencimiento || ini.fecha_vencimiento || '').trim();
 
@@ -1416,7 +1427,7 @@ function updateConfigHeader() {
             // 3. Pending Development Expenses (Cuentas por Pagar)
             (rawData.gastosDesarrollo || []).forEach((des, idx) => {
                 const estado = String(des.Estado_Pago || des.estado_pago || '').toUpperCase();
-                if (estado === 'PENDIENTE') {
+                if (estado === 'PENDIENTE' && isLoteMatch(des.Lote || des.lote, selectedLote)) {
                     const monto = Number(des.Costo_Total_COP || des.costo_total_cop) || 0;
                     const venc = String(des.Fecha_Vencimiento || des.fecha_vencimiento || '').trim();
 
@@ -6566,6 +6577,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
         }
 
                function initApp() {
+            moveDashboardSectionsToEnd();
             applyViewOnlyPermissions();
             populateLoteDropdowns();
             fetchData();
