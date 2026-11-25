@@ -535,10 +535,9 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             }
 
             const inputPrecio = document.getElementById("inputPrecioMercadoRef");
-            let precioRef = inputPrecio ? parseFloat(inputPrecio.value) : 0;
-            if (isNaN(precioRef) || precioRef <= 0) {
-                precioRef = calcPrecioVenta || 0;
-            }
+            const parsedPrecio = inputPrecio ? Number(inputPrecio.value) : 0;
+            const precioRef = Number.isFinite(parsedPrecio) && parsedPrecio > 0 ? parsedPrecio : 0;
+            const hasMarketPrice = precioRef > 0;
 
             const cuEl = document.getElementById("kpiCostoUnitario");
             const sideCuEl = document.getElementById("kpiSideCostoUnitario");
@@ -563,22 +562,22 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
 
             // Division-by-Zero safeguard: Controlled return
             const unitCost = qty > 0 ? (totalCost / qty) : 0;
-            const unitMargin = (precioRef > 0 && unitCost > 0) ? (precioRef - unitCost) : (precioRef > 0 ? precioRef : 0);
+            const unitMargin = hasMarketPrice ? precioRef - unitCost : 0;
             // Formula: %R = ((PrecioMercado - CU) / PrecioMercado) * 100
-            const pctRentabilidad = (precioRef > 0) ? (((precioRef - unitCost) / precioRef) * 100) : (unitCost > 0 ? -100 : 0);
+            const pctRentabilidad = hasMarketPrice ? ((precioRef - unitCost) / precioRef) * 100 : null;
 
             // Health Status Color Rules:
             // 🟢 Verde: %R > 15% (Margen saludable)
             // 🟡 Amarillo: 0% <= %R <= 15% (Margen en riesgo)
             // 🔴 Rojo: CU > P_mercado (%R < 0%) (Pérdida / Operando por debajo del costo)
-            let healthColor = "VERDE";
-            if (unitCost > 0 && precioRef > 0 && unitCost > precioRef) {
+            let healthColor = "NEUTRO";
+            if (hasMarketPrice && unitCost > precioRef) {
                 healthColor = "ROJO";
-            } else if (pctRentabilidad >= 0 && pctRentabilidad <= 15) {
+            } else if (hasMarketPrice && pctRentabilidad >= 0 && pctRentabilidad <= 15) {
                 healthColor = "AMARILLO";
-            } else if (pctRentabilidad < 0) {
+            } else if (hasMarketPrice && pctRentabilidad < 0) {
                 healthColor = "ROJO";
-            } else {
+            } else if (hasMarketPrice) {
                 healthColor = "VERDE";
             }
 
@@ -610,39 +609,35 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             }
             
             if (badgeTipoEl) {
-                if (isEstimated) {
-                    badgeTipoEl.innerHTML = `Basado en Estimación`;
-                    badgeTipoEl.className = "inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-extrabold uppercase rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-200 dark:border-sky-800";
-                } else {
-                    badgeTipoEl.innerHTML = `✨ Cosecha Real`;
-                    badgeTipoEl.className = "inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-extrabold uppercase rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800";
-                }
+                badgeTipoEl.textContent = isEstimated ? "(Basado en estimación)" : "(Basado en cosecha real)";
+                badgeTipoEl.className = "mt-0.5 block text-[10px] font-semibold text-slate-500 dark:text-slate-400";
             }
 
             if (badgeStatusEl) {
-                let badgeSymbol = "🟢";
-                let badgeClass = "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800";
-
-                if (healthColor === "AMARILLO") {
-                    badgeSymbol = "🟡";
-                    badgeClass = "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800";
+                let badgeText = "Margen pendiente";
+                let badgeClass = "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
+                if (healthColor === "VERDE") {
+                    badgeText = "Margen favorable";
+                    badgeClass = "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400";
+                } else if (healthColor === "AMARILLO") {
+                    badgeText = "Margen ajustado";
+                    badgeClass = "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300";
                 } else if (healthColor === "ROJO") {
-                    badgeSymbol = "🔴";
-                    badgeClass = "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-400 border border-rose-200 dark:border-rose-800";
+                    badgeText = "Precio bajo costo";
+                    badgeClass = "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-400";
                 }
-
-                badgeStatusEl.textContent = `${badgeSymbol} ${pctRentabilidad >= 0 ? '+' : ''}${pctRentabilidad.toFixed(1)}%`;
-                badgeStatusEl.className = `px-2.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-xs flex items-center gap-1 ${badgeClass}`;
+                badgeStatusEl.textContent = badgeText;
+                badgeStatusEl.className = `mt-1 inline-flex items-center rounded-lg px-2 py-1 text-[10px] font-bold ${badgeClass}`;
             }
 
             if (margenValEl) {
-                margenValEl.textContent = formatCOP(unitMargin);
-                margenValEl.className = unitMargin >= 0 ? "text-emerald-600 dark:text-emerald-400 font-extrabold" : "text-rose-600 dark:text-rose-400 font-extrabold";
+                margenValEl.textContent = hasMarketPrice ? formatCOP(unitMargin) : "—";
+                margenValEl.className = !hasMarketPrice ? "text-slate-500 dark:text-slate-400 font-extrabold" : (unitMargin >= 0 ? "text-emerald-600 dark:text-emerald-400 font-extrabold" : "text-rose-600 dark:text-rose-400 font-extrabold");
             }
 
             if (pctValEl) {
-                pctValEl.textContent = `${pctRentabilidad.toFixed(1)}%`;
-                pctValEl.className = healthColor === "ROJO" ? "text-rose-600 font-extrabold" : (healthColor === "AMARILLO" ? "text-amber-600 font-extrabold" : "text-emerald-600 font-extrabold");
+                pctValEl.textContent = hasMarketPrice ? `${pctRentabilidad.toFixed(1)}%` : "Ingresa precio";
+                pctValEl.className = !hasMarketPrice ? "mt-1 block text-lg font-extrabold text-slate-500 dark:text-slate-400" : `mt-1 block text-lg font-extrabold ${healthColor === "ROJO" ? "text-rose-600" : (healthColor === "AMARILLO" ? "text-amber-600" : "text-emerald-600")}`;
             }
         }
         window.updateLoteSummaryMetrics = updateLoteSummaryMetrics;
