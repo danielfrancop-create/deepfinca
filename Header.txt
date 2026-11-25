@@ -80,6 +80,9 @@
                                 <button id="mapaLotesBtn" data-module="Modulo_MapaLotes" onclick="showView('mapa_lotes')" class="module-nav-btn w-full text-left px-4 py-2.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-700 hover:text-white flex items-center gap-2 transition cursor-pointer">
                                     <span>🗺️</span> Mapa Interactivo
                                 </button>
+                                <button id="analysisTrackingBtn" data-module="Modulo_AnalisisSeguimiento" onclick="showView('analysis_tracking')" class="module-nav-btn w-full text-left px-4 py-2.5 text-xs font-semibold text-cyan-300 hover:bg-cyan-700 hover:text-white flex items-center gap-2 transition cursor-pointer">
+                                    <span>📈</span> Análisis y Seguimiento de Lotes
+                                </button>
                                 </div>
                             <div class="py-1">
                                 <button id="gestionUsuariosBtn" onclick="closeNavigationMenus(); openUsersModal();" class="hidden w-full text-left px-4 py-2.5 text-xs font-semibold text-indigo-400 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition cursor-pointer">
@@ -136,6 +139,9 @@
                         </button>
                         <button id="mobileMapaLotesBtn" data-module="Modulo_MapaLotes" onclick="showView('mapa_lotes')" class="mobile-drawer-btn w-full flex items-center gap-3 bg-emerald-700 hover:bg-emerald-800 text-white py-3.5 px-4 rounded-xl font-bold text-base shadow-sm transition min-h-[48px]">
                             <span>🗺️</span> Mapa Interactivo
+                        </button>
+                        <button id="mobileAnalysisTrackingBtn" data-module="Modulo_AnalisisSeguimiento" onclick="showView('analysis_tracking')" class="mobile-drawer-btn w-full flex items-center gap-3 bg-cyan-700 hover:bg-cyan-800 text-white py-3.5 px-4 rounded-xl font-bold text-base shadow-sm transition min-h-[48px]">
+                            <span>📈</span> Análisis y Seguimiento de Lotes
                         </button>
                         <button id="mobileUsuariosBtn" onclick="closeNavigationMenus(); openUsersModal();" class="hidden w-full flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 px-4 rounded-xl font-bold text-base shadow-sm transition min-h-[48px]">
                             <span>👥</span> Gestión Usuarios
