@@ -11,14 +11,45 @@ var HOJA_USUARIOS = "Usuarios_Autorizados";
 // ==========================================
 // 1. FUNCIÓN DE CONEXIÓN CON GITHUB (JSONP Y REST API)
 // ==========================================
-function _getReadOnlyEndpointFunctions_() {
+function _getPublicApiFunctions_() {
   return {
     getDashboardData: getDashboardData,
     getCurrentUserRole: getCurrentUserRole,
+    verificarAccesoUsuario: verificarAccesoUsuario,
     obtenerListaUsuarios: obtenerListaUsuarios,
+    guardarUsuario: guardarUsuario,
+    eliminarUsuario: eliminarUsuario,
+    iniciarSesionAdminGitHub: iniciarSesionAdminGitHub,
+    completarSesionAdminGitHub: completarSesionAdminGitHub,
+    validarSesionAdminGitHub: validarSesionAdminGitHub,
+    cerrarSesionAdminGitHub: cerrarSesionAdminGitHub,
+    guardarRegistro: guardarRegistro,
+    guardarFotoLote: guardarFotoLote,
+    guardarFotoLotes: guardarFotoLotes,
+    actualizarEstadoPago: actualizarEstadoPago,
+    agregarCiclo: agregarCiclo,
+    agregarItemConfig: agregarItemConfig,
     getSecurityCredentials: getSecurityCredentials,
+    eliminarRegistroSeguro: eliminarRegistroSeguro,
+    vaciarHojasGoogleSheets: vaciarHojasGoogleSheets,
+    actualizarSecurityCredentials: actualizarSecurityCredentials,
     exportToExcelData: exportToExcelData
   };
+}
+
+function _getTokenProtectedApiActions_() {
+  return ["obtenerListaUsuarios", "guardarUsuario", "eliminarUsuario", "guardarRegistro", "guardarFotoLote", "guardarFotoLotes", "actualizarEstadoPago", "agregarCiclo", "agregarItemConfig", "getSecurityCredentials", "eliminarRegistroSeguro", "vaciarHojasGoogleSheets", "actualizarSecurityCredentials"];
+}
+
+function _dispatchApiAction_(action, args) {
+  var functions = _getPublicApiFunctions_();
+  if (!Object.prototype.hasOwnProperty.call(functions, action)) throw new Error("Acción no disponible.");
+  if (_getTokenProtectedApiActions_().indexOf(action) !== -1) {
+    var token = args.length ? args[args.length - 1] : "";
+    if (!token) throw new Error("Se requiere una sesión de administrador válida.");
+    _getAdminSessionUser_(token);
+  }
+  return functions[action].apply(null, args);
 }
 
 function doGet(e) {
@@ -27,14 +58,12 @@ function doGet(e) {
     if (!/^jsonpCallback_\d+$/.test(callback)) {
       return ContentService.createTextOutput("Callback no válido.").setMimeType(ContentService.MimeType.TEXT);
     }
-    var action = String(e.parameter.action || "");
     var resultado;
     try {
-      var funciones = _getReadOnlyEndpointFunctions_();
-      if (!funciones[action]) throw new Error("La API pública solo permite consultas de lectura.");
+      var action = String(e.parameter.action || "");
       var args = e.parameter.args ? JSON.parse(e.parameter.args) : [];
       if (!Array.isArray(args)) throw new Error("Los argumentos de la solicitud no son válidos.");
-      resultado = funciones[action].apply(null, args);
+      resultado = _dispatchApiAction_(action, args);
     } catch (err) {
       resultado = { success: false, unauthorized: true, error: err.message || String(err) };
     }
@@ -49,11 +78,9 @@ function doPost(e) {
   try {
     var params = e && e.parameter ? e.parameter : {};
     var action = String(params.action || "");
-    var funciones = _getReadOnlyEndpointFunctions_();
-    if (!funciones[action]) throw new Error("La API pública solo permite consultas de lectura.");
     var args = params.args ? JSON.parse(params.args) : [];
     if (!Array.isArray(args)) throw new Error("Los argumentos de la solicitud no son válidos.");
-    var resultado = funciones[action].apply(null, args);
+    var resultado = _dispatchApiAction_(action, args);
     return ContentService.createTextOutput(JSON.stringify(resultado)).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ success: false, unauthorized: true, error: err.message || String(err) })).setMimeType(ContentService.MimeType.JSON);
@@ -162,29 +189,29 @@ function codeLegacyEliminarUsuario_(email) {
 // ==========================================
 // 3. LECTURA DE DATOS
 // ==========================================
-function getDashboardData() {
+function getDashboardData(sessionToken) {
   try {
-    var user = _requireAnyModuleUser_(["Modulo_Dashboard", "Modulo_POS", "Modulo_MapaLotes", "Modulo_AnalisisSeguimiento"]);
+    var user = _requireAnyModuleUser_(["Modulo_Dashboard", "Modulo_POS", "Modulo_MapaLotes", "Modulo_AnalisisSeguimiento"], sessionToken);
     var canFinance = user.role === "admin" || _hasUserModuleAccess_(user, "Modulo_Dashboard") || _hasUserModuleAccess_(user, "Modulo_POS") || _hasUserModuleAccess_(user, "Modulo_AnalisisSeguimiento");
     var canMap = user.role === "admin" || _hasUserModuleAccess_(user, "Modulo_MapaLotes") || _hasUserModuleAccess_(user, "Modulo_Dashboard") || _hasUserModuleAccess_(user, "Modulo_AnalisisSeguimiento");
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var data = {
-      gastosIniciales: canFinance ? getSheetData(ss, HOJA_GASTOS_INICIALES) : [],
-      gastosDesarrollo: canFinance ? getSheetData(ss, HOJA_GASTOS_DESARROLLO) : [],
-      ventas: canFinance ? getSheetData(ss, HOJA_VENTAS) : [],
-      configuracion: getSheetData(ss, HOJA_CONFIGURACION),
-      ciclos: getSheetData(ss, HOJA_CICLOS),
-      fotosLotes: canMap ? getSheetData(ss, HOJA_FOTOS_LOTES) : []
+      gastosIniciales: canFinance ? getSheetData(ss, HOJA_GASTOS_INICIALES, sessionToken) : [],
+      gastosDesarrollo: canFinance ? getSheetData(ss, HOJA_GASTOS_DESARROLLO, sessionToken) : [],
+      ventas: canFinance ? getSheetData(ss, HOJA_VENTAS, sessionToken) : [],
+      configuracion: getSheetData(ss, HOJA_CONFIGURACION, sessionToken),
+      ciclos: getSheetData(ss, HOJA_CICLOS, sessionToken),
+      fotosLotes: canMap ? getSheetData(ss, HOJA_FOTOS_LOTES, sessionToken) : []
     };
     return { success: true, data: data };
   } catch (err) { return { success: false, error: err.toString() }; }
 }
 
-function getSheetData(ss, sheetName) {
-  var user = _requireAnyModuleUser_(["Modulo_Dashboard", "Modulo_POS", "Modulo_MapaLotes", "Modulo_AnalisisSeguimiento"]);
+function getSheetData(ss, sheetName, sessionToken) {
+  var user = _requireAnyModuleUser_(["Modulo_Dashboard", "Modulo_POS", "Modulo_MapaLotes", "Modulo_AnalisisSeguimiento"], sessionToken);
   var allowedSheets = [HOJA_GASTOS_INICIALES, HOJA_GASTOS_DESARROLLO, HOJA_VENTAS, HOJA_CONFIGURACION, HOJA_CICLOS, HOJA_FOTOS_LOTES, HOJA_USUARIOS, "usuarios", "Usuarios"];
   if (allowedSheets.indexOf(sheetName) === -1) throw new Error("Hoja no disponible para lectura.");
-  if ([HOJA_USUARIOS, "usuarios", "Usuarios"].indexOf(sheetName) !== -1) _requireAdminUser_();
+  if ([HOJA_USUARIOS, "usuarios", "Usuarios"].indexOf(sheetName) !== -1) _requireAdminUser_(sessionToken);
   if (sheetName === HOJA_FOTOS_LOTES && !_hasUserModuleAccess_(user, "Modulo_MapaLotes") && !_hasUserModuleAccess_(user, "Modulo_Dashboard") && !_hasUserModuleAccess_(user, "Modulo_AnalisisSeguimiento")) throw new Error("Acceso denegado a fotografías de lotes.");
   if ([HOJA_GASTOS_INICIALES, HOJA_GASTOS_DESARROLLO, HOJA_VENTAS].indexOf(sheetName) !== -1 && !_hasUserModuleAccess_(user, "Modulo_POS") && !_hasUserModuleAccess_(user, "Modulo_Dashboard") && !_hasUserModuleAccess_(user, "Modulo_AnalisisSeguimiento")) throw new Error("Acceso denegado a información financiera.");
   var sheet = ss.getSheetByName(sheetName);
@@ -214,16 +241,17 @@ function getSheetData(ss, sheetName) {
 // ==========================================
 // 4. ESCRITURA Y GESTIÓN DE DATOS (POS, VENTAS, CICLOS)
 // ==========================================
-function guardarRegistro(tipo, datos) {
+function guardarRegistro(tipo, datos, sessionToken) {
   try {
-    _requireAdminUser_();
+    _requireAdminUser_(sessionToken);
     if (typeof datos === 'string') datos = JSON.parse(datos);
     if (tipo === "finalizarCiclo") {
       var cierreDatos = datos || {};
       return finalizarCiclo(
         cierreDatos.codigoGeneral || cierreDatos.Codigo_General || cierreDatos.Codigo_Seguimiento || cierreDatos.codigo_seguimiento || "",
         cierreDatos.fechaFin || cierreDatos.Fecha_Fin || cierreDatos.Fecha || cierreDatos.fecha || "",
-        cierreDatos.loteReferencia || cierreDatos.Lote || cierreDatos.Lote_Principal || ""
+        cierreDatos.loteReferencia || cierreDatos.Lote || cierreDatos.Lote_Principal || "",
+        sessionToken
       );
     }
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -394,9 +422,9 @@ function obtenerListaLotesActivos(ss) {
   return list;
 }
 
-function actualizarEstadoPago(tipoTabla, filaId, nuevoEstado, fechaPago, extraInfo) {
+function actualizarEstadoPago(tipoTabla, filaId, nuevoEstado, fechaPago, extraInfo, sessionToken) {
   try {
-    _requireAdminUser_();
+    _requireAdminUser_(sessionToken);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheetName = "";
     if (tipoTabla === "gastosIniciales" || tipoTabla === "inicial") sheetName = HOJA_GASTOS_INICIALES;
@@ -464,9 +492,9 @@ function actualizarEstadoPago(tipoTabla, filaId, nuevoEstado, fechaPago, extraIn
   } catch (err) { return { success: false, error: err.toString() }; }
 }
 
-function agregarCiclo(lotePrincipal, subLote, cultivo, codigoGeneral, codigoInicial, codigoDesarrollo, codigoVentas, estado, fechaInicio, fechaFin) {
+function agregarCiclo(lotePrincipal, subLote, cultivo, codigoGeneral, codigoInicial, codigoDesarrollo, codigoVentas, estado, fechaInicio, fechaFin, sessionToken) {
   try {
-    _requireAdminUser_();
+    _requireAdminUser_(sessionToken);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(HOJA_CICLOS);
     var columnsNeeded = ["Lote_Principal", "Sub_Lote", "Lote", "Cultivo", "Codigo_General", "Codigo_Inicial", "Codigo_Desarrollo", "Codigo_Ventas", "Estado", "Fecha_Inicio", "Fecha_Fin"];
@@ -487,9 +515,9 @@ function agregarCiclo(lotePrincipal, subLote, cultivo, codigoGeneral, codigoInic
   } catch (err) { return { success: false, error: err.toString() }; }
 }
 
-function finalizarCiclo(codigoGeneral, fechaFin, loteReferencia) {
+function finalizarCiclo(codigoGeneral, fechaFin, loteReferencia, sessionToken) {
   try {
-    _requireAdminUser_();
+    _requireAdminUser_(sessionToken);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(HOJA_CICLOS);
     if (!sheet) return { success: false, error: "No existe la hoja de ciclos.", cerrados: 0 };
@@ -581,9 +609,9 @@ function finalizarCiclo(codigoGeneral, fechaFin, loteReferencia) {
   }
 }
 
-function agregarItemConfig(columna, nuevoValor) {
+function agregarItemConfig(columna, nuevoValor, sessionToken) {
   try {
-    _requireAdminUser_();
+    _requireAdminUser_(sessionToken);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(HOJA_CONFIGURACION);
     if (!sheet) {
@@ -626,9 +654,9 @@ function agregarItemConfig(columna, nuevoValor) {
   }
 }
 
-function getSecurityCredentials() {
+function getSecurityCredentials(sessionToken) {
   try {
-    _requireAdminUser_();
+    _requireAdminUser_(sessionToken);
     var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(HOJA_CONFIGURACION);
     if (!sheet) return { success: true, configured: false };
     var values = sheet.getLastRow() > 0 ? sheet.getRange(1, 1, sheet.getLastRow(), 2).getValues() : [];
@@ -646,9 +674,9 @@ function getSecurityCredentials() {
   }
 }
 
-function actualizarSecurityCredentials(newCode, user, key) {
+function actualizarSecurityCredentials(newCode, user, key, sessionToken) {
   try {
-    _requireAdminUser_();
+    _requireAdminUser_(sessionToken);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(HOJA_CONFIGURACION);
     if (!sheet) {
@@ -678,9 +706,9 @@ function actualizarSecurityCredentials(newCode, user, key) {
   }
 }
 
-function eliminarRegistroSeguro(tipoTabla, idRegistro, codigoSeguridad) {
+function eliminarRegistroSeguro(tipoTabla, idRegistro, codigoSeguridad, recordInfo, sessionToken) {
   try {
-    _requireAdminUser_();
+    _requireAdminUser_(sessionToken);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheetName = "";
     if (tipoTabla === "gastosIniciales" || tipoTabla === "inicial") sheetName = HOJA_GASTOS_INICIALES;
@@ -745,9 +773,9 @@ function eliminarRegistroSeguro(tipoTabla, idRegistro, codigoSeguridad) {
   }
 }
 
-function vaciarHojasGoogleSheets(securityCode) {
+function vaciarHojasGoogleSheets(securityCode, sessionToken) {
   try {
-    _requireAdminUser_();
+    _requireAdminUser_(sessionToken || securityCode);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var hojasABorrar = [HOJA_GASTOS_INICIALES, HOJA_GASTOS_DESARROLLO, HOJA_VENTAS, HOJA_CICLOS, HOJA_FOTOS_LOTES];
 
@@ -767,9 +795,9 @@ function vaciarHojasGoogleSheets(securityCode) {
   }
 }
 
-function guardarFotoLote(record) {
+function guardarFotoLote(record, sessionToken) {
   try {
-    _requireAdminUser_();
+    _requireAdminUser_(sessionToken);
     if (typeof record === 'string') record = JSON.parse(record);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(HOJA_FOTOS_LOTES);
@@ -817,17 +845,17 @@ function guardarFotoLote(record) {
   } catch (err) { return { success: false, error: err.toString() }; }
 }
 
-function guardarFotoLotes(record) { return guardarFotoLote(record); }
+function guardarFotoLotes(record, sessionToken) { return guardarFotoLote(record, sessionToken); }
 
-function exportToExcelData() {
+function exportToExcelData(sessionToken) {
   try {
-    _requireAnyModuleUser_(["Modulo_Dashboard", "Modulo_AnalisisSeguimiento"]);
+    _requireAnyModuleUser_(["Modulo_Dashboard", "Modulo_AnalisisSeguimiento"], sessionToken);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var data = {
-      gastosIniciales: getSheetData(ss, HOJA_GASTOS_INICIALES),
-      gastosDesarrollo: getSheetData(ss, HOJA_GASTOS_DESARROLLO),
-      ventas: getSheetData(ss, HOJA_VENTAS),
-      fotosLotes: getSheetData(ss, HOJA_FOTOS_LOTES)
+      gastosIniciales: getSheetData(ss, HOJA_GASTOS_INICIALES, sessionToken),
+      gastosDesarrollo: getSheetData(ss, HOJA_GASTOS_DESARROLLO, sessionToken),
+      ventas: getSheetData(ss, HOJA_VENTAS, sessionToken),
+      fotosLotes: getSheetData(ss, HOJA_FOTOS_LOTES, sessionToken)
     };
 
     var csvContent = "\uFEFF";
