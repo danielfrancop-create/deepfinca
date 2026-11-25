@@ -317,14 +317,176 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
 
         function moveDashboardSectionsToEnd() {
             const dashboard = document.getElementById("dashboardView");
+            if (!dashboard) return;
             const chartsSection = document.getElementById("dashboardChartsSection");
             const profitSummarySection = document.getElementById("dashboardProfitSummarySection");
             const extraMetricsSection = document.getElementById("dashboardExtraMetrics")?.closest("section");
-            if (!dashboard || !chartsSection || !profitSummarySection || !extraMetricsSection) return;
+            const cycleComparisonSection = document.getElementById("dashboardCycleComparisonSection");
 
-            dashboard.appendChild(chartsSection);
-            dashboard.appendChild(profitSummarySection);
-            dashboard.appendChild(extraMetricsSection);
+            if (chartsSection) dashboard.appendChild(chartsSection);
+            if (profitSummarySection) dashboard.appendChild(profitSummarySection);
+            if (extraMetricsSection) dashboard.appendChild(extraMetricsSection);
+            if (cycleComparisonSection) dashboard.appendChild(cycleComparisonSection);
+        }
+
+        function dashboardTrackingCode(item) {
+            return String(item?.Codigo_Seguimiento || item?.codigo_seguimiento || item?.Codigo_General || item?.codigo_general || "").trim().toUpperCase();
+        }
+
+        function dashboardCycleAliases(cycle) {
+            return [cycle?.Codigo_General, cycle?.codigo_general, cycle?.Codigo_Inicial, cycle?.codigo_inicial, cycle?.Codigo_Desarrollo, cycle?.codigo_desarrollo, cycle?.Codigo_Ventas, cycle?.codigo_ventas]
+                .map(code => String(code || "").trim().toUpperCase()).filter(Boolean);
+        }
+
+        function dashboardCycleIsClosed(cycle) {
+            const status = String(cycle?.Estado || cycle?.estado || "").trim().toUpperCase();
+            return ["FINALIZADO", "FINALIZADA", "CERRADO", "CERRADA", "CLOSED"].includes(status) || Boolean(cycle?.Fecha_Fin || cycle?.fecha_fin);
+        }
+
+        function dashboardCycleIsOpen(cycle) {
+            const status = String(cycle?.Estado || cycle?.estado || "").trim().toUpperCase();
+            return !dashboardCycleIsClosed(cycle) && (!status || status === "EN PROCESO" || status === "ACTIVO");
+        }
+
+        function dashboardDateValue(value) {
+            const date = value ? new Date(value) : null;
+            return date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
+        }
+
+        function escapeDashboardHTML(value) {
+            return String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[char]));
+        }
+
+        function dashboardCycleForLot(selectedLote, selectedCiclo) {
+            const cycles = (rawData?.ciclos || []).filter(cycle => isLoteMatch(cycle.Lote || cycle.lote || cycle.Lote_Principal || cycle.lote_principal, selectedLote));
+            const target = String(selectedCiclo || "Todos").trim().toUpperCase();
+            if (target && target !== "TODOS") {
+                const selected = cycles.find(cycle => dashboardCycleAliases(cycle).includes(target));
+                if (selected) return selected;
+            }
+            const openCycles = cycles.filter(dashboardCycleIsOpen).sort((a, b) => dashboardDateValue(b.Fecha_Inicio || b.fecha_inicio) - dashboardDateValue(a.Fecha_Inicio || a.fecha_inicio));
+            if (openCycles.length) return openCycles[0];
+            return cycles.sort((a, b) => dashboardDateValue(b.Fecha_Fin || b.fecha_fin || b.Fecha_Inicio || b.fecha_inicio) - dashboardDateValue(a.Fecha_Fin || a.fecha_fin || a.Fecha_Inicio || a.fecha_inicio))[0] || null;
+        }
+
+        function renderDashboardInsights(selectedLote) {
+            if (!rawData) return;
+            const lot = selectedLote || document.getElementById("filterLote")?.value || "Todos";
+            const selectedCycle = document.getElementById("filterCiclo")?.value || "Todos";
+            const selectedCrop = document.getElementById("filterCultivo")?.value || "Todos";
+            const from = document.getElementById("filterFechaDesde")?.value || "";
+            const to = document.getElementById("filterFechaHasta")?.value || "";
+            const activeCycle = lot !== "Todos" ? dashboardCycleForLot(lot, selectedCycle) : null;
+            const activeAliases = selectedCycle !== "Todos"
+                ? [selectedCycle.trim().toUpperCase()]
+                : (activeCycle ? dashboardCycleAliases(activeCycle) : []);
+            const cycleMatches = item => {
+                const code = dashboardTrackingCode(item);
+                return !activeAliases.length || (code && activeAliases.includes(code));
+            };
+            const matchesFilters = item => {
+                const itemLot = item.Lote || item.lote || item.Lote_Principal || item.lote_principal;
+                const date = String(item.Fecha || item.fecha || "").trim();
+                if (!isLoteMatch(itemLot, lot) || !cycleMatches(item)) return false;
+                if (from && date && date < from) return false;
+                if (to && date && date > to) return false;
+                return selectedCrop === "Todos" || getCultivoForTx(item).toLowerCase().includes(selectedCrop.toLowerCase());
+            };
+
+            const statusBadge = document.getElementById("dashboardCycleStatusBadge");
+            if (statusBadge) {
+                let label = "Seleccione un lote";
+                let classes = "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
+                if (lot !== "Todos") {
+                    const cycle = activeCycle;
+                    if (!cycle) {
+                        label = "Disponible · Sin ciclo activo";
+                    } else {
+                        const aliases = dashboardCycleAliases(cycle);
+                        const cycleSales = (rawData.ventas || []).filter(item => isLoteMatch(item.Lote || item.lote || item.Lote_Principal, lot) && aliases.includes(dashboardTrackingCode(item)));
+                        const isClosed = dashboardCycleIsClosed(cycle);
+                        const isOpen = dashboardCycleIsOpen(cycle);
+                        if (isClosed) {
+                            label = "Cerrado · Disponible";
+                        } else if (isOpen && cycleSales.length) {
+                            label = "Listo para cierre · Con venta";
+                            classes = "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800";
+                        } else if (isOpen) {
+                            label = "En proceso · Activo";
+                            classes = "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800";
+                        } else {
+                            label = "Disponible · Sin ciclo activo";
+                        }
+                    }
+                }
+                statusBadge.textContent = label;
+                statusBadge.className = `inline-flex max-w-full items-center rounded-full border px-2 py-1 text-[9px] sm:text-[10px] font-extrabold leading-tight ${classes}`;
+                statusBadge.title = activeCycle ? dashboardCycleAliases(activeCycle)[0] || "Estado del ciclo" : "Estado del lote";
+            }
+
+            const inventoryRows = document.getElementById("dashboardInventoryRows");
+            const inventoryTotal = document.getElementById("dashboardInventoryTotal");
+            const inventoryScope = document.getElementById("dashboardInventoryScope");
+            if (inventoryRows) {
+                const grouped = new Map();
+                [{ key: "gastosIniciales", title: "Iniciales", concept: item => item.Cultivo_Semilla || item.cultivo_semilla || "Semilla/Inicial" },
+                 { key: "gastosDesarrollo", title: "Desarrollo", concept: item => item.Tipo_Insumo || item.tipo_insumo || "Insumo/Labor" }]
+                    .forEach(group => (rawData[group.key] || []).filter(matchesFilters).forEach(item => {
+                        const concept = String(group.concept(item)).trim() || "Sin categoría";
+                        const unit = String(item.Unidad_Medida || item.unidad_medida || "Unidades").trim();
+                        const key = `${group.title}|${concept.toLowerCase()}|${unit.toLowerCase()}`;
+                        const current = grouped.get(key) || { category: group.title, concept, unit, quantity: 0, amount: 0 };
+                        current.quantity += Number(item.Cantidad || item.cantidad) || 1;
+                        current.amount += Number(item.Costo_Total_COP || item.costo_total_cop) || 0;
+                        grouped.set(key, current);
+                    }));
+                const rows = Array.from(grouped.values()).sort((a, b) => a.category.localeCompare(b.category) || a.concept.localeCompare(b.concept));
+                inventoryRows.innerHTML = rows.length ? rows.map(row => `<div class="grid grid-cols-[1fr_auto] items-center gap-2 rounded-lg border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2"><div class="min-w-0"><p class="truncate text-xs font-bold text-slate-800 dark:text-slate-100">${escapeDashboardHTML(row.concept)}</p><p class="text-[10px] text-slate-500">${escapeDashboardHTML(row.category)} · ${row.quantity.toLocaleString('es-CO')} ${escapeDashboardHTML(row.unit)}</p></div><strong class="whitespace-nowrap text-xs font-extrabold text-slate-700 dark:text-slate-200">${formatCOP(row.amount)}</strong></div>`).join("") : '<p class="col-span-full rounded-lg bg-slate-50 dark:bg-slate-800/60 p-3 text-xs text-slate-500">No hay consumos registrados para este filtro.</p>';
+                if (inventoryTotal) inventoryTotal.textContent = formatCOP(rows.reduce((sum, row) => sum + row.amount, 0));
+                if (inventoryScope) inventoryScope.textContent = activeAliases.length ? `Ciclo ${activeAliases[0]}` : (lot === "Todos" ? "Todos los lotes" : `Todos los ciclos · ${lot}`);
+            }
+
+            const logRows = document.getElementById("dashboardLogRows");
+            const logScope = document.getElementById("dashboardLogScope");
+            if (logRows) {
+                const events = [];
+                const addEvents = (items, type) => (items || []).filter(matchesFilters).forEach(item => {
+                    const date = String(item.Fecha || item.fecha || "Sin fecha");
+                    const code = dashboardTrackingCode(item) || "Sin código";
+                    const itemLot = item.Lote || item.lote || item.Lote_Principal || item.lote_principal || "Lote sin especificar";
+                    const concept = type === "Inicial" ? (item.Cultivo_Semilla || item.cultivo_semilla || "Preparación inicial") : type === "Desarrollo" ? (item.Tipo_Insumo || item.tipo_insumo || "Labor agronómica") : (item.Producto_Vendido || item.producto_vendido || "Venta de cosecha");
+                    const note = type === "Inicial" ? (item.Notas || item.notas || "") : type === "Desarrollo" ? (item.Detalle || item.detalle || "") : (item.Comprador || item.comprador || "");
+                    const normalized = `${concept} ${note}`.toLowerCase();
+                    const milestone = type === "Venta" ? "Venta / cosecha" : /siembra|semilla|preparaci/.test(normalized) ? "Siembra / preparación" : /riego/.test(normalized) ? "Riego" : /fertiliz|abono/.test(normalized) ? "Fertilización" : /cosecha/.test(normalized) ? "Cosecha" : type === "Inicial" ? "Inicio de ciclo" : "Labor agronómica";
+                    events.push({ date, sortDate: dashboardDateValue(date), code, itemLot, milestone, concept, note });
+                });
+                addEvents(rawData.gastosIniciales, "Inicial");
+                addEvents(rawData.gastosDesarrollo, "Desarrollo");
+                addEvents(rawData.ventas, "Venta");
+                events.sort((a, b) => (a.sortDate || Number.MAX_SAFE_INTEGER) - (b.sortDate || Number.MAX_SAFE_INTEGER));
+                logRows.innerHTML = events.length ? events.map(event => `<article class="relative border-l-2 border-emerald-200 dark:border-emerald-800 pl-3 pb-3 last:pb-0"><div class="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5"><strong class="text-xs font-extrabold text-slate-800 dark:text-slate-100">${escapeDashboardHTML(event.milestone)} · ${escapeDashboardHTML(event.concept)}</strong><time class="text-[10px] font-semibold text-slate-500">${escapeDashboardHTML(event.date)}</time></div><p class="text-[10px] text-slate-500">${escapeDashboardHTML(event.itemLot)} · ${escapeDashboardHTML(event.code)}</p>${event.note ? `<p class="mt-1 break-words text-xs text-slate-600 dark:text-slate-300">${escapeDashboardHTML(event.note)}</p>` : ""}</article>`).join("") : '<p class="rounded-lg bg-slate-50 dark:bg-slate-800/60 p-3 text-xs text-slate-500">No hay labores o eventos registrados para este filtro.</p>';
+                if (logScope) logScope.textContent = activeAliases.length ? `Ciclo ${activeAliases[0]}` : (lot === "Todos" ? "Todos los lotes" : `Ciclos del ${lot}`);
+            }
+
+            const comparisonRows = document.getElementById("dashboardCycleComparisonRows");
+            const comparisonScope = document.getElementById("dashboardCycleComparisonScope");
+            if (comparisonRows) {
+                const closedWithSale = (rawData.ciclos || []).filter(cycle => {
+                    const cycleLot = cycle.Lote || cycle.lote || cycle.Lote_Principal || cycle.lote_principal;
+                    const aliases = dashboardCycleAliases(cycle);
+                    return aliases.length && dashboardCycleIsClosed(cycle) && isLoteMatch(cycleLot, lot) && (rawData.ventas || []).some(item => isLoteMatch(item.Lote || item.lote || item.Lote_Principal, cycleLot) && aliases.includes(dashboardTrackingCode(item)));
+                }).map(cycle => {
+                    const cycleLot = cycle.Lote || cycle.lote || cycle.Lote_Principal || cycle.lote_principal || "Lote";
+                    const aliases = dashboardCycleAliases(cycle);
+                    const expenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(item => isLoteMatch(item.Lote || item.lote || item.Lote_Principal, cycleLot) && aliases.includes(dashboardTrackingCode(item)));
+                    const sales = (rawData.ventas || []).filter(item => isLoteMatch(item.Lote || item.lote || item.Lote_Principal, cycleLot) && aliases.includes(dashboardTrackingCode(item)));
+                    const costs = expenses.reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
+                    const income = sales.reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0), 0);
+                    return { lot: cycleLot, code: aliases[0], date: cycle.Fecha_Fin || cycle.fecha_fin || cycle.Fecha_Inicio || cycle.fecha_inicio || "", costs, income, profit: income - costs };
+                }).sort((a, b) => String(b.date).localeCompare(String(a.date)));
+                comparisonRows.innerHTML = closedWithSale.length ? closedWithSale.map(cycle => `<article class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3"><div class="mb-2 flex flex-wrap items-center justify-between gap-1"><strong class="text-xs font-extrabold text-slate-800 dark:text-white">${escapeDashboardHTML(cycle.lot)} · ${escapeDashboardHTML(cycle.code)}</strong><span class="text-[10px] text-slate-500">${escapeDashboardHTML(cycle.date)}</span></div><div class="grid grid-cols-3 gap-2 text-[10px]"><div><span class="block text-slate-500">Gastos</span><strong class="text-rose-700 dark:text-rose-400">${formatCOP(cycle.costs)}</strong></div><div><span class="block text-slate-500">Ingresos</span><strong class="text-emerald-700 dark:text-emerald-400">${formatCOP(cycle.income)}</strong></div><div><span class="block text-slate-500">Ganancia</span><strong class="${cycle.profit >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}">${formatCOP(cycle.profit)}</strong></div></div></article>`).join("") : '<p class="col-span-full rounded-lg bg-slate-50 dark:bg-slate-800/60 p-3 text-xs text-slate-500">No hay ciclos cerrados con ventas para comparar.</p>';
+                if (comparisonScope) comparisonScope.textContent = lot === "Todos" ? "Histórico de todos los lotes" : `Histórico de ${lot}`;
+            }
         }
 
         function formatCOP(val) {
@@ -901,6 +1063,7 @@ function updateConfigHeader() {
 
             // Tarjeta 2: Costo Unitario de Producción y Rentabilidad
             updateLoteSummaryMetrics(selectedLote, gastosTotales, totalUnidades, precioVentaPromedio);
+            renderDashboardInsights(selectedLote);
 
             // Tarjeta 3: Margen ROI (%)
             const kpiRoiEl = document.getElementById("kpiRoi");
