@@ -210,6 +210,7 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
 
             let syncedCount = 0;
             let unconfirmedCycleClosures = 0;
+            window.__fincaOfflineSyncInProgress = true;
             for (const item of pending) {
                 try {
                     const isPhoto = item.tipo === 'fotosLotes' || item.tipo === 'foto';
@@ -243,8 +244,14 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
                 }
             }
 
+            window.__fincaOfflineSyncInProgress = false;
             showLoader(false);
             await updatePendingSyncBadge();
+            if (window.__fincaUpdateReloadPending) {
+                window.__fincaUpdateReloadPending = false;
+                window.location.reload();
+                return;
+            }
 
             if (syncedCount > 0) {
                 alert(`¡Sincronización completada! Se subieron ${syncedCount} registro(s) exitosamente a Google Sheets / Drive.${unconfirmedCycleClosures ? ` No se confirmó el cierre de ${unconfirmedCycleClosures} ciclo(s).` : ''}`);
