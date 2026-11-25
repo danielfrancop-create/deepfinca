@@ -1841,6 +1841,7 @@ function updateConfigHeader() {
                 } else if (viewName === 'analysis_tracking') {
                     if (analysisTrackingView) analysisTrackingView.classList.remove("hidden");
                     renderAnalysisTracking();
+                    window.scrollTo(0, 0);
                 }
             }
 
