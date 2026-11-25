@@ -306,6 +306,8 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             const icons = button.querySelectorAll("svg");
             const toggleIcon = icons[icons.length - 1];
             if (toggleIcon) toggleIcon.classList.toggle("rotate-180", isOpening);
+            const toggleLabel = button.querySelector("[data-dashboard-toggle-label]");
+            if (toggleLabel) toggleLabel.textContent = isOpening ? "Ocultar" : "Mostrar";
 
             if (isOpening && contentId === "dashboardChartsContent") {
                 requestAnimationFrame(() => {
@@ -319,10 +321,12 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             const dashboard = document.getElementById("dashboardView");
             const chartsSection = document.getElementById("dashboardChartsSection");
             const profitSummarySection = document.getElementById("dashboardProfitSummarySection");
-            if (!dashboard || !chartsSection || !profitSummarySection) return;
+            const extraMetricsSection = document.getElementById("dashboardExtraMetrics")?.closest("section");
+            if (!dashboard || !chartsSection || !profitSummarySection || !extraMetricsSection) return;
 
             dashboard.appendChild(chartsSection);
             dashboard.appendChild(profitSummarySection);
+            dashboard.appendChild(extraMetricsSection);
         }
 
         function formatCOP(val) {
@@ -1326,18 +1330,6 @@ function updateConfigHeader() {
             // 3. Saldo Disponible en Caja
             const saldoDisponible = cajaReal - salidaReal;
 
-            // 4. Pending balances
-            const cuentasPorCobrar = filteredVentas
-                .filter(x => String(x.Estado_Pago || x.estado_pago || '').toUpperCase() === 'PENDIENTE')
-                .reduce((sum, x) => sum + (Number(x.Ingreso_Total_COP || x.ingreso_total_cop) || 0), 0);
-
-            const cuentasPorPagar = filteredIniciales.concat(filteredDesarrollo)
-                .filter(x => String(x.Estado_Pago || x.estado_pago || '').toUpperCase() === 'PENDIENTE')
-                .reduce((sum, x) => sum + (Number(x.Costo_Total_COP || x.costo_total_cop) || 0), 0);
-
-            // 5. Saldo Proyectado
-            const saldoProyectado = (cajaReal + cuentasPorCobrar) - cuentasPorPagar;
-
             // Update UI elements
             const cfEfectivoIngresadoEl = document.getElementById("cfEfectivoIngresado");
             if (cfEfectivoIngresadoEl) cfEfectivoIngresadoEl.textContent = formatCOP(cajaReal);
@@ -1347,9 +1339,6 @@ function updateConfigHeader() {
 
             const cfSaldoDisponibleEl = document.getElementById("cfSaldoDisponible");
             if (cfSaldoDisponibleEl) cfSaldoDisponibleEl.textContent = formatCOP(saldoDisponible);
-
-            const cfSaldoProyectadoEl = document.getElementById("cfSaldoProyectado");
-            if (cfSaldoProyectadoEl) cfSaldoProyectadoEl.textContent = formatCOP(saldoProyectado);
         }
 
         function renderCuentasPendientes() {
