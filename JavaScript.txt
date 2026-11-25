@@ -79,13 +79,13 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
                     return;
                 }
 
-                const endpointMethods = ['getDashboardData', 'getCurrentUserRole', 'verificarAccesoUsuario', 'obtenerListaUsuarios', 'guardarUsuario', 'eliminarUsuario', 'getSecurityCredentials', 'exportToExcelData', 'guardarRegistro', 'guardarFotoLote', 'guardarFotoLotes', 'actualizarEstadoPago', 'agregarCiclo', 'agregarItemConfig', 'eliminarRegistroSeguro', 'vaciarHojasGoogleSheets', 'actualizarSecurityCredentials', 'iniciarSesionAdminGitHub', 'completarSesionAdminGitHub', 'validarSesionAdminGitHub', 'cerrarSesionAdminGitHub'];
+                const endpointMethods = ['getDashboardData', 'getCurrentUserRole', 'verificarAccesoUsuario', 'obtenerConfiguracionGoogleGitHub', 'completarSesionGoogleGitHub', 'validarSesionGoogleGitHub', 'cerrarSesionGoogleGitHub', 'obtenerListaUsuarios', 'guardarUsuario', 'eliminarUsuario', 'getSecurityCredentials', 'exportToExcelData', 'guardarRegistro', 'guardarFotoLote', 'guardarFotoLotes', 'actualizarEstadoPago', 'agregarCiclo', 'agregarItemConfig', 'eliminarRegistroSeguro', 'vaciarHojasGoogleSheets', 'actualizarSecurityCredentials'];
                 if (endpointMethods.indexOf(method) === -1) {
                     reject(new Error("La operación no está disponible desde la sesión de GitHub Pages."));
                     return;
                 }
                 const endpointArgs = callArgs.slice();
-                const tokenizedMethods = ['getDashboardData', 'getCurrentUserRole', 'verificarAccesoUsuario', 'obtenerListaUsuarios', 'guardarUsuario', 'eliminarUsuario', 'getSecurityCredentials', 'exportToExcelData', 'guardarRegistro', 'guardarFotoLote', 'guardarFotoLotes', 'actualizarEstadoPago', 'agregarCiclo', 'agregarItemConfig', 'eliminarRegistroSeguro', 'vaciarHojasGoogleSheets', 'actualizarSecurityCredentials', 'validarSesionAdminGitHub', 'cerrarSesionAdminGitHub'];
+                const tokenizedMethods = ['getDashboardData', 'getCurrentUserRole', 'verificarAccesoUsuario', 'validarSesionGoogleGitHub', 'cerrarSesionGoogleGitHub', 'obtenerListaUsuarios', 'guardarUsuario', 'eliminarUsuario', 'getSecurityCredentials', 'exportToExcelData', 'guardarRegistro', 'guardarFotoLote', 'guardarFotoLotes', 'actualizarEstadoPago', 'agregarCiclo', 'agregarItemConfig', 'eliminarRegistroSeguro', 'vaciarHojasGoogleSheets', 'actualizarSecurityCredentials', 'validarSesionAdminGitHub', 'cerrarSesionAdminGitHub'];
                 if (tokenizedMethods.indexOf(method) !== -1) endpointArgs.push(getAdminSessionToken());
                 const gasUrl = typeof MI_GAS_URL === 'string' ? MI_GAS_URL : '';
                 if (!gasUrl) {
@@ -102,9 +102,10 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
                 };
                 window[callbackName] = (response) => {
                     cleanup();
-                    if (response && response.error && /sesión de administrador (?:expiró|expir|no es válida)/i.test(response.error)) {
+                    if (response && response.error && /se requiere una sesión de administrador válida|sesión de (?:administrador|Google) (?:expiró|expir|no es válida)/i.test(response.error)) {
+                        const email = currentAuthenticatedEmail;
                         clearAdminSession();
-                        showAccessBlockedOverlay("", response.error);
+                        showAccessBlockedOverlay(email, response.error);
                     }
                     handleResponse(response);
                 };
@@ -1068,7 +1069,7 @@ function updateConfigHeader() {
             renderCashflowModule();
             renderCuentasPendientes();
 
-            if (currentUserRole === 'view') {
+            if (currentUserRole === 'visitor') {
                 applyViewOnlyPermissions();
             }
         }
@@ -1789,14 +1790,14 @@ function updateConfigHeader() {
                             renderPhotoGallery();
                         });
                     }
-                } else if (viewName === 'analysis_tracking') {
+                } else            if (viewName === 'analysis_tracking') {
                     if (analysisTrackingView) analysisTrackingView.classList.remove("hidden");
                     renderAnalysisTracking();
                     window.scrollTo(0, 0);
                 }
             }
 
-            if (currentUserRole === 'view') {
+            if (currentUserRole === 'visitor') {
                 applyViewOnlyPermissions();
             }
         }
@@ -2583,10 +2584,10 @@ function updateConfigHeader() {
         }
 
                 function handlePOSSubmit(event) {
-            event.preventDefault();
-            hidePOSAlert();
+                    event.preventDefault();
+                    hidePOSAlert();
 
-            if (currentUserRole === 'view') {
+                    if (currentUserRole === 'visitor') {
                 showPOSAlert("Tu perfil de usuario es de SOLO LECTURA. No tienes permisos para registrar o modificar datos.", "error");
                 return;
             }
@@ -3444,7 +3445,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
 
         function handleGuardarIngresoExterno(event) {
             event.preventDefault();
-            if (currentUserRole === 'view') {
+            if (currentUserRole === 'visitor') {
                 alert("Tu usuario solo tiene permisos de LECTURA.");
                 return;
             }
@@ -3506,7 +3507,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
 
         function handleCrearMeta(event) {
             event.preventDefault();
-            if (currentUserRole === 'view') {
+            if (currentUserRole === 'visitor') {
                 alert("Tu usuario solo tiene permisos de LECTURA.");
                 return;
             }
@@ -3568,7 +3569,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
 
         function handleGuardarAporteMeta(event) {
             event.preventDefault();
-            if (currentUserRole === 'view') {
+            if (currentUserRole === 'visitor') {
                 alert("Tu usuario solo tiene permisos de LECTURA.");
                 return;
             }
@@ -5199,6 +5200,10 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
         }
 
         function exportDashboardToExcel() {
+            if (currentUserRole !== "admin") {
+                alert("Los visitantes pueden consultar la información y generar informes PDF, pero no descargar el consolidado de datos.");
+                return;
+            }
             const triggerDownload = (csvData, filename) => {
                 const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement("a");
@@ -5869,10 +5874,11 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             });
         }
         // --- CONTROL DE ROLES Y PERMISOS DE USUARIO ---
-        let currentUserRole = "view";
+        let currentUserRole = "visitor";
         let isUserActive = false;
         let isUserRegistered = false;
         let currentAuthenticatedEmail = "";
+        let pendingAdminSessionAction = null;
 
         function getAdminSessionToken() {
             try { return sessionStorage.getItem("fincaAdminSessionToken") || ""; } catch (error) { return ""; }
@@ -5880,7 +5886,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
 
         function clearAdminSession() {
             try { sessionStorage.removeItem("fincaAdminSessionToken"); } catch (error) { console.warn("No se pudo limpiar la sesión local.", error); }
-            currentUserRole = "view";
+            currentUserRole = "visitor";
             isUserActive = false;
             isUserRegistered = false;
             currentAuthenticatedEmail = "";
@@ -5895,8 +5901,10 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
         }
 
         function handleCurrentUserRoleSuccess(response) {
-            if (!response || !response.success || !response.registered || !response.active || !["admin", "view"].includes(String(response.role || "").toLowerCase())) {
-                currentUserRole = "view";
+            const responseRole = String(response && response.role || "").trim().toLowerCase();
+            const normalizedRole = responseRole === "view" ? "visitor" : responseRole;
+            if (!response || !response.success || !response.registered || !response.active || !["admin", "visitor"].includes(normalizedRole)) {
+                currentUserRole = "visitor";
                 isUserActive = false;
                 isUserRegistered = false;
                 currentAuthenticatedEmail = "";
@@ -5904,7 +5912,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 return;
             }
 
-            currentUserRole = String(response.role).toLowerCase();
+            currentUserRole = normalizedRole;
             isUserActive = true;
             isUserRegistered = true;
             currentAuthenticatedEmail = String(response.email || "").trim().toLowerCase();
@@ -6023,11 +6031,27 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 alert("Inicia sesión con una cuenta administradora para gestionar usuarios.");
                 return;
             }
-            const modal = document.getElementById("modalGestionUsuarios");
-            if (!modal) return;
+            const isNativeAppsScript = typeof google !== "undefined" && google.script && google.script.run;
+            if (!getAdminSessionToken() && !isNativeAppsScript) {
+                pendingAdminSessionAction = openUsersModal;
+                showAccessBlockedOverlay(currentAuthenticatedEmail, "Inicia sesión con Google como administrador para abrir Gestión de Usuarios.");
+                return;
+            }
 
-            fetchUsersList();
-            modal.classList.remove("hidden");
+            pendingAdminSessionAction = openUsersModal;
+            callAppsScript("validarSesionAdminGitHub", []).then(function() {
+                pendingAdminSessionAction = null;
+                const modal = document.getElementById("modalGestionUsuarios");
+                if (!modal) return;
+                fetchUsersList();
+                modal.classList.remove("hidden");
+            }).catch(function(error) {
+                if (getAdminSessionToken()) {
+                    pendingAdminSessionAction = null;
+                    alert("No se pudo validar la sesión de administrador. Comprueba que Apps Script esté actualizado y desplegado: " + error.message);
+                }
+                console.warn("No se pudo validar la sesión para Gestión de Usuarios:", error);
+            });
         }
 
         function closeUsersModal() {
@@ -6066,11 +6090,11 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 const tr = document.createElement("tr");
                 tr.className = "hover:bg-slate-50 dark:hover:bg-slate-800 transition duration-150";
 
-                const isVer = u.rol === "view";
+                const isVer = u.rol === "visitor" || u.rol === "view";
                 const isActivo = u.estado === "ACTIVO";
 
                 const badgeRol = isVer ?
-                    `<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-200">Ver Solo (view)</span>` :
+                    `<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-200">Visitante</span>` :
                     `<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200">Administrador (admin)</span>`;
 
                 const badgeEstado = isActivo ?
@@ -6102,14 +6126,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
         function editUserFill(email, nombre, rol) {
             document.getElementById("userFormEmail").value = email || "";
             document.getElementById("userFormNombre").value = nombre || "";
-            document.getElementById("userFormRol").value = rol || "view";
-
-            const user = usuariosListCache.find(u => u.email.toLowerCase() === (email || "").toLowerCase());
-            if (user) {
-                if (document.getElementById("userFormModDashboard")) document.getElementById("userFormModDashboard").checked = user.moduloDashboard !== "No";
-                if (document.getElementById("userFormModPOS")) document.getElementById("userFormModPOS").checked = user.moduloPOS !== "No";
-                if (document.getElementById("userFormModMapaLotes")) document.getElementById("userFormModMapaLotes").checked = user.moduloMapaLotes !== "No";
-            }
+            document.getElementById("userFormRol").value = rol === "view" ? "visitor" : (rol || "visitor");
         }
 
         function handleSaveUserSubmit(event) {
@@ -6121,11 +6138,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
 
             const email = (document.getElementById("userFormEmail").value || "").trim().toLowerCase();
             const nombre = (document.getElementById("userFormNombre").value || "").trim();
-            const rol = document.getElementById("userFormRol").value || "view";
-
-            const modDashboard = document.getElementById("userFormModDashboard") ? (document.getElementById("userFormModDashboard").checked ? "Sí" : "No") : "Sí";
-            const modPOS = document.getElementById("userFormModPOS") ? (document.getElementById("userFormModPOS").checked ? "Sí" : "No") : "Sí";
-            const modMapaLotes = document.getElementById("userFormModMapaLotes") ? (document.getElementById("userFormModMapaLotes").checked ? "Sí" : "No") : "Sí";
+            const rol = document.getElementById("userFormRol").value || "visitor";
 
             if (!email) {
                 alert("Ingresa un correo electrónico válido.");
@@ -6136,10 +6149,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 email: email,
                 nombre: nombre || email.split('@')[0],
                 rol: rol,
-                estado: "ACTIVO",
-                Modulo_Dashboard: modDashboard,
-                Modulo_POS: modPOS,
-                Modulo_MapaLotes: modMapaLotes
+                estado: "ACTIVO"
             };
 
             showLoader(true, "Guardando usuario...");
@@ -6191,32 +6201,67 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             });
         }
 
-        async function handleAdminLoginSubmit(event) {
-            event.preventDefault();
-            const emailInput = document.getElementById("adminLoginEmail");
-            const codeInput = document.getElementById("adminLoginCode");
-            const status = document.getElementById("adminLoginError");
-            const email = (emailInput && emailInput.value || "").trim().toLowerCase();
-            const accessCode = codeInput && codeInput.value || "";
-            if (status) { status.textContent = "Verificando credenciales..."; status.classList.remove("hidden"); }
+        let googleOAuthCodeClient = null;
+
+        async function prepareGoogleSignIn() {
+            const button = document.getElementById("googleSignInButton");
+            const status = document.getElementById("googleLoginError");
             try {
-                if (!window.crypto || !crypto.subtle || !window.TextEncoder) throw new Error("Este navegador no permite la autenticación segura. Actualiza el navegador y usa HTTPS.");
-                const challenge = await callAppsScript("iniciarSesionAdminGitHub", [email]);
-                const encoder = new TextEncoder();
-                const digest = await crypto.subtle.digest("SHA-256", encoder.encode(challenge.salt + ":" + accessCode));
-                const key = await crypto.subtle.importKey("raw", digest, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-                const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(challenge.nonce));
-                const proof = Array.from(new Uint8Array(signature)).map(byte => byte.toString(16).padStart(2, "0")).join("");
-                const session = await callAppsScript("completarSesionAdminGitHub", [email, challenge.challengeId, proof]);
-                sessionStorage.setItem("fincaAdminSessionToken", session.token);
-                if (codeInput) codeInput.value = "";
-                if (status) status.textContent = "Sesión de administrador verificada.";
-                handleCurrentUserRoleSuccess(await callAppsScript("getCurrentUserRole", []));
-            } catch (error) {
-                if (status) {
-                    status.textContent = error.message || "No se pudo iniciar sesión. Verifica los datos o vuelve a intentarlo.";
-                    status.classList.remove("hidden");
+                for (let attempt = 0; attempt < 50 && !(window.google && google.accounts && google.accounts.oauth2); attempt++) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
                 }
+                if (!window.google || !google.accounts || !google.accounts.oauth2) throw new Error("No se pudo cargar el inicio de sesión de Google. Recarga la página e inténtalo otra vez.");
+                const config = await callAppsScript("obtenerConfiguracionGoogleGitHub", []);
+                googleOAuthCodeClient = google.accounts.oauth2.initCodeClient({
+                    client_id: config.clientId,
+                    scope: "openid email profile",
+                    ux_mode: "popup",
+                    callback: function(response) {
+                        if (response.error || !response.code) {
+                            if (status) { status.textContent = response.error_description || response.error || "Google no devolvió un código de acceso."; status.classList.remove("hidden"); }
+                            return;
+                        }
+                        completeGoogleSignIn(response.code);
+                    },
+                    error_callback: function(error) {
+                        if (status) { status.textContent = error.message || "No se pudo abrir la ventana de Google."; status.classList.remove("hidden"); }
+                    }
+                });
+                if (button) { button.disabled = false; button.textContent = "Continuar con Google"; }
+            } catch (error) {
+                if (button) { button.disabled = true; button.textContent = "Inicio de Google no disponible"; }
+                if (status) { status.textContent = error.message || "No se pudo preparar el inicio de sesión."; status.classList.remove("hidden"); }
+            }
+        }
+
+        function startGoogleSignIn() {
+            if (!googleOAuthCodeClient) {
+                prepareGoogleSignIn();
+                return;
+            }
+            googleOAuthCodeClient.requestCode();
+        }
+
+        async function completeGoogleSignIn(authorizationCode) {
+            const status = document.getElementById("googleLoginError");
+            if (status) { status.textContent = "Verificando tu cuenta de Google..."; status.classList.remove("hidden"); }
+            try {
+                const session = await callAppsScript("completarSesionGoogleGitHub", [authorizationCode]);
+                if (!session.token) throw new Error("El servidor no devolvió una sesión válida.");
+                sessionStorage.setItem("fincaAdminSessionToken", session.token);
+                const roleResponse = await callAppsScript("getCurrentUserRole", []);
+                const role = String(roleResponse.role || "").toLowerCase();
+                if (!roleResponse.success || (role !== "admin" && role !== "visitor")) {
+                    clearAdminSession();
+                    throw new Error("Tu cuenta de Google no tiene un rol activo autorizado.");
+                }
+                if (status) status.textContent = "Sesión iniciada correctamente.";
+                handleCurrentUserRoleSuccess(roleResponse);
+                const action = pendingAdminSessionAction;
+                pendingAdminSessionAction = null;
+                if (action) action();
+            } catch (error) {
+                if (status) { status.textContent = error.message || "No se pudo iniciar sesión con Google."; status.classList.remove("hidden"); }
             }
         }
 
@@ -6225,7 +6270,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             const displayEmail = email || "";
             const msgText = errorMessage || (displayEmail
                 ? `La cuenta ${displayEmail} no tiene una sesión activa autorizada.`
-                : "Inicia sesión con Google o usa tus credenciales de administrador de GitHub Pages.");
+                : "Inicia sesión con la cuenta de Google registrada en Gestión de Usuarios.");
 
             if (!blockedOverlay) {
                 blockedOverlay = document.createElement("div");
@@ -6233,44 +6278,33 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 blockedOverlay.className = "fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[100] flex flex-col justify-center items-center p-4 text-center text-white";
                 blockedOverlay.innerHTML = `
                     <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-3xl max-h-[92vh] overflow-y-auto max-w-md w-full shadow-2xl text-slate-800 dark:text-white space-y-4">
-                        <div class="p-3 bg-rose-100 text-rose-600 rounded-2xl w-14 h-14 mx-auto flex items-center justify-center">
+                        <div class="p-3 bg-emerald-100 text-emerald-700 rounded-2xl w-14 h-14 mx-auto flex items-center justify-center">
                             <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 4h.01M5.07 19A9 9 0 1118.93 5.07 9 9 0 015.07 19z"></path>
                             </svg>
                         </div>
-                        <h2 class="text-xl font-black">Acceso Bloqueado</h2>
+                        <h2 class="text-xl font-black">Iniciar sesión</h2>
                         <p class="text-xs text-slate-500 dark:text-slate-400" id="accessBlockedMsg"></p>
-
-                        <form id="adminLoginForm" onsubmit="handleAdminLoginSubmit(event)" class="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <p class="text-[11px] font-bold text-slate-600 dark:text-slate-300 text-left">Acceso seguro de administrador para GitHub Pages</p>
-                            <input type="email" id="adminLoginEmail" required autocomplete="username" placeholder="Correo del administrador" class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-xs font-semibold">
-                            <input type="password" id="adminLoginCode" required autocomplete="off" placeholder="Código de acceso de administrador" class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-xs font-semibold">
-                            <button type="submit" class="w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition cursor-pointer">Iniciar sesión de administrador</button>
-                            <p id="adminLoginError" class="text-[11px] text-rose-600 dark:text-rose-400 font-bold text-left hidden" role="status" aria-live="polite"></p>
-                        </form>
-                        <div class="flex items-center justify-between gap-2 pt-2">
-                            <p class="text-[10px] text-slate-400 text-left">El código nunca se guarda en el navegador; la sesión expira en 15 minutos.</p>
-                            <button type="button" onclick="verifyManualEmail()" class="shrink-0 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-bold transition cursor-pointer">Reintentar Google</button>
-                        </div>
-                        <p id="manualEmailError" class="text-[11px] text-rose-500 font-bold hidden text-left mt-1"></p>
+                        <p class="text-[11px] text-slate-600 dark:text-slate-300">Usa la cuenta de Google registrada por un administrador. El servidor verificará tu rol y permisos.</p>
+                        <button id="googleSignInButton" type="button" onclick="startGoogleSignIn()" disabled class="w-full px-4 py-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-sm font-bold transition cursor-pointer disabled:opacity-60">Preparando Google...</button>
+                        <p id="googleLoginError" class="text-[11px] text-rose-600 dark:text-rose-400 font-bold text-left hidden" role="status" aria-live="polite"></p>
                     </div>
                 `;
                 document.body.appendChild(blockedOverlay);
             }
             const msgEl = document.getElementById("accessBlockedMsg");
             if (msgEl) msgEl.textContent = msgText;
-            const emailInput = document.getElementById("adminLoginEmail");
-            if (emailInput && displayEmail) emailInput.value = displayEmail;
-            const loginError = document.getElementById("adminLoginError");
+            const loginError = document.getElementById("googleLoginError");
             if (loginError && errorMessage) {
                 loginError.textContent = errorMessage;
                 loginError.classList.remove("hidden");
             }
             blockedOverlay.classList.remove("hidden");
+            prepareGoogleSignIn();
         }
 
         function applyViewOnlyPermissions() {
-            if (currentUserRole !== 'view') return;
+            if (currentUserRole !== 'visitor') return;
 
             // Disable or hide creation/edit/delete buttons
             const buttonsToHide = document.querySelectorAll(
@@ -6310,7 +6344,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             if (!window.viewOnlyObserverActive) {
                 window.viewOnlyObserverActive = true;
                 const observer = new MutationObserver(() => {
-                    if (currentUserRole === 'view') {
+                    if (currentUserRole === 'visitor') {
                         const dynamicBtns = document.querySelectorAll(
                             "#toggleViewBtn, #mobileToggleViewBtn, #obligacionesBtn, #mobileObligacionesBtn, #gestionUsuariosBtn, #mobileUsuariosBtn, #mobileSyncBtn, button[onclick*='openDeleteModal'], button[onclick*='eliminarFotoGallery'], button[onclick*='openPhotoUploadModal'], button[onclick*='marcarComoPagado'], button[onclick*='startLoteCycle'], button[onclick*='endLoteCycle'], button[onclick*=\"showView('data_entry')\"]"
                         );
