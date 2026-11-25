@@ -52,7 +52,7 @@
 
               <!-- Imagen Satelital Google Earth -->
               <img 
-                src="https://lh3.googleusercontent.com/d/1qpmCo0eo2uoT-a_6JkmWo30hmlLYBGie" 
+                src="./mapa-finca.jpg" 
                 alt="Lotes Finca Los Sauces Google Earth" 
                 class="w-full h-auto min-h-[500px] block object-cover"
               />
