@@ -1616,8 +1616,6 @@ function updateConfigHeader() {
 
             const dashboardView = document.getElementById("dashboardView");
             const dataEntryView = document.getElementById("dataEntryView");
-            const estadoResultadosView = document.getElementById("estadoResultadosView");
-            const cajaGeneralView = document.getElementById("cajaGeneralView");
             const mapaLotesView = document.getElementById("mapaLotesView");
             
             const navButtons = document.querySelectorAll(".module-nav-btn");
@@ -1627,8 +1625,6 @@ function updateConfigHeader() {
             // Hide all views first
             if (dashboardView) dashboardView.classList.add("hidden");
             if (dataEntryView) dataEntryView.classList.add("hidden");
-            if (estadoResultadosView) estadoResultadosView.classList.add("hidden");
-            if (cajaGeneralView) cajaGeneralView.classList.add("hidden");
             if (mapaLotesView) mapaLotesView.classList.add("hidden");
             
             // Enable selector by default
@@ -1679,16 +1675,6 @@ function updateConfigHeader() {
                     const fechaInput = document.getElementById("posFecha");
                     if (fechaInput && !fechaInput.value) {
                         fechaInput.value = new Date().toISOString().split('T')[0];
-                    }
-                } else if (viewName === 'estado_resultados') {
-                    if (estadoResultadosView) {
-                        estadoResultadosView.classList.remove("hidden");
-                        renderEstadoResultados();
-                    }
-                } else if (viewName === 'caja_general') {
-                    if (cajaGeneralView) {
-                        cajaGeneralView.classList.remove("hidden");
-                        renderCajaGeneralModule();
                     }
                 } else if (viewName === 'mapa_lotes') {
                     if (mapaLotesView) {
@@ -3850,8 +3836,6 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                     setTimeout(() => {
                         if (trElement && trElement.parentNode) trElement.parentNode.removeChild(trElement);
                         applyFilters();
-                        renderCajaGeneralModule();
-                        renderIngresosExternosModule();
                         showToastNotification("Registro eliminado correctamente. Métricas y costos unitarios actualizados.");
                     }, 400);
 
@@ -3874,8 +3858,6 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                             setTimeout(() => {
                                 if (trElement && trElement.parentNode) trElement.parentNode.removeChild(trElement);
                                 applyFilters();
-                                renderCajaGeneralModule();
-                                renderIngresosExternosModule();
                                 showToastNotification("Registro eliminado correctamente. Métricas y costos unitarios actualizados.");
                             }, 400);
                         } else {
@@ -5889,9 +5871,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             // Ocultar / Mostrar menús y botones según los permisos específicos por módulo
             const modDashboard = isPermitted(perms.Modulo_Dashboard || perms.Modulo_Inicio);
             const modPOS = isPermitted(perms.Modulo_POS || perms.Modulo_Gastos);
-            const modEstadoResultados = isPermitted(perms.Modulo_EstadoResultados || perms.Modulo_Finanzas);
             const modMapaLotes = isPermitted(perms.Modulo_MapaLotes || perms.Modulo_Lotes);
-            const modCajaGeneral = isPermitted(perms.Modulo_CajaGeneral || perms.Modulo_Finanzas);
 
             // Modulo Dashboard
             const dashBtns = document.querySelectorAll("#navBtn_dashboard, #mobileNavBtn_dashboard, [data-module='Modulo_Dashboard']");
@@ -5901,17 +5881,9 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             const posBtns = document.querySelectorAll("#toggleViewBtn, #mobileToggleViewBtn, [data-module='Modulo_POS']");
             posBtns.forEach(b => b.style.display = modPOS ? "" : "none");
 
-            // Modulo Estado Resultados
-            const erBtns = document.querySelectorAll("#estadoResultadosBtn, #mobileEstadoResultadosBtn, [data-module='Modulo_EstadoResultados']");
-            erBtns.forEach(b => b.style.display = modEstadoResultados ? "" : "none");
-
             // Modulo Mapa Lotes
             const mapBtns = document.querySelectorAll("#mapaLotesBtn, #mobileMapaLotesBtn, [data-module='Modulo_MapaLotes']");
             mapBtns.forEach(b => b.style.display = modMapaLotes ? "" : "none");
-
-            // Modulo Caja General & Hogar
-            const cajaBtns = document.querySelectorAll("#cajaGeneralBtn, #mobileCajaGeneralBtn, [data-module='Modulo_CajaGeneral']");
-            cajaBtns.forEach(b => b.style.display = modCajaGeneral ? "" : "none");
 
             // Ocultar botón de gestión de usuarios para no administradores
             const userMgmtBtns = document.querySelectorAll("#gestionUsuariosBtn, #mobileUsuariosBtn");
@@ -5978,7 +5950,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             }
 
             const buttonsToShow = document.querySelectorAll(
-                "#toggleViewBtn, #mobileToggleViewBtn, #obligacionesBtn, #mobileObligacionesBtn, #cajaGeneralBtn, #mobileCajaGeneralBtn, #gestionUsuariosBtn, #mobileUsuariosBtn, #mobileSyncBtn, button[onclick*='openDeleteModal'], button[onclick*='eliminarFotoGallery'], button[onclick*='openPhotoUploadModal'], button[onclick*='marcarComoPagado'], button[onclick*='startLoteCycle'], button[onclick*='endLoteCycle'], button[onclick*=\"showView('data_entry')\"]"
+                "#toggleViewBtn, #mobileToggleViewBtn, #obligacionesBtn, #mobileObligacionesBtn, #gestionUsuariosBtn, #mobileUsuariosBtn, #mobileSyncBtn, button[onclick*='openDeleteModal'], button[onclick*='eliminarFotoGallery'], button[onclick*='openPhotoUploadModal'], button[onclick*='marcarComoPagado'], button[onclick*='startLoteCycle'], button[onclick*='endLoteCycle'], button[onclick*=\"showView('data_entry')\"]"
             );
             buttonsToShow.forEach(btn => {
                 if (btn) {
@@ -6115,9 +6087,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             if (user) {
                 if (document.getElementById("userFormModDashboard")) document.getElementById("userFormModDashboard").checked = user.moduloDashboard !== "No";
                 if (document.getElementById("userFormModPOS")) document.getElementById("userFormModPOS").checked = user.moduloPOS !== "No";
-                if (document.getElementById("userFormModEstadoResultados")) document.getElementById("userFormModEstadoResultados").checked = user.moduloEstadoResultados !== "No";
                 if (document.getElementById("userFormModMapaLotes")) document.getElementById("userFormModMapaLotes").checked = user.moduloMapaLotes !== "No";
-                if (document.getElementById("userFormModCajaGeneral")) document.getElementById("userFormModCajaGeneral").checked = user.moduloCajaGeneral !== "No";
             }
         }
 
@@ -6130,9 +6100,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
 
             const modDashboard = document.getElementById("userFormModDashboard") ? (document.getElementById("userFormModDashboard").checked ? "Sí" : "No") : "Sí";
             const modPOS = document.getElementById("userFormModPOS") ? (document.getElementById("userFormModPOS").checked ? "Sí" : "No") : "Sí";
-            const modEstadoResultados = document.getElementById("userFormModEstadoResultados") ? (document.getElementById("userFormModEstadoResultados").checked ? "Sí" : "No") : "Sí";
             const modMapaLotes = document.getElementById("userFormModMapaLotes") ? (document.getElementById("userFormModMapaLotes").checked ? "Sí" : "No") : "Sí";
-            const modCajaGeneral = document.getElementById("userFormModCajaGeneral") ? (document.getElementById("userFormModCajaGeneral").checked ? "Sí" : "No") : "Sí";
 
             if (!email) {
                 alert("Ingresa un correo electrónico válido.");
@@ -6146,9 +6114,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 estado: "ACTIVO",
                 Modulo_Dashboard: modDashboard,
                 Modulo_POS: modPOS,
-                Modulo_EstadoResultados: modEstadoResultados,
-                Modulo_MapaLotes: modMapaLotes,
-                Modulo_CajaGeneral: modCajaGeneral
+                Modulo_MapaLotes: modMapaLotes
             };
 
             showLoader(true, "Guardando usuario...");
@@ -6306,7 +6272,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
 
             // Disable or hide creation/edit/delete buttons
             const buttonsToHide = document.querySelectorAll(
-                "#toggleViewBtn, #mobileToggleViewBtn, #obligacionesBtn, #mobileObligacionesBtn, #cajaGeneralBtn, #mobileCajaGeneralBtn, #gestionUsuariosBtn, #mobileUsuariosBtn, #mobileSyncBtn, button[onclick*='openDeleteModal'], button[onclick*='eliminarFotoGallery'], button[onclick*='openPhotoUploadModal'], button[onclick*='marcarComoPagado'], button[onclick*='startLoteCycle'], button[onclick*='endLoteCycle'], button[onclick*=\"showView('data_entry')\"]"
+                "#toggleViewBtn, #mobileToggleViewBtn, #obligacionesBtn, #mobileObligacionesBtn, #gestionUsuariosBtn, #mobileUsuariosBtn, #mobileSyncBtn, button[onclick*='openDeleteModal'], button[onclick*='eliminarFotoGallery'], button[onclick*='openPhotoUploadModal'], button[onclick*='marcarComoPagado'], button[onclick*='startLoteCycle'], button[onclick*='endLoteCycle'], button[onclick*=\"showView('data_entry')\"]"
             );
             buttonsToHide.forEach(btn => {
                 btn.style.display = "none";
@@ -6330,7 +6296,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             });
 
             // Enable navigation & filter dropdowns explicitly for view users
-            const filtersToEnable = document.querySelectorAll("#filterLote, #filterCultivo, #filterCiclo, #loteSelector, #variationItemSelector, #galleryLoteFilter, #filterMovimiento, #searchTrackingCode, #filterFechaDesde, #filterFechaHasta");
+            const filtersToEnable = document.querySelectorAll("#filterLote, #filterCultivo, #filterCiclo, #loteSelector, #galleryLoteFilter, #filterMovimiento, #searchTrackingCode, #filterFechaDesde, #filterFechaHasta");
             filtersToEnable.forEach(el => {
                 if (el) {
                     el.disabled = false;
@@ -6344,7 +6310,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 const observer = new MutationObserver(() => {
                     if (currentUserRole === 'view') {
                         const dynamicBtns = document.querySelectorAll(
-                            "#toggleViewBtn, #mobileToggleViewBtn, #obligacionesBtn, #mobileObligacionesBtn, #cajaGeneralBtn, #mobileCajaGeneralBtn, #gestionUsuariosBtn, #mobileUsuariosBtn, #mobileSyncBtn, button[onclick*='openDeleteModal'], button[onclick*='eliminarFotoGallery'], button[onclick*='openPhotoUploadModal'], button[onclick*='marcarComoPagado'], button[onclick*='startLoteCycle'], button[onclick*='endLoteCycle'], button[onclick*=\"showView('data_entry')\"]"
+                            "#toggleViewBtn, #mobileToggleViewBtn, #obligacionesBtn, #mobileObligacionesBtn, #gestionUsuariosBtn, #mobileUsuariosBtn, #mobileSyncBtn, button[onclick*='openDeleteModal'], button[onclick*='eliminarFotoGallery'], button[onclick*='openPhotoUploadModal'], button[onclick*='marcarComoPagado'], button[onclick*='startLoteCycle'], button[onclick*='endLoteCycle'], button[onclick*=\"showView('data_entry')\"]"
                         );
                         dynamicBtns.forEach(btn => {
                             btn.style.display = "none";
