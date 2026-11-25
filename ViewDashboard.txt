@@ -93,8 +93,9 @@
             <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition duration-200 space-y-3">
                 <div class="flex justify-between items-start">
                     <div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-wrap items-center gap-2">
                             <span class="text-xs font-bold text-slate-400 uppercase tracking-wider" id="kpiResumenLoteTitulo">Resumen de Lote</span>
+                            <span id="dashboardCycleStatusBadge" class="inline-flex max-w-full items-center rounded-full border px-2 py-1 text-[9px] sm:text-[10px] font-extrabold leading-tight bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">Seleccione un lote</span>
                             <span id="kpiTipoProduccionBadge" class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-extrabold uppercase rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
                                 Basado en Estimación
                             </span>
@@ -130,6 +131,29 @@
                 </div>
             </div>
             </section>
+            </div>
+        </section>
+
+        <section class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <button type="button" onclick="toggleDashboardSection('dashboardInventoryContent', this)" aria-expanded="false" aria-controls="dashboardInventoryContent" class="w-full flex items-center justify-between gap-3 p-3 sm:p-4 text-left bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                <span class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">Inventario e insumos clave</span>
+                <span class="flex shrink-0 items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400"><span data-dashboard-toggle-label>Mostrar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
+            </button>
+            <div id="dashboardInventoryContent" class="hidden p-3 sm:p-4">
+                <div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500"><span id="dashboardInventoryScope">Todos los lotes</span><span class="font-bold">Costo acumulado: <strong id="dashboardInventoryTotal" class="text-slate-800 dark:text-white">$0</strong></span></div>
+                <div id="dashboardInventoryRows" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+            </div>
+        </section>
+
+        <section class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <button type="button" onclick="toggleDashboardSection('dashboardLogContent', this)" aria-expanded="false" aria-controls="dashboardLogContent" class="w-full flex items-center justify-between gap-3 p-3 sm:p-4 text-left bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                <span class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">Bitácora breve de labores y eventos</span>
+                <span class="flex shrink-0 items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400"><span data-dashboard-toggle-label>Mostrar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
+            </button>
+            <div id="dashboardLogContent" class="hidden p-3 sm:p-4">
+                <p id="dashboardLogScope" class="mb-3 text-[10px] text-slate-500">Todos los lotes</p>
+                <div id="dashboardLogRows" class="max-h-80 space-y-2 overflow-y-auto"></div>
+                <p class="mt-3 border-t border-slate-100 pt-2 text-[10px] text-slate-500 dark:border-slate-800">Para registrar nuevas notas o labores, usa los campos existentes “Notas adicionales” o “Detalle de actividad” al guardar el movimiento del lote.</p>
             </div>
         </section>
 
@@ -453,8 +477,19 @@
             </div>
         </section>
 
+        <section id="dashboardCycleComparisonSection" class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <button type="button" onclick="toggleDashboardSection('dashboardCycleComparisonContent', this)" aria-expanded="false" aria-controls="dashboardCycleComparisonContent" class="w-full flex items-center justify-between gap-3 p-3 sm:p-4 text-left bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                <span class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">Comparativa de ciclos cerrados</span>
+                <span class="flex shrink-0 items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400"><span data-dashboard-toggle-label>Mostrar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
+            </button>
+            <div id="dashboardCycleComparisonContent" class="hidden p-3 sm:p-4">
+                <p id="dashboardCycleComparisonScope" class="mb-3 text-[10px] text-slate-500">Histórico de todos los lotes</p>
+                <div id="dashboardCycleComparisonRows" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2"></div>
+            </div>
+        </section>
+
         </div>
 
 
-  
- 
+
+
