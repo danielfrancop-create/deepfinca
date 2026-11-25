@@ -66,7 +66,7 @@
         <section id="dashboardProfitSummarySection" class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
             <button type="button" onclick="toggleDashboardSection('dashboardProfitSummaryContent', this)" aria-expanded="false" aria-controls="dashboardProfitSummaryContent" class="w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
                 <span class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">Utilidad Neta y Resumen de Lote</span>
-                <span class="flex items-center gap-2 text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400"><span class="hidden sm:inline">Mostrar / ocultar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
+                <span class="flex shrink-0 items-center gap-2 text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400"><span data-dashboard-toggle-label>Mostrar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
             </button>
             <div id="dashboardProfitSummaryContent" class="hidden p-3 sm:p-5">
             <section class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
@@ -136,7 +136,7 @@
         <section class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
             <button type="button" onclick="toggleDashboardSection('dashboardExtraMetrics', this)" aria-expanded="false" aria-controls="dashboardExtraMetrics" class="w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
                 <span class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">Indicadores complementarios</span>
-                <span class="flex items-center gap-2 text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400"><span class="hidden sm:inline">Mostrar / ocultar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
+                <span class="flex shrink-0 items-center gap-2 text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400"><span data-dashboard-toggle-label>Mostrar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
             </button>
             <div id="dashboardExtraMetrics" class="hidden p-3 sm:p-5">
                 <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
@@ -200,7 +200,7 @@
         <section id="dashboardChartsSection" class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
             <button type="button" onclick="toggleDashboardSection('dashboardChartsContent', this)" aria-expanded="false" aria-controls="dashboardChartsContent" class="w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
                 <span class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">Gráficos del Dashboard</span>
-                <span class="flex items-center gap-2 text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400"><span class="hidden sm:inline">Mostrar / ocultar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
+                <span class="flex shrink-0 items-center gap-2 text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400"><span data-dashboard-toggle-label>Mostrar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
             </button>
             <div id="dashboardChartsContent" class="hidden p-3 sm:p-5">
         <section class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6">
@@ -244,14 +244,14 @@
             <div class="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/50">
                 <div>
                     <h3 class="text-lg sm:text-xl font-extrabold text-slate-900 flex items-center gap-2">
-                        <button type="button" onclick="toggleDashboardSection('dashboardTransactionsContent', this)" aria-expanded="false" aria-controls="dashboardTransactionsContent" class="flex items-center gap-2 text-left">
+                        <button type="button" onclick="toggleDashboardSection('dashboardTransactionsContent', this)" aria-expanded="false" aria-controls="dashboardTransactionsContent" class="flex w-full items-center justify-between gap-3 text-left">
                         <span class="p-1.5 bg-amber-100 text-amber-800 rounded-lg">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012-2"></path>
                             </svg>
                         </span>
-                        Registro de Transacciones Detallado (Código de Seguimiento)
-                        <svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                        <span class="flex-1">Registro de Transacciones Detallado (Código de Seguimiento)</span>
+                        <span class="flex shrink-0 items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400"><span data-dashboard-toggle-label>Mostrar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
                         </button>
                     </h3>
                     <p class="text-xs text-slate-400 mt-1">Historial de movimientos de gastos y ventas con código de seguimiento.</p>
@@ -329,19 +329,19 @@
         <!-- SECCIÓN: MÓDULO DE FLUJO DE CAJA Y LIQUIDEZ POR LOTE -->
         <section class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
             <div class="p-3 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-slate-50/50 dark:bg-slate-800/50">
-                <div>
+                <div class="flex-1 min-w-0">
                     <h3 class="text-lg sm:text-xl font-extrabold text-slate-950 dark:text-white flex items-center gap-2">
-                        <button type="button" onclick="toggleDashboardSection('dashboardCashflowContent', this)" aria-expanded="false" aria-controls="dashboardCashflowContent" class="flex items-center gap-2 text-left">
+                        <button type="button" onclick="toggleDashboardSection('dashboardCashflowContent', this)" aria-expanded="false" aria-controls="dashboardCashflowContent" class="flex w-full items-center justify-between gap-2 text-left">
                         <span class="p-1.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 rounded-lg">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                         </span>
-                        Control de Flujo de Caja por Lote
-                        <svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                        <span class="flex-1">Control de Flujo de Caja por Lote</span>
+                        <span class="flex shrink-0 items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400"><span data-dashboard-toggle-label>Mostrar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
                         </button>
                     </h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Caja real y proyectada por lote.</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Caja real por lote.</p>
                 </div>
                 <div class="flex items-center gap-2 w-full md:w-auto">
                     <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Filtrar Caja Lote:</label>
@@ -366,26 +366,21 @@
                 </div>
             </div>
             <div id="dashboardCashflowContent" class="hidden">
-            <div class="p-3 sm:p-5 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-                <div class="p-3 sm:p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900">
-                    <p class="text-[11px] font-extrabold uppercase text-emerald-800 dark:text-emerald-300">Ingresos Cobrados (Caja Real)</p>
-                    <h3 class="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1" id="cfEfectivoIngresado">$0</h3>
-                    <p class="text-[10px] text-emerald-600 dark:text-emerald-500 mt-2">Ventas con Estado PAGADO</p>
-                </div>
+            <div class="p-3 sm:p-5 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
                 <div class="p-3 sm:p-4 rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900">
                     <p class="text-[11px] font-extrabold uppercase text-rose-800 dark:text-rose-300">Egresos Pagados (Salida Real)</p>
                     <h3 class="text-2xl font-extrabold text-rose-700 dark:text-rose-400 mt-1" id="cfEfectivoGastado">$0</h3>
                     <p class="text-[10px] text-rose-600 dark:text-rose-500 mt-2">Costos con Estado PAGADO</p>
                 </div>
+                <div class="p-3 sm:p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900">
+                    <p class="text-[11px] font-extrabold uppercase text-emerald-800 dark:text-emerald-300">Ingresos Cobrados (Caja Real)</p>
+                    <h3 class="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1" id="cfEfectivoIngresado">$0</h3>
+                    <p class="text-[10px] text-emerald-600 dark:text-emerald-500 mt-2">Ventas con Estado PAGADO</p>
+                </div>
                 <div class="p-3 sm:p-4 rounded-2xl bg-sky-50/70 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-900">
                     <p class="text-[11px] font-extrabold uppercase text-sky-800 dark:text-sky-300">Saldo Disponible en Caja</p>
                     <h3 class="text-2xl font-extrabold text-sky-700 dark:text-sky-400 mt-1" id="cfSaldoDisponible">$0</h3>
                     <p class="text-[10px] text-sky-600 dark:text-sky-500 mt-2">Efectivo Ingresado - Salida Real</p>
-                </div>
-                <div class="p-3 sm:p-4 rounded-2xl bg-violet-50/70 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-900">
-                    <p class="text-[11px] font-extrabold uppercase text-violet-800 dark:text-violet-300">Saldo Proyectado</p>
-                    <h3 class="text-2xl font-extrabold text-violet-700 dark:text-violet-400 mt-1" id="cfSaldoProyectado">$0</h3>
-                    <p class="text-[10px] text-violet-600 dark:text-violet-500 mt-2">(Caja + Por Cobrar) - Por Pagar</p>
                 </div>
             </div>
             </div>
@@ -394,16 +389,16 @@
         <!-- SECCIÓN: MÓDULO DE GESTIÓN DE CUENTAS PENDIENTES Y ALERTAS -->
         <section class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
             <div class="p-3 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-amber-50/50 dark:bg-amber-950/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                <div>
+                <div class="flex-1 min-w-0">
                     <h3 class="text-lg sm:text-xl font-extrabold text-slate-950 dark:text-white flex items-center gap-2">
-                        <button type="button" onclick="toggleDashboardSection('dashboardPendingContent', this)" aria-expanded="false" aria-controls="dashboardPendingContent" class="flex items-center gap-2 text-left">
+                        <button type="button" onclick="toggleDashboardSection('dashboardPendingContent', this)" aria-expanded="false" aria-controls="dashboardPendingContent" class="flex w-full items-center justify-between gap-2 text-left">
                         <span class="p-1.5 bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 rounded-lg">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                         </span>
-                        Cuentas pendientes y alertas
-                        <svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                        <span class="flex-1">Cuentas pendientes y alertas</span>
+                        <span class="flex shrink-0 items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400"><span data-dashboard-toggle-label>Mostrar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
                         </button>
                     </h3>
                     <p class="text-xs text-slate-500 dark:text-slate-400">Saldos pendientes por cobrar y por pagar.</p>
