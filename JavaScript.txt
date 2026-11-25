@@ -6356,13 +6356,18 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
         }
 
         // --- MODAL DETALLE DE CONTADOR Y CONSOLIDADOR POR REFERENCIA ---
-        function openCounterDetailModal(tipoCategoria) {
+        function openCounterDetailModal(tipoCategoria, loteContexto) {
             if (!rawData) return;
 
             const modal = document.getElementById("modalDetalleContador");
             if (!modal) return;
 
-            const selectedLote = document.getElementById("filterLote")?.value || "Todos";
+            const loteSelectors = ["filterLote", "dashboardMobileLoteSelector", "loteSelector"]
+                .map(id => document.getElementById(id)?.value?.trim())
+                .filter(Boolean);
+            const selectedLote = loteContexto !== undefined && loteContexto !== null
+                ? String(loteContexto).trim() || "Todos"
+                : loteSelectors.find(lote => lote.toLowerCase() !== "todos") || "Todos";
             const selectedCultivo = document.getElementById("filterCultivo")?.value || "Todos";
             const selectedCiclo = document.getElementById("filterCiclo") ? document.getElementById("filterCiclo").value : "Todos";
             const fechaDesde = document.getElementById("filterFechaDesde")?.value || "";
