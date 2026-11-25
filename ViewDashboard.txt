@@ -63,7 +63,13 @@
             </div>
         </section>
 
-        <section class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
+        <section id="dashboardProfitSummarySection" class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <button type="button" onclick="toggleDashboardSection('dashboardProfitSummaryContent', this)" aria-expanded="false" aria-controls="dashboardProfitSummaryContent" class="w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                <span class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">Utilidad Neta y Resumen de Lote</span>
+                <span class="flex items-center gap-2 text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400"><span class="hidden sm:inline">Mostrar / ocultar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
+            </button>
+            <div id="dashboardProfitSummaryContent" class="hidden p-3 sm:p-5">
+            <section class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
 
             <!-- Tarjeta 1: Utilidad Neta Total (COP) -->
             <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition duration-200">
@@ -122,6 +128,8 @@
                     <span>Margen Unitario: <strong id="kpiMargenUnitarioVal" class="text-slate-800 dark:text-white">$0</strong></span>
                     <span>Rentabilidad (%R): <strong id="kpiPctRentabilidadVal" class="text-emerald-600">0%</strong></span>
                 </div>
+            </div>
+            </section>
             </div>
         </section>
 
@@ -189,7 +197,7 @@
             </div>
         </section>
 
-        <section class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+        <section id="dashboardChartsSection" class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
             <button type="button" onclick="toggleDashboardSection('dashboardChartsContent', this)" aria-expanded="false" aria-controls="dashboardChartsContent" class="w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
                 <span class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">Gráficos del Dashboard</span>
                 <span class="flex items-center gap-2 text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400"><span class="hidden sm:inline">Mostrar / ocultar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
