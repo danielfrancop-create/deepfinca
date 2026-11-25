@@ -319,14 +319,10 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             const dashboard = document.getElementById("dashboardView");
             if (!dashboard) return;
             const chartsSection = document.getElementById("dashboardChartsSection");
-            const profitSummarySection = document.getElementById("dashboardProfitSummarySection");
             const extraMetricsSection = document.getElementById("dashboardExtraMetrics")?.closest("section");
-            const cycleComparisonSection = document.getElementById("dashboardCycleComparisonSection");
 
             if (chartsSection) dashboard.appendChild(chartsSection);
-            if (profitSummarySection) dashboard.appendChild(profitSummarySection);
             if (extraMetricsSection) dashboard.appendChild(extraMetricsSection);
-            if (cycleComparisonSection) dashboard.appendChild(cycleComparisonSection);
         }
 
         function dashboardTrackingCode(item) {
@@ -369,13 +365,13 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             return cycles.sort((a, b) => dashboardDateValue(b.Fecha_Fin || b.fecha_fin || b.Fecha_Inicio || b.fecha_inicio) - dashboardDateValue(a.Fecha_Fin || a.fecha_fin || a.Fecha_Inicio || a.fecha_inicio))[0] || null;
         }
 
-        function renderDashboardInsights(selectedLote) {
+        function renderDashboardInsights(selectedLote, useDashboardFilters = true) {
             if (!rawData) return;
             const lot = selectedLote || document.getElementById("filterLote")?.value || "Todos";
-            const selectedCycle = document.getElementById("filterCiclo")?.value || "Todos";
-            const selectedCrop = document.getElementById("filterCultivo")?.value || "Todos";
-            const from = document.getElementById("filterFechaDesde")?.value || "";
-            const to = document.getElementById("filterFechaHasta")?.value || "";
+            const selectedCycle = useDashboardFilters ? (document.getElementById("filterCiclo")?.value || "Todos") : "Todos";
+            const selectedCrop = useDashboardFilters ? (document.getElementById("filterCultivo")?.value || "Todos") : "Todos";
+            const from = useDashboardFilters ? (document.getElementById("filterFechaDesde")?.value || "") : "";
+            const to = useDashboardFilters ? (document.getElementById("filterFechaHasta")?.value || "") : "";
             const activeCycle = lot !== "Todos" ? dashboardCycleForLot(lot, selectedCycle) : null;
             const activeAliases = selectedCycle !== "Todos"
                 ? [selectedCycle.trim().toUpperCase()]
@@ -384,14 +380,27 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 const code = dashboardTrackingCode(item);
                 return !activeAliases.length || (code && activeAliases.includes(code));
             };
-            const matchesFilters = item => {
+            const matchesLotFilters = item => {
                 const itemLot = item.Lote || item.lote || item.Lote_Principal || item.lote_principal;
                 const date = String(item.Fecha || item.fecha || "").trim();
-                if (!isLoteMatch(itemLot, lot) || !cycleMatches(item)) return false;
+                if (!isLoteMatch(itemLot, lot)) return false;
                 if (from && date && date < from) return false;
                 if (to && date && date > to) return false;
                 return selectedCrop === "Todos" || getCultivoForTx(item).toLowerCase().includes(selectedCrop.toLowerCase());
             };
+            const matchesFilters = item => matchesLotFilters(item) && cycleMatches(item);
+            const matchesSummaryFilters = item => matchesLotFilters(item) && (selectedCycle === "Todos" || cycleMatches(item));
+
+            const selectedExpenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(matchesSummaryFilters);
+            const selectedSales = (rawData.ventas || []).filter(matchesSummaryFilters);
+            const selectedCosts = selectedExpenses.reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
+            const selectedIncome = selectedSales.reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0), 0);
+            const selectedUnits = selectedSales.reduce((sum, item) => sum + (Number(item.Unidades_Cosechadas || item.unidades_cosechadas) || 0), 0);
+            const netProfitEl = document.getElementById("kpiUtilidadNeta");
+            if (netProfitEl) netProfitEl.textContent = formatCOP(selectedIncome - selectedCosts);
+            const netProfitIcon = document.getElementById("kpiUtilidadIconContainer");
+            if (netProfitIcon) netProfitIcon.className = `p-2.5 rounded-xl ${selectedIncome >= selectedCosts ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" : "bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400"}`;
+            updateLoteSummaryMetrics(lot, selectedCosts, selectedUnits, selectedUnits > 0 ? selectedIncome / selectedUnits : 0);
 
             const statusBadge = document.getElementById("dashboardCycleStatusBadge");
             if (statusBadge) {
@@ -487,6 +496,11 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 comparisonRows.innerHTML = closedWithSale.length ? closedWithSale.map(cycle => `<article class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3"><div class="mb-2 flex flex-wrap items-center justify-between gap-1"><strong class="text-xs font-extrabold text-slate-800 dark:text-white">${escapeDashboardHTML(cycle.lot)} · ${escapeDashboardHTML(cycle.code)}</strong><span class="text-[10px] text-slate-500">${escapeDashboardHTML(cycle.date)}</span></div><div class="grid grid-cols-3 gap-2 text-[10px]"><div><span class="block text-slate-500">Gastos</span><strong class="text-rose-700 dark:text-rose-400">${formatCOP(cycle.costs)}</strong></div><div><span class="block text-slate-500">Ingresos</span><strong class="text-emerald-700 dark:text-emerald-400">${formatCOP(cycle.income)}</strong></div><div><span class="block text-slate-500">Ganancia</span><strong class="${cycle.profit >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}">${formatCOP(cycle.profit)}</strong></div></div></article>`).join("") : '<p class="col-span-full rounded-lg bg-slate-50 dark:bg-slate-800/60 p-3 text-xs text-slate-500">No hay ciclos cerrados con ventas para comparar.</p>';
                 if (comparisonScope) comparisonScope.textContent = lot === "Todos" ? "Histórico de todos los lotes" : `Histórico de ${lot}`;
             }
+        }
+
+        function renderAnalysisTracking() {
+            const selector = document.getElementById("analysisLoteSelector");
+            renderDashboardInsights(selector?.value || "Todos", false);
         }
 
         function formatCOP(val) {
@@ -1063,7 +1077,6 @@ function updateConfigHeader() {
 
             // Tarjeta 2: Costo Unitario de Producción y Rentabilidad
             updateLoteSummaryMetrics(selectedLote, gastosTotales, totalUnidades, precioVentaPromedio);
-            renderDashboardInsights(selectedLote);
 
             // Tarjeta 3: Margen ROI (%)
             const kpiRoiEl = document.getElementById("kpiRoi");
@@ -1749,6 +1762,7 @@ function updateConfigHeader() {
             const dashboardView = document.getElementById("dashboardView");
             const dataEntryView = document.getElementById("dataEntryView");
             const mapaLotesView = document.getElementById("mapaLotesView");
+            const analysisTrackingView = document.getElementById("analysisTrackingView");
             
             const navButtons = document.querySelectorAll(".module-nav-btn");
             const volverDashboardBtn = document.getElementById("volverDashboardBtn");
@@ -1758,6 +1772,7 @@ function updateConfigHeader() {
             if (dashboardView) dashboardView.classList.add("hidden");
             if (dataEntryView) dataEntryView.classList.add("hidden");
             if (mapaLotesView) mapaLotesView.classList.add("hidden");
+            if (analysisTrackingView) analysisTrackingView.classList.add("hidden");
             
             // Enable selector by default
             if (loteSelector) loteSelector.disabled = false;
@@ -1816,6 +1831,9 @@ function updateConfigHeader() {
                             renderPhotoGallery();
                         });
                     }
+                } else if (viewName === 'analysis_tracking') {
+                    if (analysisTrackingView) analysisTrackingView.classList.remove("hidden");
+                    renderAnalysisTracking();
                 }
             }
 
@@ -4212,8 +4230,8 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             if (!tableBody || !rawData) return;
             tableBody.innerHTML = "";
 
-            const targetLote = selectedLote || document.getElementById("filterLote")?.value || "Todos";
-            const searchCode = (document.getElementById("searchTrackingCode")?.value || "").trim().toUpperCase();
+            const transactionLoteSelector = document.getElementById("searchTrackingCode");
+            const targetLote = transactionLoteSelector ? transactionLoteSelector.value : (selectedLote || document.getElementById("filterLote")?.value || "Todos");
             const filterType = document.getElementById("filterMovimiento")?.value || "Todos";
             const selectedCiclo = document.getElementById("filterCiclo") ? document.getElementById("filterCiclo").value : "Todos";
 
@@ -4227,15 +4245,6 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             // Filter by Movement Type
             if (filterType !== "Todos") {
                 filtered = filtered.filter(tx => tx.tipo === filterType);
-            }
-
-            // Filter by Tracking Code
-            if (searchCode) {
-                filtered = filtered.filter(tx => {
-                    const matchesStageCode = tx.codigo.includes(searchCode);
-                    const matchesGeneralCode = tx.codigoGeneral && tx.codigoGeneral.includes(searchCode);
-                    return matchesStageCode || matchesGeneralCode;
-                });
             }
 
             const totalFilteredCount = filtered.length;
@@ -4357,11 +4366,9 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 tableBody.appendChild(tr);
             });
 
-            const totalCount = filtrarTransaccionesPorLote("Todos").length;
-            document.getElementById("transaccionesCount").textContent = `Mostrando ${filtered.length} de ${totalCount} registros`;
-        }
+            }
 
-        function renderEstadoResultados() {
+            function renderEstadoResultados() {
             if (!rawData) return;
 
             const selectedLote = document.getElementById("filterLote") ? document.getElementById("filterLote").value : "Todos";
@@ -4571,9 +4578,9 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             // 'l' specifies Landscape layout to fit more columns beautifully
             const doc = new jsPDF('l', 'pt', 'a4');
 
-            // Gather search and filter values for metadata
-            const selectedLote = document.getElementById("loteSelector")?.value || "Todos";
-            const searchCode = (document.getElementById("searchTrackingCode")?.value || "").trim().toUpperCase();
+            // Gather the same lot, cycle, and movement filters used by the transaction table.
+            const selectedLote = document.getElementById("searchTrackingCode")?.value || "Todos";
+            const selectedCiclo = document.getElementById("filterCiclo")?.value || "Todos";
             const filterType = document.getElementById("filterMovimiento")?.value || "Todos";
 
             let allTx = [];
@@ -4673,17 +4680,17 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 tx.groupCode = String(tx.cycle?.Codigo_General || tx.cycle?.codigo_general || tx.codigo || "-").trim().toUpperCase();
             });
 
-            // Apply same active filters as UI
+            // Apply the same active filters as the transaction table.
             const lotFiltered = allTx.filter(tx => isLoteMatch(tx.lote, selectedLote));
             let filtered = lotFiltered.slice();
+            if (selectedCiclo && selectedCiclo !== "Todos") {
+                const targetCycle = selectedCiclo.trim().toUpperCase();
+                filtered = filtered.filter(tx => tx.codigo === targetCycle || tx.groupCode === targetCycle);
+            }
 
             if (filterType !== "Todos") {
                 const mapType = { "Inicial": "Gasto Inicial", "Desarrollo": "Gasto Desarrollo", "Venta": "Venta" };
                 filtered = filtered.filter(tx => tx.tipo === mapType[filterType]);
-            }
-
-            if (searchCode) {
-                filtered = filtered.filter(tx => tx.codigo.includes(searchCode));
             }
 
             const transactionsByCode = new Map();
@@ -4733,7 +4740,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             doc.setFont('helvetica', 'normal');
             doc.text(`Lote: ${selectedLote}`, 40, 145);
             doc.text(`Tipo Movimiento: ${filterType === 'Todos' ? 'Todos los Tipos' : filterType}`, 40, 160);
-            doc.text(`Código Seguimiento: ${searchCode || 'Cualquiera'}`, 40, 175);
+            doc.text("Agrupado por código de seguimiento", 40, 175);
 
             doc.setFont('helvetica', 'bold');
             doc.text("Reporte Generado:", 580, 130);
@@ -6126,6 +6133,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             const modDashboard = isPermitted(perms.Modulo_Dashboard || perms.Modulo_Inicio);
             const modPOS = isPermitted(perms.Modulo_POS || perms.Modulo_Gastos);
             const modMapaLotes = isPermitted(perms.Modulo_MapaLotes || perms.Modulo_Lotes);
+            const modAnalysis = isPermitted(perms.Modulo_AnalisisSeguimiento || perms.Modulo_Dashboard || perms.Modulo_Inicio);
 
             // Modulo Dashboard
             const dashBtns = document.querySelectorAll("#navBtn_dashboard, #mobileNavBtn_dashboard, [data-module='Modulo_Dashboard']");
@@ -6138,6 +6146,9 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             // Modulo Mapa Lotes
             const mapBtns = document.querySelectorAll("#mapaLotesBtn, #mobileMapaLotesBtn, [data-module='Modulo_MapaLotes']");
             mapBtns.forEach(b => b.style.display = modMapaLotes ? "" : "none");
+
+            const analysisBtns = document.querySelectorAll("[data-module='Modulo_AnalisisSeguimiento']");
+            analysisBtns.forEach(b => b.style.display = modAnalysis ? "" : "none");
 
             // Ocultar botón de gestión de usuarios para no administradores
             const userMgmtBtns = document.querySelectorAll("#gestionUsuariosBtn, #mobileUsuariosBtn");
