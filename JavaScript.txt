@@ -666,20 +666,23 @@ function updateConfigHeader() {
             }
         }
 
-        // Selector synchronization helper (keeps header select and filter bar select aligned)
+        // Selector synchronization helper (keeps all lot filters aligned)
         function syncSelectors(source) {
             const headerSelect = document.getElementById("loteSelector");
             const barSelect = document.getElementById("filterLote");
             const cfSelect = document.getElementById("cashflowLoteSelector");
+            const dashboardMobileSelect = document.getElementById("dashboardMobileLoteSelector");
 
             let targetVal = "Todos";
             if (source === 'header' && headerSelect) targetVal = headerSelect.value;
             else if (source === 'bar' && barSelect) targetVal = barSelect.value;
             else if (source === 'cashflow' && cfSelect) targetVal = cfSelect.value;
+            else if (source === 'dashboardMobile' && dashboardMobileSelect) targetVal = dashboardMobileSelect.value;
 
             if (headerSelect && headerSelect.value !== targetVal) headerSelect.value = targetVal;
             if (barSelect && barSelect.value !== targetVal) barSelect.value = targetVal;
             if (cfSelect && cfSelect.value !== targetVal) cfSelect.value = targetVal;
+            if (dashboardMobileSelect && dashboardMobileSelect.value !== targetVal) dashboardMobileSelect.value = targetVal;
 
             updateCicloDropdown(targetVal);
             applyFilters();
@@ -2861,7 +2864,8 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             const selects = [
                 document.getElementById("loteSelector"),
                 document.getElementById("filterLote"),
-                document.getElementById("cashflowLoteSelector")
+                document.getElementById("cashflowLoteSelector"),
+                document.getElementById("dashboardMobileLoteSelector")
             ];
 
             let optionsHTML = '<option value="Todos">Todos los Lotes</option>';
