@@ -9,22 +9,18 @@ var HOJA_FOTOS_LOTES = "fotosLotes";
 var HOJA_USUARIOS = "Usuarios_Autorizados";
 
 // ==========================================
-// 1. FUNCIÓN DE CONEXIÓN CON GITHUB (JSONP Y REST API)
+// 1. API POST PARA GITHUB PAGES
 // ==========================================
 function _getPublicApiFunctions_() {
   return {
+    iniciarSesionAplicacion: iniciarSesionAplicacion,
+    cerrarSesionAplicacion: cerrarSesionAplicacion,
     getDashboardData: getDashboardData,
     getCurrentUserRole: getCurrentUserRole,
     verificarAccesoUsuario: verificarAccesoUsuario,
-    obtenerConfiguracionGoogleGitHub: obtenerConfiguracionGoogleGitHub,
-    completarSesionGoogleGitHub: completarSesionGoogleGitHub,
-    validarSesionGoogleGitHub: validarSesionGoogleGitHub,
-    cerrarSesionGoogleGitHub: cerrarSesionGoogleGitHub,
     obtenerListaUsuarios: obtenerListaUsuarios,
     guardarUsuario: guardarUsuario,
     eliminarUsuario: eliminarUsuario,
-    validarSesionAdminGitHub: validarSesionAdminGitHub,
-    cerrarSesionAdminGitHub: cerrarSesionAdminGitHub,
     guardarRegistro: guardarRegistro,
     guardarFotoLote: guardarFotoLote,
     guardarFotoLotes: guardarFotoLotes,
@@ -39,54 +35,41 @@ function _getPublicApiFunctions_() {
   };
 }
 
-function _getTokenProtectedApiActions_() {
+function _getAdminProtectedApiActions_() {
   return ["obtenerListaUsuarios", "guardarUsuario", "eliminarUsuario", "guardarRegistro", "guardarFotoLote", "guardarFotoLotes", "actualizarEstadoPago", "agregarCiclo", "agregarItemConfig", "getSecurityCredentials", "eliminarRegistroSeguro", "vaciarHojasGoogleSheets", "actualizarSecurityCredentials", "exportToExcelData"];
 }
 
 function _dispatchApiAction_(action, args) {
   var functions = _getPublicApiFunctions_();
   if (!Object.prototype.hasOwnProperty.call(functions, action)) throw new Error("Acción no disponible.");
-  if (_getTokenProtectedApiActions_().indexOf(action) !== -1) {
+  if (_getAdminProtectedApiActions_().indexOf(action) !== -1) {
     var token = args.length ? args[args.length - 1] : "";
-    if (!token) throw new Error("Se requiere una sesión de administrador válida.");
-    _getAdminSessionUser_(token);
+    _requireAdminUser_(token);
   }
   return functions[action].apply(null, args);
 }
 
-function doGet(e) {
-  if (e && e.parameter && e.parameter.callback) {
-    var callback = String(e.parameter.callback || "");
-    if (!/^jsonpCallback_\d+$/.test(callback)) {
-      return ContentService.createTextOutput("Callback no válido.").setMimeType(ContentService.MimeType.TEXT);
-    }
-    var resultado;
-    try {
-      var action = String(e.parameter.action || "");
-      var args = e.parameter.args ? JSON.parse(e.parameter.args) : [];
-      if (!Array.isArray(args)) throw new Error("Los argumentos de la solicitud no son válidos.");
-      resultado = _dispatchApiAction_(action, args);
-    } catch (err) {
-      resultado = { success: false, unauthorized: true, error: err.message || String(err) };
-    }
-    return ContentService.createTextOutput(callback + "(" + JSON.stringify(resultado) + ")")
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
-  return ContentService.createTextOutput("API de Finca Los Sauces en línea.")
+function doGet() {
+  return ContentService.createTextOutput("API POST de Finca Los Sauces en línea.")
     .setMimeType(ContentService.MimeType.TEXT);
 }
 
 function doPost(e) {
+  var params = e && e.parameter ? e.parameter : {};
+  var requestId = String(params.requestId || "");
+  var result;
   try {
-    var params = e && e.parameter ? e.parameter : {};
+    if (!/^[a-f0-9-]{16,80}$/i.test(requestId)) throw new Error("Identificador de solicitud inválido.");
     var action = String(params.action || "");
     var args = params.args ? JSON.parse(params.args) : [];
     if (!Array.isArray(args)) throw new Error("Los argumentos de la solicitud no son válidos.");
-    var resultado = _dispatchApiAction_(action, args);
-    return ContentService.createTextOutput(JSON.stringify(resultado)).setMimeType(ContentService.MimeType.JSON);
+    result = _dispatchApiAction_(action, args);
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ success: false, unauthorized: true, error: err.message || String(err) })).setMimeType(ContentService.MimeType.JSON);
+    result = { success: false, unauthorized: true, error: err.message || String(err) };
   }
+  var payload = JSON.stringify({ requestId: requestId, response: result }).replace(/</g, "\\u003c");
+  var html = "<!doctype html><html><body><script>window.top.postMessage(" + payload + ", '*');</script></body></html>";
+  return HtmlService.createHtmlOutput(html).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 // ==========================================
@@ -116,8 +99,8 @@ function formatDateNative(date) {
   return [year, month, day].join('-');
 }
 
-function asegurarColumnas(sheet, headersNeeded) {
-  _requireAdminUser_();
+function asegurarColumnas(sheet, headersNeeded, sessionToken) {
+  _requireAdminUser_(sessionToken);
   var lastCol = sheet.getLastColumn();
   if (lastCol === 0) { sheet.appendRow(headersNeeded); return; }
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
@@ -126,65 +109,6 @@ function asegurarColumnas(sheet, headersNeeded) {
   for (var j = 0; j < headersNeeded.length; j++) {
     var h = headersNeeded[j];
     if (!headerMap[h]) sheet.getRange(1, sheet.getLastColumn() + 1).setValue(h);
-  }
-}
-
-function codeLegacyVerificarAccesoUsuario_() {
-  return verificarAccesoUsuario();
-}
-
-function codeLegacyGetCurrentUserRole_() {
-  return getCurrentUserRole();
-}
-
-function codeLegacyObtenerListaUsuarios_() {
-  try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var sheet = ss.getSheetByName(HOJA_USUARIOS);
-    if (!sheet) return [];
-    return getSheetData(ss, HOJA_USUARIOS);
-  } catch (err) {
-    return [];
-  }
-}
-
-function codeLegacyGuardarUsuario_(datos) {
-  try {
-    if (typeof datos === 'string') datos = JSON.parse(datos);
-    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var sheet = ss.getSheetByName(HOJA_USUARIOS);
-    var columnsNeeded = ["Email", "Nombre", "Rol", "Estado", "Fecha_Registro"];
-    if (!sheet) { sheet = ss.insertSheet(HOJA_USUARIOS); sheet.appendRow(columnsNeeded); }
-    asegurarColumnas(sheet, columnsNeeded);
-    
-    sheet.appendRow([
-      datos.Email || datos.email || "",
-      datos.Nombre || datos.nombre || "",
-      datos.Rol || datos.rol || "CONSULTA",
-      datos.Estado || datos.estado || "ACTIVO",
-      formatDateNative(new Date())
-    ]);
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err.toString() };
-  }
-}
-
-function codeLegacyEliminarUsuario_(email) {
-  try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var sheet = ss.getSheetByName(HOJA_USUARIOS);
-    if (!sheet) return { success: false, error: "No existe la hoja de usuarios." };
-    var values = sheet.getDataRange().getValues();
-    for (var i = 1; i < values.length; i++) {
-      if (String(values[i][0]).trim().toLowerCase() === String(email).trim().toLowerCase()) {
-        sheet.deleteRow(i + 1);
-        return { success: true };
-      }
-    }
-    return { success: false, error: "Usuario no encontrado." };
-  } catch (err) {
-    return { success: false, error: err.toString() };
   }
 }
 
@@ -244,6 +168,8 @@ function getSheetData(ss, sheetName, sessionToken) {
 // 4. ESCRITURA Y GESTIÓN DE DATOS (POS, VENTAS, CICLOS)
 // ==========================================
 function guardarRegistro(tipo, datos, sessionToken) {
+  var lock = null;
+  var locked = false;
   try {
     _requireAdminUser_(sessionToken);
     if (typeof datos === 'string') datos = JSON.parse(datos);
@@ -255,6 +181,12 @@ function guardarRegistro(tipo, datos, sessionToken) {
         cierreDatos.loteReferencia || cierreDatos.Lote || cierreDatos.Lote_Principal || "",
         sessionToken
       );
+    }
+    if (datos.syncId) {
+      if (!/^[a-f0-9-]{16,80}$/i.test(String(datos.syncId))) throw new Error("Identificador de sincronización inválido.");
+      lock = LockService.getScriptLock();
+      lock.waitLock(30000);
+      locked = true;
     }
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheetName = "", columnsNeeded = [];
@@ -270,9 +202,17 @@ function guardarRegistro(tipo, datos, sessionToken) {
       columnsNeeded = ["Lote_Principal", "Sub_Lote", "Lote", "Producto_Vendido", "Cantidad", "Unidad_Medida", "Precio_Unitario_COP", "Ingreso_Total_COP", "Estado_Pago", "Cliente_Deudor_Proveedor", "Fecha_Vencimiento", "Fecha_Pago_Realizado", "Fecha", "Comprador", "Codigo_Seguimiento", "Codigo_General"];
     } else { return { success: false, error: "Tipo de registro no válido." }; }
 
+    if (datos.syncId) columnsNeeded.push("Sync_ID");
     var sheet = ss.getSheetByName(sheetName);
     if (!sheet) { sheet = ss.insertSheet(sheetName); sheet.appendRow(columnsNeeded); }
-    asegurarColumnas(sheet, columnsNeeded);
+    asegurarColumnas(sheet, columnsNeeded, sessionToken);
+    var existingSyncRow = null;
+    if (datos.syncId && sheet.getLastRow() > 1) {
+      var existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      var syncColumn = existingHeaders.indexOf("Sync_ID");
+      var existingRows = sheet.getRange(2, 1, sheet.getLastRow() - 1, existingHeaders.length).getValues();
+      existingSyncRow = existingRows.find(function(row) { return String(row[syncColumn]) === String(datos.syncId); }) || null;
+    }
 
     var cantidad = Number(datos.Cantidad || datos.cantidad) || 1;
     var unitario = Number(datos.Costo_Unitario_COP || datos.Precio_Unitario_COP || datos.costo_unitario || datos.precio_unitario) || 0;
@@ -288,7 +228,8 @@ function guardarRegistro(tipo, datos, sessionToken) {
     var isProrrateoInsumo = (tipo === "gastosDesarrollo" || tipo === "desarrollo") && (tipoInsumo === "Fertilizantes" || tipoInsumo === "Pesticidas");
 
     if (isProrrateoInsumo) {
-      var lotesActivos = obtenerListaLotesActivos(ss);
+      if (existingSyncRow) return { success: true, prorrateado: true };
+      var lotesActivos = obtenerListaLotesActivos(ss, sessionToken);
       var numLotes = lotesActivos.length;
       var propMonto = numLotes > 0 ? (total / numLotes) : total;
       var propCantidad = numLotes > 0 ? (cantidad / numLotes) : cantidad;
@@ -296,8 +237,9 @@ function guardarRegistro(tipo, datos, sessionToken) {
       var detalleBase = datos.Detalle || datos.detalle || "";
       var ciclosData = [];
       var ciclosSheet = ss.getSheetByName(HOJA_CICLOS);
-      if (ciclosSheet && ciclosSheet.getLastRow() >= 2) ciclosData = getSheetData(ss, HOJA_CICLOS);
+      if (ciclosSheet && ciclosSheet.getLastRow() >= 2) ciclosData = getSheetData(ss, HOJA_CICLOS, sessionToken);
       var headersInSheet = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      var rowsToAppend = [];
 
       lotesActivos.forEach(function(loteAct, idx) {
         var activeCycle = ciclosData.find(function(c) {
@@ -328,10 +270,12 @@ function guardarRegistro(tipo, datos, sessionToken) {
           else if (h === "Detalle") val = (detalleBase ? detalleBase + " " : "") + "(Prorrateo general " + (idx + 1) + "/" + numLotes + " entre lotes activos)";
           else if (h === "Codigo_Seguimiento") val = loteTrackCode;
           else if (h === "Codigo_General") val = loteGenCode;
+          else if (h === "Sync_ID") val = datos.syncId || "";
           rowValues.push(val);
         }
-        sheet.appendRow(rowValues);
+        rowsToAppend.push(rowValues);
       });
+      if (rowsToAppend.length) sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAppend.length, headersInSheet.length).setValues(rowsToAppend);
       return { success: true, prorrateado: true, numLotes: numLotes, totalDistribuido: total };
     }
 
@@ -368,9 +312,10 @@ function guardarRegistro(tipo, datos, sessionToken) {
       else if (h === "Codigo_Seguimiento") val = trackingCode;
       else if (h === "Codigo_General") val = codigoGeneral;
       else if (h === "Unidades_Cosechadas") val = cantidad;
+      else if (h === "Sync_ID") val = datos.syncId || "";
       rowValues.push(val);
     }
-    sheet.appendRow(rowValues);
+    if (!existingSyncRow) sheet.appendRow(rowValues);
 
     if ((tipo === "gastosIniciales" || tipo === "inicial") && lotePrincipal) {
       var cultivo = datos.Cultivo_Semilla || datos.cultivo_semilla || "";
@@ -378,11 +323,12 @@ function guardarRegistro(tipo, datos, sessionToken) {
       var ciclosSheet = ss.getSheetByName(HOJA_CICLOS);
       var tieneCicloActivo = false;
       if (ciclosSheet && ciclosSheet.getLastRow() >= 2) {
-        var ciclosData = getSheetData(ss, HOJA_CICLOS);
+        var ciclosData = getSheetData(ss, HOJA_CICLOS, sessionToken);
         tieneCicloActivo = ciclosData.some(function(c) { return String(c.Lote || c.Lote_Principal || "").trim() === lotePrincipal && String(c.Estado || "").toUpperCase() === "EN PROCESO"; });
       }
       if (!tieneCicloActivo && cultivo) {
-        agregarCiclo(lotePrincipal, "", cultivo, trackingCode, trackingCode, trackingCode, trackingCode, "EN PROCESO", fechaInicio, "");
+        var nuevoCiclo = agregarCiclo(lotePrincipal, "", cultivo, trackingCode, trackingCode, trackingCode, trackingCode, "EN PROCESO", fechaInicio, "", sessionToken);
+        if (!nuevoCiclo.success) throw new Error(nuevoCiclo.error);
       }
     }
 
@@ -391,7 +337,7 @@ function guardarRegistro(tipo, datos, sessionToken) {
     var cierreCiclo = null;
     if (cerrarPorVenta) {
       var fechaFinVenta = datos.Fecha || datos.fecha || formatDateNative(new Date());
-      cierreCiclo = finalizarCiclo(trackingCode, fechaFinVenta, lotePrincipal);
+      cierreCiclo = finalizarCiclo(trackingCode, fechaFinVenta, lotePrincipal, sessionToken);
     }
 
     return {
@@ -401,15 +347,16 @@ function guardarRegistro(tipo, datos, sessionToken) {
       cierreCiclo: cierreCiclo
     };
   } catch (err) { return { success: false, error: err.toString() }; }
+  finally { if (locked) { try { SpreadsheetApp.flush(); } finally { lock.releaseLock(); } } }
 }
 
-function obtenerListaLotesActivos(ss) {
-  _requireAnyModuleUser_(["Modulo_Dashboard", "Modulo_POS", "Modulo_MapaLotes", "Modulo_AnalisisSeguimiento"]);
+function obtenerListaLotesActivos(ss, sessionToken) {
+  _requireAnyModuleUser_(["Modulo_Dashboard", "Modulo_POS", "Modulo_MapaLotes", "Modulo_AnalisisSeguimiento"], sessionToken);
   if (!ss) ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var list = [];
   var ciclosSheet = ss.getSheetByName(HOJA_CICLOS);
   if (ciclosSheet && ciclosSheet.getLastRow() >= 2) {
-    var ciclosData = getSheetData(ss, HOJA_CICLOS);
+    var ciclosData = getSheetData(ss, HOJA_CICLOS, sessionToken);
     ciclosData.forEach(function(c) {
       var estado = String(c.Estado || c.estado || '').toUpperCase();
       if (estado === 'EN PROCESO' || estado === 'ACTIVO') {
@@ -501,7 +448,7 @@ function agregarCiclo(lotePrincipal, subLote, cultivo, codigoGeneral, codigoInic
     var sheet = ss.getSheetByName(HOJA_CICLOS);
     var columnsNeeded = ["Lote_Principal", "Sub_Lote", "Lote", "Cultivo", "Codigo_General", "Codigo_Inicial", "Codigo_Desarrollo", "Codigo_Ventas", "Estado", "Fecha_Inicio", "Fecha_Fin"];
     if (!sheet) { sheet = ss.insertSheet(HOJA_CICLOS); sheet.appendRow(columnsNeeded); }
-    asegurarColumnas(sheet, columnsNeeded);
+    asegurarColumnas(sheet, columnsNeeded, sessionToken);
     var lp = lotePrincipal || "", sub = subLote || "", cult = cultivo || "", cg = codigoGeneral || "", ci = codigoInicial || "", cd = codigoDesarrollo || "", cv = codigoVentas || "", est = estado || "EN PROCESO", fi = fechaInicio || formatDateNative(new Date()), ff = fechaFin || "";
     if (typeof lotePrincipal === 'object' && lotePrincipal !== null) {
       var obj = lotePrincipal;
@@ -798,17 +745,31 @@ function vaciarHojasGoogleSheets(securityCode, sessionToken) {
 }
 
 function guardarFotoLote(record, sessionToken) {
+  var lock = null;
+  var locked = false;
   try {
     _requireAdminUser_(sessionToken);
     if (typeof record === 'string') record = JSON.parse(record);
+    if (record.syncId) {
+      if (!/^[a-f0-9-]{16,80}$/i.test(String(record.syncId))) throw new Error("Identificador de sincronización inválido.");
+      lock = LockService.getScriptLock();
+      lock.waitLock(30000);
+      locked = true;
+    }
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(HOJA_FOTOS_LOTES);
     var columnsNeeded = ["ID_Foto", "Lote", "Fecha", "Titulo", "Descripcion", "Url_Foto_Drive", "Base64_Data"];
     
     if (!sheet) { sheet = ss.insertSheet(HOJA_FOTOS_LOTES); sheet.appendRow(columnsNeeded); }
-    asegurarColumnas(sheet, columnsNeeded);
-    
-    var idFoto = "FOTO-" + new Date().getTime();
+    asegurarColumnas(sheet, columnsNeeded, sessionToken);
+
+    var idFoto = record.syncId ? "FOTO-" + record.syncId : (record.ID_Foto || "FOTO-" + new Date().getTime());
+    if (record.syncId && sheet.getLastRow() > 1) {
+      var photoHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      var photoIdColumn = photoHeaders.indexOf("ID_Foto") + 1;
+      var ids = sheet.getRange(2, photoIdColumn, sheet.getLastRow() - 1, 1).getValues();
+      if (ids.some(function(row) { return String(row[0]) === idFoto; })) return { success: true, idFoto: idFoto };
+    }
     var urlDrive = "";
     
     try {
@@ -824,13 +785,14 @@ function guardarFotoLote(record, sessionToken) {
         
         var base64Data = record.Base64_Data.split(',')[1];
         var blob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/jpeg', idFoto + '.jpg');
-        var file = folder.createFile(blob);
+        var existingFiles = record.syncId ? folder.getFilesByName(idFoto + '.jpg') : null;
+        var file = existingFiles && existingFiles.hasNext() ? existingFiles.next() : folder.createFile(blob);
         file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
         
         urlDrive = "https://lh3.googleusercontent.com/d/" + file.getId();
       }
     } catch (e) {
-      Logger.log("Error subiendo a Drive: " + e.toString());
+      throw new Error("Error subiendo a Drive: " + e.toString());
     }
     
     sheet.appendRow([
@@ -845,6 +807,7 @@ function guardarFotoLote(record, sessionToken) {
     
     return { success: true, idFoto: idFoto, urlDrive: urlDrive, message: "Foto guardada correctamente." };
   } catch (err) { return { success: false, error: err.toString() }; }
+  finally { if (locked) { try { SpreadsheetApp.flush(); } finally { lock.releaseLock(); } } }
 }
 
 function guardarFotoLotes(record, sessionToken) { return guardarFotoLote(record, sessionToken); }
