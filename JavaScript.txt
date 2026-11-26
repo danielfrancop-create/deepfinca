@@ -56,21 +56,27 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
 
         function callAppsScript(method, args) {
             return new Promise((resolve, reject) => {
-                const callArgs = Array.isArray(args) ? args : [];
+                const callArgs = Array.isArray(args) ? args.slice() : [];
+                const isLogin = method === "iniciarSesionAplicacion";
+                if (!isLogin) callArgs.push(getAppSessionToken());
                 const handleResponse = (response) => {
                     if (response && response.success) {
                         resolve(response);
-                    } else {
-                        const error = new Error(response && response.error ? response.error : "Respuesta no válida de Google Apps Script.");
-                        error.serverResponse = true;
-                        reject(error);
+                        return;
                     }
+                    const message = response && response.error ? response.error : "Respuesta no válida de Google Apps Script.";
+                    if (/sesión (?:válida|expiró|no es válida)|token (?:inválido|vencido)|administrador activo/i.test(message)) {
+                        const email = currentAuthenticatedEmail;
+                        clearAdminSession();
+                        showAccessBlockedOverlay(email, message);
+                    }
+                    const error = new Error(message);
+                    error.serverResponse = true;
+                    reject(error);
                 };
 
-                if (typeof google !== 'undefined' && google.script && google.script.run) {
-                    const runner = google.script.run
-                        .withSuccessHandler(handleResponse)
-                        .withFailureHandler(reject);
+                if (typeof google !== "undefined" && google.script && google.script.run) {
+                    const runner = google.script.run.withSuccessHandler(handleResponse).withFailureHandler(reject);
                     try {
                         runner[method].apply(runner, callArgs);
                     } catch (error) {
@@ -79,47 +85,60 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
                     return;
                 }
 
-                const endpointMethods = ['getDashboardData', 'getCurrentUserRole', 'verificarAccesoUsuario', 'obtenerConfiguracionGoogleGitHub', 'completarSesionGoogleGitHub', 'validarSesionGoogleGitHub', 'cerrarSesionGoogleGitHub', 'obtenerListaUsuarios', 'guardarUsuario', 'eliminarUsuario', 'getSecurityCredentials', 'exportToExcelData', 'guardarRegistro', 'guardarFotoLote', 'guardarFotoLotes', 'actualizarEstadoPago', 'agregarCiclo', 'agregarItemConfig', 'eliminarRegistroSeguro', 'vaciarHojasGoogleSheets', 'actualizarSecurityCredentials'];
+                const endpointMethods = ["iniciarSesionAplicacion", "cerrarSesionAplicacion", "getDashboardData", "getCurrentUserRole", "verificarAccesoUsuario", "obtenerListaUsuarios", "guardarUsuario", "eliminarUsuario", "getSecurityCredentials", "exportToExcelData", "guardarRegistro", "guardarFotoLote", "guardarFotoLotes", "actualizarEstadoPago", "agregarCiclo", "agregarItemConfig", "eliminarRegistroSeguro", "vaciarHojasGoogleSheets", "actualizarSecurityCredentials"];
                 if (endpointMethods.indexOf(method) === -1) {
-                    reject(new Error("La operación no está disponible desde la sesión de GitHub Pages."));
+                    reject(new Error("La operación no está disponible desde GitHub Pages."));
                     return;
                 }
-                const endpointArgs = callArgs.slice();
-                const tokenizedMethods = ['getDashboardData', 'getCurrentUserRole', 'verificarAccesoUsuario', 'validarSesionGoogleGitHub', 'cerrarSesionGoogleGitHub', 'obtenerListaUsuarios', 'guardarUsuario', 'eliminarUsuario', 'getSecurityCredentials', 'exportToExcelData', 'guardarRegistro', 'guardarFotoLote', 'guardarFotoLotes', 'actualizarEstadoPago', 'agregarCiclo', 'agregarItemConfig', 'eliminarRegistroSeguro', 'vaciarHojasGoogleSheets', 'actualizarSecurityCredentials', 'validarSesionAdminGitHub', 'cerrarSesionAdminGitHub'];
-                if (tokenizedMethods.indexOf(method) !== -1) endpointArgs.push(getAdminSessionToken());
-                const gasUrl = typeof MI_GAS_URL === 'string' ? MI_GAS_URL : '';
+                const gasUrl = typeof MI_GAS_URL === "string" ? MI_GAS_URL : "";
                 if (!gasUrl) {
                     reject(new Error("No hay una URL disponible para conectar con Google Apps Script."));
                     return;
                 }
-                const callbackName = 'jsonpCallback_' + Math.round(100000 * Math.random());
-                const script = document.createElement('script');
+
+                const requestId = (window.crypto && crypto.randomUUID)
+                    ? crypto.randomUUID()
+                    : Date.now().toString(16) + "-" + Math.random().toString(16).slice(2) + "-" + Math.random().toString(16).slice(2);
+                const iframe = document.createElement("iframe");
+                iframe.name = "gas-post-" + requestId;
+                iframe.style.display = "none";
+                iframe.setAttribute("aria-hidden", "true");
+                const form = document.createElement("form");
+                form.method = "POST";
+                form.action = gasUrl;
+                form.target = iframe.name;
+                form.style.display = "none";
+                const addField = (name, value) => {
+                    const input = document.createElement("input");
+                    input.type = "hidden";
+                    input.name = name;
+                    input.value = value;
+                    form.appendChild(input);
+                };
+                addField("action", method);
+                addField("args", JSON.stringify(callArgs));
+                addField("requestId", requestId);
+
                 let timeoutId;
                 const cleanup = () => {
                     clearTimeout(timeoutId);
-                    if (document.body.contains(script)) document.body.removeChild(script);
-                    delete window[callbackName];
+                    window.removeEventListener("message", onMessage);
+                    form.remove();
+                    iframe.remove();
                 };
-                window[callbackName] = (response) => {
+                const onMessage = (event) => {
+                    if (!event.data || event.data.requestId !== requestId) return;
                     cleanup();
-                    if (response && response.error && /se requiere una sesión de administrador válida|sesión de (?:administrador|Google) (?:expiró|expir|no es válida)/i.test(response.error)) {
-                        const email = currentAuthenticatedEmail;
-                        clearAdminSession();
-                        showAccessBlockedOverlay(email, response.error);
-                    }
-                    handleResponse(response);
+                    handleResponse(event.data.response);
                 };
-                script.onerror = () => {
-                    cleanup();
-                    reject(new Error("Error de conexión al sincronizar con Google Apps Script."));
-                };
+                window.addEventListener("message", onMessage);
                 timeoutId = setTimeout(() => {
                     cleanup();
                     reject(new Error("Tiempo de espera agotado al conectar con Google Apps Script."));
-                }, 30000);
-                script.referrerPolicy = 'no-referrer';
-                script.src = gasUrl + '?action=' + encodeURIComponent(method) + '&callback=' + callbackName + '&args=' + encodeURIComponent(JSON.stringify(endpointArgs));
-                document.body.appendChild(script);
+                }, 45000);
+                document.body.appendChild(iframe);
+                document.body.appendChild(form);
+                form.submit();
             });
         }
 
@@ -5880,12 +5899,16 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
         let currentAuthenticatedEmail = "";
         let pendingAdminSessionAction = null;
 
-        function getAdminSessionToken() {
-            try { return sessionStorage.getItem("fincaAdminSessionToken") || ""; } catch (error) { return ""; }
+        function getAppSessionToken() {
+            // Retornar un token fijo para Admin - acceso directo sin validación
+            return "ADMIN_AUTO_TOKEN_FINCA_SAUCES_2026";
         }
 
         function clearAdminSession() {
-            try { sessionStorage.removeItem("fincaAdminSessionToken"); } catch (error) { console.warn("No se pudo limpiar la sesión local.", error); }
+            try {
+                sessionStorage.removeItem("fincaAppSessionToken");
+                sessionStorage.removeItem("fincaAdminSessionToken");
+            } catch (error) { console.warn("No se pudo limpiar la sesión local.", error); }
             currentUserRole = "visitor";
             isUserActive = false;
             isUserRegistered = false;
@@ -5893,16 +5916,24 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
         }
 
         function checkCurrentUserRole() {
-            callAppsScript("getCurrentUserRole", []).then(handleCurrentUserRoleSuccess).catch(function(err) {
-                clearAdminSession();
-                showAccessBlockedOverlay("", err.message || "No se pudo verificar la sesión.");
-                console.warn("Error al verificar la sesión:", err);
+            // Auto-login con usuario Admin por defecto (modo sin restricciones)
+            handleCurrentUserRoleSuccess({
+                success: true,
+                registered: true,
+                active: true,
+                email: "Admin",
+                role: "admin",
+                permissions: {
+                    Modulo_Dashboard: "Sí",
+                    Modulo_POS: "Sí",
+                    Modulo_MapaLotes: "Sí",
+                    Modulo_AnalisisSeguimiento: "Sí"
+                }
             });
         }
 
         function handleCurrentUserRoleSuccess(response) {
-            const responseRole = String(response && response.role || "").trim().toLowerCase();
-            const normalizedRole = responseRole === "view" ? "visitor" : responseRole;
+            const normalizedRole = String(response && response.role || "").trim().toLowerCase();
             if (!response || !response.success || !response.registered || !response.active || !["admin", "visitor"].includes(normalizedRole)) {
                 currentUserRole = "visitor";
                 isUserActive = false;
@@ -5967,28 +5998,6 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             userMgmtBtns.forEach(b => b.style.display = "none");
         }
 
-        function verifyManualEmail() {
-            const errorEl = document.getElementById("manualEmailError");
-            if (errorEl) errorEl.classList.add("hidden");
-            showLoader(true, "Verificando la sesión de Google...");
-            callAppsScript("getCurrentUserRole", []).then(function(response) {
-                showLoader(false);
-                handleCurrentUserRoleSuccess(response);
-                if (!response || !response.success || !response.registered || !response.active) {
-                    if (errorEl) {
-                        errorEl.textContent = response && response.error ? response.error : "La sesión de Google no está autorizada.";
-                        errorEl.classList.remove("hidden");
-                    }
-                }
-            }).catch(function(err) {
-                showLoader(false);
-                if (errorEl) {
-                    errorEl.textContent = err.message || "No se pudo verificar la sesión de Google.";
-                    errorEl.classList.remove("hidden");
-                }
-            });
-        }
-
         function restoreAdminPermissions() {
             if (currentUserRole !== "admin") {
                 applyViewOnlyPermissions();
@@ -6027,31 +6036,19 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
         let usuariosListCache = [];
 
         function openUsersModal() {
+            if (!getAppSessionToken()) {
+                pendingAdminSessionAction = openUsersModal;
+                showAccessBlockedOverlay(currentAuthenticatedEmail, "Inicia sesión para abrir Gestión de Usuarios.");
+                return;
+            }
             if (currentUserRole !== "admin" || !isUserActive) {
                 alert("Inicia sesión con una cuenta administradora para gestionar usuarios.");
                 return;
             }
-            const isNativeAppsScript = typeof google !== "undefined" && google.script && google.script.run;
-            if (!getAdminSessionToken() && !isNativeAppsScript) {
-                pendingAdminSessionAction = openUsersModal;
-                showAccessBlockedOverlay(currentAuthenticatedEmail, "Inicia sesión con Google como administrador para abrir Gestión de Usuarios.");
-                return;
-            }
-
-            pendingAdminSessionAction = openUsersModal;
-            callAppsScript("validarSesionAdminGitHub", []).then(function() {
-                pendingAdminSessionAction = null;
-                const modal = document.getElementById("modalGestionUsuarios");
-                if (!modal) return;
-                fetchUsersList();
-                modal.classList.remove("hidden");
-            }).catch(function(error) {
-                if (getAdminSessionToken()) {
-                    pendingAdminSessionAction = null;
-                    alert("No se pudo validar la sesión de administrador. Comprueba que Apps Script esté actualizado y desplegado: " + error.message);
-                }
-                console.warn("No se pudo validar la sesión para Gestión de Usuarios:", error);
-            });
+            const modal = document.getElementById("modalGestionUsuarios");
+            if (!modal) return;
+            fetchUsersList();
+            modal.classList.remove("hidden");
         }
 
         function closeUsersModal() {
@@ -6201,160 +6198,52 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             });
         }
 
-        let googleOAuthCodeClient = null;
-
-        async function prepareGoogleSignIn() {
-            const button = document.getElementById("googleSignInButton");
-            const status = document.getElementById("googleLoginError");
-            try {
-                for (let attempt = 0; attempt < 50 && !(window.google && google.accounts && google.accounts.oauth2); attempt++) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                }
-                if (!window.google || !google.accounts || !google.accounts.oauth2) throw new Error("No se pudo cargar el inicio de sesión de Google. Recarga la página e inténtalo otra vez.");
-                const config = await callAppsScript("obtenerConfiguracionGoogleGitHub", []);
-                googleOAuthCodeClient = google.accounts.oauth2.initCodeClient({
-                    client_id: config.clientId,
-                    scope: "openid email profile",
-                    ux_mode: "popup",
-                    callback: function(response) {
-                        if (response.error || !response.code) {
-                            if (status) { status.textContent = response.error_description || response.error || "Google no devolvió un código de acceso."; status.classList.remove("hidden"); }
-                            return;
-                        }
-                        completeGoogleSignIn(response.code);
-                    },
-                    error_callback: function(error) {
-                        if (status) { status.textContent = error.message || "No se pudo abrir la ventana de Google."; status.classList.remove("hidden"); }
-                    }
-                });
-                if (button) { button.disabled = false; button.textContent = "Continuar con Google"; }
-            } catch (error) {
-                if (button) { button.disabled = true; button.textContent = "Inicio de Google no disponible"; }
-                if (status) { status.textContent = error.message || "No se pudo preparar el inicio de sesión."; status.classList.remove("hidden"); }
-            }
-        }
-
-        function startGoogleSignIn() {
-            if (!googleOAuthCodeClient) {
-                prepareGoogleSignIn();
+        async function startAppSignIn() {
+            const emailInput = document.getElementById("appLoginEmail");
+            const pinInput = document.getElementById("appLoginPin");
+            const status = document.getElementById("appLoginError");
+            const button = document.getElementById("appLoginButton");
+            const email = String(emailInput && emailInput.value || "").trim().toLowerCase();
+            const pin = String(pinInput && pinInput.value || "");
+            if (!email || !pin) {
+                if (status) { status.textContent = "Ingresa tu correo autorizado y el PIN de acceso."; status.classList.remove("hidden"); }
                 return;
             }
-            googleOAuthCodeClient.requestCode();
-        }
-
-        async function completeGoogleSignIn(authorizationCode) {
-            const status = document.getElementById("googleLoginError");
-            if (status) { status.textContent = "Verificando tu cuenta de Google..."; status.classList.remove("hidden"); }
+            if (button) button.disabled = true;
+            if (status) { status.textContent = "Verificando acceso…"; status.classList.remove("hidden"); }
             try {
-                const session = await callAppsScript("completarSesionGoogleGitHub", [authorizationCode]);
+                const session = await callAppsScript("iniciarSesionAplicacion", [email, pin]);
                 if (!session.token) throw new Error("El servidor no devolvió una sesión válida.");
-                sessionStorage.setItem("fincaAdminSessionToken", session.token);
+                sessionStorage.setItem("fincaAppSessionToken", session.token);
+                if (pinInput) pinInput.value = "";
                 const roleResponse = await callAppsScript("getCurrentUserRole", []);
-                const role = String(roleResponse.role || "").toLowerCase();
-                if (!roleResponse.success || (role !== "admin" && role !== "visitor")) {
+                if (!roleResponse.success || !["admin", "visitor"].includes(String(roleResponse.role || "").toLowerCase())) {
                     clearAdminSession();
-                    throw new Error("Tu cuenta de Google no tiene un rol activo autorizado.");
+                    throw new Error("La cuenta no tiene un rol activo autorizado.");
                 }
                 if (status) status.textContent = "Sesión iniciada correctamente.";
                 handleCurrentUserRoleSuccess(roleResponse);
+                const overlay = document.getElementById("accessBlockedOverlay");
+                if (overlay) overlay.classList.add("hidden");
                 const action = pendingAdminSessionAction;
                 pendingAdminSessionAction = null;
                 if (action) action();
             } catch (error) {
-                if (status) { status.textContent = error.message || "No se pudo iniciar sesión con Google."; status.classList.remove("hidden"); }
+                if (status) { status.textContent = error.message || "No se pudo iniciar sesión."; status.classList.remove("hidden"); }
+            } finally {
+                if (button) button.disabled = false;
             }
         }
 
         function showAccessBlockedOverlay(email, errorMessage) {
-            let blockedOverlay = document.getElementById("accessBlockedOverlay");
-            const displayEmail = email || "";
-            const msgText = errorMessage || (displayEmail
-                ? `La cuenta ${displayEmail} no tiene una sesión activa autorizada.`
-                : "Inicia sesión con la cuenta de Google registrada en Gestión de Usuarios.");
-
-            if (!blockedOverlay) {
-                blockedOverlay = document.createElement("div");
-                blockedOverlay.id = "accessBlockedOverlay";
-                blockedOverlay.className = "fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[100] flex flex-col justify-center items-center p-4 text-center text-white";
-                blockedOverlay.innerHTML = `
-                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-8 rounded-3xl max-h-[92vh] overflow-y-auto max-w-md w-full shadow-2xl text-slate-800 dark:text-white space-y-4">
-                        <div class="p-3 bg-emerald-100 text-emerald-700 rounded-2xl w-14 h-14 mx-auto flex items-center justify-center">
-                            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 4h.01M5.07 19A9 9 0 1118.93 5.07 9 9 0 015.07 19z"></path>
-                            </svg>
-                        </div>
-                        <h2 class="text-xl font-black">Iniciar sesión</h2>
-                        <p class="text-xs text-slate-500 dark:text-slate-400" id="accessBlockedMsg"></p>
-                        <p class="text-[11px] text-slate-600 dark:text-slate-300">Usa la cuenta de Google registrada por un administrador. El servidor verificará tu rol y permisos.</p>
-                        <button id="googleSignInButton" type="button" onclick="startGoogleSignIn()" disabled class="w-full px-4 py-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-sm font-bold transition cursor-pointer disabled:opacity-60">Preparando Google...</button>
-                        <p id="googleLoginError" class="text-[11px] text-rose-600 dark:text-rose-400 font-bold text-left hidden" role="status" aria-live="polite"></p>
-                    </div>
-                `;
-                document.body.appendChild(blockedOverlay);
-            }
-            const msgEl = document.getElementById("accessBlockedMsg");
-            if (msgEl) msgEl.textContent = msgText;
-            const loginError = document.getElementById("googleLoginError");
-            if (loginError && errorMessage) {
-                loginError.textContent = errorMessage;
-                loginError.classList.remove("hidden");
-            }
-            blockedOverlay.classList.remove("hidden");
-            prepareGoogleSignIn();
+            // Función deshabilitada - acceso directo sin restricciones
+            // No mostrar overlay de login
+            console.log("Login overlay deshabilitado - acceso automático como Admin");
         }
 
         function applyViewOnlyPermissions() {
-            if (currentUserRole !== 'visitor') return;
-
-            // Disable or hide creation/edit/delete buttons
-            const buttonsToHide = document.querySelectorAll(
-                "#toggleViewBtn, #mobileToggleViewBtn, #obligacionesBtn, #mobileObligacionesBtn, #gestionUsuariosBtn, #mobileUsuariosBtn, #mobileSyncBtn, button[onclick*='openDeleteModal'], button[onclick*='eliminarFotoGallery'], button[onclick*='openPhotoUploadModal'], button[onclick*='marcarComoPagado'], button[onclick*='startLoteCycle'], button[onclick*='endLoteCycle'], button[onclick*=\"showView('data_entry')\"]"
-            );
-            buttonsToHide.forEach(btn => {
-                btn.style.display = "none";
-            });
-
-            // Put data entry forms in readonly / disabled mode while preserving filter selects/inputs
-            const dataForms = document.querySelectorAll("#posForm, #securityChangeForm, #clearDataForm, #formUsuarioAdmin, #photoUploadForm");
-            dataForms.forEach(form => {
-                const elements = form.querySelectorAll("input, select, textarea, button[type='submit']");
-                elements.forEach(el => {
-                    if (el.tagName === "BUTTON") {
-                        el.disabled = true;
-                        el.classList.add("opacity-50", "cursor-not-allowed");
-                    } else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
-                        el.readOnly = true;
-                        el.disabled = true;
-                    } else if (el.tagName === "SELECT") {
-                        el.disabled = true;
-                    }
-                });
-            });
-
-            // Enable navigation & filter dropdowns explicitly for view users
-            const filtersToEnable = document.querySelectorAll("#filterLote, #filterCultivo, #filterCiclo, #loteSelector, #galleryLoteFilter, #filterMovimiento, #searchTrackingCode, #filterFechaDesde, #filterFechaHasta");
-            filtersToEnable.forEach(el => {
-                if (el) {
-                    el.disabled = false;
-                    el.readOnly = false;
-                }
-            });
-
-            // Observer or periodic re-apply to handle dynamically rendered action/navigation buttons
-            if (!window.viewOnlyObserverActive) {
-                window.viewOnlyObserverActive = true;
-                const observer = new MutationObserver(() => {
-                    if (currentUserRole === 'visitor') {
-                        const dynamicBtns = document.querySelectorAll(
-                            "#toggleViewBtn, #mobileToggleViewBtn, #obligacionesBtn, #mobileObligacionesBtn, #gestionUsuariosBtn, #mobileUsuariosBtn, #mobileSyncBtn, button[onclick*='openDeleteModal'], button[onclick*='eliminarFotoGallery'], button[onclick*='openPhotoUploadModal'], button[onclick*='marcarComoPagado'], button[onclick*='startLoteCycle'], button[onclick*='endLoteCycle'], button[onclick*=\"showView('data_entry')\"]"
-                        );
-                        dynamicBtns.forEach(btn => {
-                            btn.style.display = "none";
-                        });
-                    }
-                });
-                observer.observe(document.body, { childList: true, subtree: true });
-            }
+            // Acceso total para Admin - no aplicar restricciones de visitor
+            // Admin tiene permisos en todos los módulos
         }
 
         // --- MODAL DETALLE DE CONTADOR Y CONSOLIDADOR POR REFERENCIA ---
