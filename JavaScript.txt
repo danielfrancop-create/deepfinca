@@ -136,11 +136,7 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
                     handleResponse(event.data.response);
                 };
                 iframe.onload = function() {
-                    var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                    if (iframeDoc && iframeDoc.body && iframeDoc.body.textContent && iframeDoc.body.textContent.includes("403")) {
-                        cleanup();
-                        reject(new Error("Google Apps Script rechazó la solicitud (403 Forbidden). Publica el script como Web App."));
-                    }
+                    iframe.contentWindow.postMessage({ requestId: requestId, check: "403" }, "*");
                 };
                 window.addEventListener("message", onMessage);
                 timeoutId = setTimeout(() => {
