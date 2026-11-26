@@ -4,10 +4,19 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
         const DB_VERSION = 1;
         const STORE_NAME = 'pending_records';
 
+        function ensureRecordId(record) {
+            if (!record.syncId) {
+                record.syncId = window.crypto && window.crypto.randomUUID
+                    ? window.crypto.randomUUID()
+                    : Date.now().toString(16) + "-" + Math.random().toString(16).slice(2) + "-" + Math.random().toString(16).slice(2);
+            }
+            return record.syncId;
+        }
+
         function openOfflineDB() {
             return new Promise((resolve, reject) => {
                 if (!window.indexedDB) {
-                    resolve(null);
+                    reject(new Error("IndexedDB no está disponible en este dispositivo."));
                     return;
                 }
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -23,29 +32,26 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
         }
 
         async function saveOfflineRecord(tipo, record) {
-            try {
                 const db = await openOfflineDB();
-                if (!db) return null;
+                ensureRecordId(record);
+                record.pendingSync = true;
+                record.synced = false;
                 return new Promise((resolve, reject) => {
                     const tx = db.transaction(STORE_NAME, 'readwrite');
                     const store = tx.objectStore(STORE_NAME);
                     const item = {
                         tipo: tipo,
                         record: record,
+                        syncId: record.syncId,
+                        pendingSync: true,
+                        synced: false,
                         estado: 'pendiente_sincronizacion',
                         timestamp: new Date().getTime()
                     };
                     const req = store.add(item);
-                    req.onsuccess = (e) => {
-                        updatePendingSyncBadge();
-                        resolve(e.target.result);
-                    };
-                    req.onerror = (e) => reject(e.target.error);
+                    tx.oncomplete = () => { db.close(); updatePendingSyncBadge(); resolve(req.result); };
+                    tx.onabort = tx.onerror = () => { db.close(); reject(tx.error || new Error("No se pudo guardar el registro pendiente.")); };
                 });
-            } catch (err) {
-                console.error("Error al guardar en IndexedDB:", err);
-                return null;
-            }
         }
 
         async function enqueueOfflineRecord(tipo, record) {
@@ -127,7 +133,8 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
                     iframe.remove();
                 };
                 const onMessage = (event) => {
-                    if (!event.data || event.data.requestId !== requestId) return;
+                    if (!/^https:\/\/([a-z0-9-]+\.)*(googleusercontent\.com|script\.google\.com)$/i.test(event.origin) ||
+                        !event.data || event.data.requestId !== requestId) return;
                     cleanup();
                     if (event.data.response && event.data.response.error && event.data.response.error.includes("403")) {
                         reject(new Error("Google Apps Script rechazó la solicitud (403). Verifica que el script esté publicado como Web App con 'Execute as' configurado correctamente."));
@@ -150,35 +157,56 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
         }
 
         async function getOfflineRecords() {
-            try {
                 const db = await openOfflineDB();
-                if (!db) return [];
                 return new Promise((resolve, reject) => {
                     const tx = db.transaction(STORE_NAME, 'readonly');
                     const store = tx.objectStore(STORE_NAME);
                     const req = store.getAll();
-                    req.onsuccess = (e) => resolve(e.target.result || []);
-                    req.onerror = (e) => reject(e.target.error);
+                    req.onsuccess = (e) => { db.close(); resolve(e.target.result); };
+                    req.onerror = (e) => { db.close(); reject(e.target.error); };
                 });
-            } catch (err) {
-                console.error("Error leyendo de IndexedDB:", err);
-                return [];
-            }
+        }
+
+        async function preparePendingRecord(item) {
+            const db = await openOfflineDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                let exists = false;
+                const request = store.get(item.id);
+                request.onsuccess = () => {
+                    const saved = request.result;
+                    if (!saved) return;
+                    exists = true;
+                    if (!saved.record.syncId) {
+                        ensureRecordId(saved.record);
+                        saved.syncId = saved.record.syncId;
+                        saved.pendingSync = true;
+                        saved.synced = false;
+                        saved.record.pendingSync = true;
+                        saved.record.synced = false;
+                        store.put(saved);
+                    }
+                    item.record = saved.record;
+                };
+                tx.oncomplete = () => { db.close(); resolve(exists); };
+                tx.onabort = tx.onerror = () => { db.close(); reject(tx.error || new Error("No se pudo actualizar el registro pendiente.")); };
+            });
         }
 
         async function deleteOfflineRecord(id) {
             try {
                 const db = await openOfflineDB();
-                if (!db) return;
                 return new Promise((resolve, reject) => {
                     const tx = db.transaction(STORE_NAME, 'readwrite');
                     const store = tx.objectStore(STORE_NAME);
-                    const req = store.delete(id);
-                    req.onsuccess = () => {
+                    store.delete(id);
+                    tx.oncomplete = () => {
+                        db.close();
                         updatePendingSyncBadge();
                         resolve();
                     };
-                    req.onerror = (e) => reject(e.target.error);
+                    tx.onabort = tx.onerror = () => { db.close(); reject(tx.error || new Error("No se pudo borrar el registro pendiente.")); };
                 });
             } catch (err) {
                 console.error("Error borrando registro de IndexedDB:", err);
@@ -187,7 +215,9 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
         }
 
         async function updatePendingSyncBadge() {
-            const records = await getOfflineRecords();
+            let records;
+            try { records = await getOfflineRecords(); }
+            catch (err) { console.error("No se pudo consultar la cola pendiente:", err); return; }
             const badge = document.getElementById("pendingSyncBadge");
             const btn = document.getElementById("syncOfflineBtn");
             const count = records.length;
@@ -227,25 +257,35 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
             }
         });
 
-        async function syncOfflineData() {
+        let offlineSyncPromise = null;
+        function syncOfflineData(automatic) {
+            if (offlineSyncPromise) return offlineSyncPromise;
+            offlineSyncPromise = runOfflineSync(automatic === true).finally(() => { offlineSyncPromise = null; });
+            return offlineSyncPromise;
+        }
+
+        async function runOfflineSync(automatic) {
             if (!navigator.onLine) {
-                alert("Sin conexión a Internet. Conéctate a una red para sincronizar con Google Sheets.");
+                if (!automatic) alert("Sin conexión a Internet. Conéctate a una red para sincronizar con Google Sheets.");
                 return;
             }
 
-            const pending = await getOfflineRecords();
+            let pending;
+            try { pending = await getOfflineRecords(); }
+            catch (err) { console.error("No se pudo leer la cola pendiente:", err); if (!automatic) alert("No se pudo leer la cola pendiente: " + err.message); return; }
             if (pending.length === 0) {
-                alert("No hay registros pendientes por sincronizar.");
+                if (!automatic) alert("No hay registros pendientes por sincronizar.");
                 return;
             }
 
-            showLoader(true, `Sincronizando ${pending.length} registro(s) pendiente(s)...`);
+            if (!automatic) showLoader(true, `Sincronizando ${pending.length} registro(s) pendiente(s)...`);
 
             let syncedCount = 0;
             let unconfirmedCycleClosures = 0;
             window.__fincaOfflineSyncInProgress = true;
             for (const item of pending) {
                 try {
+                    if (!await preparePendingRecord(item)) continue;
                     const isPhoto = item.tipo === 'fotosLotes' || item.tipo === 'foto';
                     const response = isPhoto
                         ? await callAppsScript("guardarFotoLote", [item.record])
@@ -274,11 +314,12 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
                     }
                 } catch (err) {
                     console.error("Error sincronizando registro ID:", item.id, err);
+                    break;
                 }
             }
 
             window.__fincaOfflineSyncInProgress = false;
-            showLoader(false);
+            if (!automatic) showLoader(false);
             await updatePendingSyncBadge();
             if (window.__fincaUpdateReloadPending) {
                 window.__fincaUpdateReloadPending = false;
@@ -286,20 +327,25 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
                 return;
             }
 
-            if (syncedCount > 0) {
-                alert(`¡Sincronización completada! Se subieron ${syncedCount} registro(s) exitosamente a Google Sheets / Drive.${unconfirmedCycleClosures ? ` No se confirmó el cierre de ${unconfirmedCycleClosures} ciclo(s).` : ''}`);
+            if (syncedCount > 0 && !automatic) {
+                const remaining = await getOfflineRecords();
+                alert(`Se sincronizaron ${syncedCount} registro(s).${remaining.length ? ` Quedan ${remaining.length} pendiente(s); revisa la conexión o la sesión.` : ''}${unconfirmedCycleClosures ? ` No se confirmó el cierre de ${unconfirmedCycleClosures} ciclo(s).` : ''}`);
                 refreshCycleData();
-            } else {
+            } else if (!automatic) {
                 alert("Ocurrió un problema al intentar sincronizar los registros.");
             }
+            if (automatic && syncedCount > 0) refreshCycleData();
         }
 
         window.addEventListener('online', () => {
             updatePendingSyncBadge();
-            syncOfflineData();
+            syncOfflineData(true);
         });
         window.addEventListener('offline', () => {
             updatePendingSyncBadge();
+        });
+        window.addEventListener('focus', () => {
+            if (navigator.onLine) syncOfflineData(true);
         });
 
         // --- THEME / MODE SELECTION LOGIC ---
@@ -720,6 +766,11 @@ function fetchData(forceRefresh = false) {
         } catch (e) {
             console.warn("Error leyendo de sessionStorage:", e);
         }
+    }
+
+    if (!navigator.onLine) {
+        showError("Sin conexión. Los nuevos registros se guardarán localmente hasta sincronizarse.");
+        return;
     }
 
     const iconDesktop = document.getElementById("iconRefrescar");
@@ -2191,6 +2242,7 @@ function updateConfigHeader() {
                 loteReferencia: lote,
                 fechaFin: new Date().toISOString().split('T')[0]
             };
+            ensureRecordId(cierre);
             showLoader(true, "Finalizando ciclo de cultivo...");
 
             const enqueueClosure = () => enqueueOfflineRecord("finalizarCiclo", cierre)
@@ -2217,8 +2269,8 @@ function updateConfigHeader() {
                 })
                 .catch(err => {
                     showLoader(false);
-                    if (err && !err.serverResponse) enqueueClosure();
-                    else alert("No se pudo finalizar el ciclo: " + err.toString());
+                    console.error("No se confirmó el cierre del ciclo:", err);
+                    enqueueClosure();
                 });
         }
 
@@ -2706,34 +2758,32 @@ function updateConfigHeader() {
                     rawData.ciclos.push(newCycle);
                 }
 
+                const mostrarGastoInicial = () => {
+                    if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
+                    rawData.gastosIniciales.push(record);
+                    applyFilters();
+                    showLoader(false);
+                    clearPOSForm();
+                };
+                const encolarGastoInicial = () => enqueueOfflineRecord("gastosIniciales", record).then(() => {
+                    mostrarGastoInicial();
+                    alert("Registro guardado localmente, pendiente de sincronización.");
+                }).catch(error => {
+                    if (newCycle) {
+                        const cycleIndex = rawData.ciclos.indexOf(newCycle);
+                        if (cycleIndex !== -1) rawData.ciclos.splice(cycleIndex, 1);
+                    }
+                    showLoader(false);
+                    showPOSAlert("No se pudo guardar el registro pendiente: " + error.message, "error");
+                });
+                ensureRecordId(record);
                 if (!navigator.onLine) {
-                    saveOfflineRecord("gastosIniciales", record).then(() => {
-                        if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
-                        (rawData.gastosIniciales || []).push(record);
-                        applyFilters();
-                        showLoader(false);
-                        clearPOSForm();
-                        alert("¡Información registrada con éxito!");
-                    });
+                    encolarGastoInicial();
                     return;
                 }
-if (typeof google === 'undefined' || !google.script || !google.script.run) {
-    enqueueOfflineRecord('gastosIniciales', record).then(() => {
-        showLoader(false);
-        if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
-        rawData.gastosIniciales.push(record);
-        applyFilters();
-        clearPOSForm();
-        alert("Registro guardado en este dispositivo; requiere una sesión autenticada de Google Apps Script para sincronizarse.");
-    }).catch(error => {
-        showLoader(false);
-        alert("No se pudo guardar el registro pendiente: " + error.message);
-    });
-} else {
-    google.script.run
-        .withSuccessHandler(function(response) {
-            showLoader(false);
-            if (response && response.success) {
+                callAppsScript("guardarRegistro", ["gastosIniciales", record]).then(response => {
+                record.synced = true;
+                record.pendingSync = false;
                 if (response.trackingCode) {
                     record.Codigo_Seguimiento = response.trackingCode;
                     record.Codigo_General = response.trackingCode;
@@ -2744,27 +2794,12 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                         newCycle.Codigo_Ventas = response.trackingCode;
                     }
                 }
-                if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
-                (rawData.gastosIniciales || []).push(record);
-                applyFilters();
-                clearPOSForm();
+                mostrarGastoInicial();
                 alert("¡Información registrada con éxito!");
-            } else {
-                showPOSAlert(response ? response.error : "Error de respuesta.", "error");
-            }
-        })
-        .withFailureHandler(function(err) {
-            showLoader(false);
-            saveOfflineRecord("gastosIniciales", record).then(() => {
-                if (!rawData.gastosIniciales) rawData.gastosIniciales = [];
-                (rawData.gastosIniciales || []).push(record);
-                applyFilters();
-                clearPOSForm();
-                alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
-            });
-        })
-        .guardarRegistro("gastosIniciales", record);
-} // <--- ESTA LLAVE CIERRA EL ELSE DE GASTOS INICIALES
+                }).catch(err => {
+                    console.error("No se confirmó el guardado:", err);
+                    encolarGastoInicial();
+                });
 
 } else if (activePOSTab === 'gastos_desarrollo') {
     const insumo = document.getElementById("posInsumo").value;
@@ -2833,56 +2868,34 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
         }
     };
 
-    if (!navigator.onLine) {
-        saveOfflineRecord("gastosDesarrollo", record).then(() => {
+    const encolarGastoDesarrollo = () => enqueueOfflineRecord("gastosDesarrollo", record).then(() => {
             updateLocalProrrateoRecords();
             applyFilters();
             showLoader(false);
             clearPOSForm();
-            alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
+            alert("Registro guardado localmente, pendiente de sincronización.");
+        }).catch(error => {
+            showLoader(false);
+            showPOSAlert("No se pudo guardar el registro pendiente: " + error.message, "error");
         });
+    ensureRecordId(record);
+    if (!navigator.onLine) {
+        encolarGastoDesarrollo();
         return;
     }
 
-    if (typeof google === 'undefined' || !google.script || !google.script.run) {
-        enqueueOfflineRecord('gastosDesarrollo', record).then(() => {
+    callAppsScript("guardarRegistro", ["gastosDesarrollo", record]).then(response => {
+            record.synced = true;
+            record.pendingSync = false;
             showLoader(false);
-            updateLocalProrrateoRecords();
-            applyFilters();
+            if (typeof fetchAllData === 'function') fetchAllData();
+            else { updateLocalProrrateoRecords(); applyFilters(); }
             clearPOSForm();
-            alert("Registro guardado en este dispositivo; requiere una sesión autenticada de Google Apps Script para sincronizarse.");
-        }).catch(error => {
-            showLoader(false);
-            alert("No se pudo guardar el registro pendiente: " + error.message);
+            alert(isProrrateo ? `¡Gasto prorrateado exitosamente entre ${response.numLotes || 'los'} lotes activos!` : "¡Información registrada con éxito!");
+        }).catch(err => {
+            console.error("No se confirmó el guardado:", err);
+            encolarGastoDesarrollo();
         });
-    } else {
-        google.script.run
-            .withSuccessHandler(function(response) {
-                showLoader(false);
-                if (response && response.success) {
-                    if (typeof fetchAllData === 'function') {
-                        fetchAllData();
-                    } else {
-                        updateLocalProrrateoRecords();
-                        applyFilters();
-                    }
-                    clearPOSForm();
-                    alert(isProrrateo ? `¡Gasto prorrateado exitosamente entre ${response.numLotes || 'los'} lotes activos!` : "¡Información registrada con éxito!");
-                } else {
-                    showPOSAlert(response ? response.error : "Error de respuesta.", "error");
-                }
-            })
-            .withFailureHandler(function(err) {
-                showLoader(false);
-                saveOfflineRecord("gastosDesarrollo", record).then(() => {
-                    updateLocalProrrateoRecords();
-                    applyFilters();
-                    clearPOSForm();
-                    alert("¡Información registrada con éxito! (Guardado localmente en dispositivo sin conexión)");
-                });
-            })
-            .guardarRegistro("gastosDesarrollo", record);
-    } // <--- ESTA LLAVE CIERRA EL ELSE DE GASTOS DESARROLLO
 
 } else if (activePOSTab === 'ventas') {
     const producto = document.getElementById("posProducto").value;
@@ -2966,6 +2979,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
         }
     };
 
+    ensureRecordId(record);
     if (!navigator.onLine) {
         encolarVenta();
         return;
@@ -2973,6 +2987,8 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
 
     callAppsScript("guardarRegistro", ["ventas", record])
         .then(response => {
+            record.synced = true;
+            record.pendingSync = false;
             guardarVentaLocal();
             if (record.cerrarCiclo && response.cicloCerrado) {
                 applyCycleClosureLocally({ codigoGeneral: trackingCode, loteReferencia: lote, fechaFin: fecha });
@@ -2985,12 +3001,8 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
             }
         })
         .catch(err => {
-            if (err && err.serverResponse) {
-                showLoader(false);
-                showPOSAlert("Error al guardar la venta: " + err.toString(), "error");
-            } else {
-                encolarVenta();
-            }
+            console.error("No se confirmó el guardado de la venta:", err);
+            encolarVenta();
         });
 } // <--- ESTA LLAVE CIERRA EL ELSE IF DE VENTAS
 } // <--- ESTA LLAVE CIERRA LA FUNCIÓN handlePOSSubmit
@@ -5726,27 +5738,32 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                     Base64_Data: base64Data,
                     Url_Foto_Drive: ""
                 };
+                ensureRecordId(record);
 
-                // Mostrar en la galería local
-                if (!rawData) rawData = {};
-                if (!rawData.fotosLotes) rawData.fotosLotes = [];
-                rawData.fotosLotes.push(record);
-                renderPhotoGallery();
-                
-                document.getElementById("photoUploadForm").reset();
-                if (document.getElementById("uploadPhotoFecha")) {
-                    document.getElementById("uploadPhotoFecha").value = new Date().toISOString().split('T')[0];
-                }
+                const mostrarFotoGuardada = () => {
+                    if (!rawData) rawData = {};
+                    if (!rawData.fotosLotes) rawData.fotosLotes = [];
+                    rawData.fotosLotes.push(record);
+                    renderPhotoGallery();
+                    document.getElementById("photoUploadForm").reset();
+                    if (document.getElementById("uploadPhotoFecha")) {
+                        document.getElementById("uploadPhotoFecha").value = new Date().toISOString().split('T')[0];
+                    }
+                };
 
-                callAppsScript('guardarFotoLote', [record])
+                (navigator.onLine ? callAppsScript('guardarFotoLote', [record]) : Promise.reject(new Error("Sin conexión")))
                     .then(() => {
+                        record.synced = true;
+                        record.pendingSync = false;
+                        mostrarFotoGuardada();
                         alert("¡Fotografía enviada! Se está subiendo a Google Drive...");
                         setTimeout(() => fetchData(true), 2000);
                     })
                     .catch(err => {
                         console.error("Error al enviar foto:", err);
                         enqueueOfflineRecord("fotosLotes", record).then(() => {
-                            alert("La fotografía quedó pendiente en este dispositivo y requiere una sesión autenticada de Google Apps Script para sincronizarse.");
+                            mostrarFotoGuardada();
+                            alert("La fotografía quedó guardada localmente, pendiente de sincronización.");
                         }).catch(queueError => {
                             alert(queueError.message || err.message || "No se pudo guardar la fotografía pendiente.");
                         });
@@ -5907,8 +5924,8 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
         let pendingAdminSessionAction = null;
 
         function getAppSessionToken() {
-            // Retornar un token fijo para Admin - acceso directo sin validación
-            return "ADMIN_AUTO_TOKEN_FINCA_SAUCES_2026";
+            try { return sessionStorage.getItem("fincaAppSessionToken") || ""; }
+            catch (error) { console.warn("No se pudo leer la sesión local.", error); return ""; }
         }
 
         function clearAdminSession() {
@@ -6235,6 +6252,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 const action = pendingAdminSessionAction;
                 pendingAdminSessionAction = null;
                 if (action) action();
+                if (navigator.onLine) syncOfflineData(true);
             } catch (error) {
                 if (status) { status.textContent = error.message || "No se pudo iniciar sesión."; status.classList.remove("hidden"); }
             } finally {
@@ -6243,9 +6261,24 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
         }
 
         function showAccessBlockedOverlay(email, errorMessage) {
-            // Función deshabilitada - acceso directo sin restricciones
-            // No mostrar overlay de login
-            console.log("Login overlay deshabilitado - acceso automático como Admin");
+            let overlay = document.getElementById("accessBlockedOverlay");
+            if (!overlay) {
+                overlay = document.createElement("div");
+                overlay.id = "accessBlockedOverlay";
+                overlay.className = "fixed inset-0 bg-slate-950/90 z-[100] flex justify-center items-center p-4";
+                overlay.innerHTML = `<form class="bg-white p-8 rounded-3xl max-w-md w-full space-y-4" onsubmit="event.preventDefault(); startAppSignIn();">
+                    <h2 class="text-xl font-bold">Iniciar sesión</h2>
+                    <p id="accessBlockedMsg" class="text-sm"></p>
+                    <label class="block">Correo electrónico <input id="appLoginEmail" type="email" required class="block w-full border p-2"></label>
+                    <label class="block">PIN de acceso <input id="appLoginPin" type="password" required class="block w-full border p-2"></label>
+                    <button id="appLoginButton" type="submit" class="bg-emerald-700 text-white p-3 rounded-xl">Iniciar sesión</button>
+                    <p id="appLoginError" class="text-red-700 hidden" role="status"></p>
+                </form>`;
+                document.body.appendChild(overlay);
+            }
+            document.getElementById("accessBlockedMsg").textContent = errorMessage || "Inicia sesión con un usuario autorizado.";
+            if (email && email !== "admin") document.getElementById("appLoginEmail").value = email;
+            overlay.classList.remove("hidden");
         }
 
         function applyViewOnlyPermissions() {
@@ -6486,6 +6519,7 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
                    setupLightboxInteractions();
                    updatePendingSyncBadge();
                    checkCurrentUserRole();
+                   if (navigator.onLine) syncOfflineData(true);
                }
 function enviarDatosGoogleSheets(tipo, record) {
     const method = tipo === 'guardarFotoLote' || tipo === 'fotosLotes' ? 'guardarFotoLote' : 'guardarRegistro';
