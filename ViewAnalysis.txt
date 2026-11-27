@@ -22,7 +22,7 @@
 				</div>
 				<div id="analysisCycleFilterContainer" class="hidden w-full sm:w-auto">
 					<label for="analysisCycleFilter" class="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Filtrar por ciclo</label>
-					<select id="analysisCycleFilter" onchange="renderAnalysisTracking()" class="block min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+					<select id="analysisCycleFilter" onchange="setAnalysisCiclo(this.value); renderAnalysisTracking()" class="block min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
 						<option value="Todos">Todos los ciclos</option>
 					</select>
 				</div>
@@ -122,30 +122,6 @@
 			<span class="flex shrink-0 items-center gap-2 text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400"><span data-dashboard-toggle-label>Mostrar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
 		</button>
 		<div id="analysisDashboardExtraMetrics" class="hidden p-3 sm:p-5">
-			<div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-5">
-				<div class="w-full">
-					<label for="analysisIndicatorLote" class="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Lote</label>
-					<select id="analysisIndicatorLote" onchange="renderAnalysisIndicators()" class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-						<option value="Todos">Todos</option>
-						<option value="Lote 1">Lote 1</option><option value="Lote 2">Lote 2</option><option value="Lote 3">Lote 3</option><option value="Lote 4">Lote 4</option>
-						<option value="Lote 5">Lote 5</option><option value="Lote 6">Lote 6</option><option value="Lote 7">Lote 7</option><option value="Lote 8">Lote 8</option>
-						<option value="Lote 9">Lote 9</option><option value="Lote 10">Lote 10</option><option value="Lote 11">Lote 11</option><option value="Lote 12">Lote 12</option>
-						<option value="Lote 13">Lote 13</option><option value="Lote 14">Lote 14</option><option value="Lote 15">Lote 15</option><option value="Lote 16">Lote 16</option>
-					</select>
-				</div>
-				<div id="analysisIndicatorCropContainer" class="hidden w-full">
-					<label for="analysisIndicatorCrop" class="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Semilla</label>
-					<select id="analysisIndicatorCrop" onchange="renderAnalysisIndicators()" class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-						<option value="Todos">Todas</option>
-					</select>
-				</div>
-				<div id="analysisIndicatorCycleContainer" class="hidden w-full">
-					<label for="analysisIndicatorCycle" class="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Ciclo</label>
-					<select id="analysisIndicatorCycle" onchange="renderAnalysisIndicators()" class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-						<option value="Todos">Todos</option>
-					</select>
-				</div>
-			</div>
 			<div class="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
 				<div class="bg-white rounded-2xl p-3 sm:p-6 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition duration-200">
 					<div class="flex justify-between items-start">
