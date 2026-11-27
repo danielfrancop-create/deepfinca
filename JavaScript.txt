@@ -646,6 +646,10 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             const seedFilterContainer = document.getElementById("analysisCropFilterContainer");
             const seedFilterDiv = document.getElementById("analysisCropFilter");
             
+            // Show/hide cycle filter based on lote selection
+            const cycleFilterContainer = document.getElementById("analysisCycleFilterContainer");
+            const cycleFilterSelect = document.getElementById("analysisCycleFilter");
+            
             if (selectedLote !== "Todos" && rawData) {
                 // Get unique seed types from initial expenses for this lote
                 const seedTypes = new Set();
@@ -681,16 +685,145 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 } else {
                     seedFilterContainer.classList.add("hidden");
                 }
+                
+                // Populate cycle filter
+                const cycles = new Set();
+                (rawData.ciclos || []).forEach(cycle => {
+                    const cycleLot = cycle.Lote || cycle.lote || cycle.Lote_Principal || cycle.lote_principal;
+                    if (isLoteMatch(cycleLot, selectedLote)) {
+                        const aliases = dashboardCycleAliases(cycle);
+                        aliases.forEach(alias => cycles.add(alias));
+                    }
+                });
+                
+                if (cycles.size > 0) {
+                    cycleFilterContainer.classList.remove("hidden");
+                    cycleFilterSelect.innerHTML = '<option value="Todos">Todos los ciclos</option>' + 
+                        Array.from(cycles).sort().map(cycle => `<option value="${cycle}">${cycle}</option>`).join("");
+                } else {
+                    cycleFilterContainer.classList.add("hidden");
+                    cycleFilterSelect.innerHTML = '<option value="Todos">Todos los ciclos</option>';
+                }
             } else {
                 seedFilterContainer.classList.add("hidden");
+                cycleFilterContainer.classList.add("hidden");
                 window.analysisSeedFilter = null;
+                cycleFilterSelect.innerHTML = '<option value="Todos">Todos los ciclos</option>';
             }
             
             renderDashboardInsights(selectedLote, false);
+            renderAnalysisIndicators();
         }
 
         function setAnalysisSeedFilter(seed) {
             window.analysisSeedFilter = seed;
+        }
+
+        function renderAnalysisIndicators() {
+            if (!rawData) return;
+            const indicatorLote = document.getElementById("analysisIndicatorLote")?.value || "Todos";
+            const indicatorCrop = document.getElementById("analysisIndicatorCrop")?.value || "Todos";
+            const indicatorCycle = document.getElementById("analysisIndicatorCycle")?.value || "Todos";
+            
+            // Sync with main analysis filters
+            const mainLote = document.getElementById("analysisLoteSelector")?.value || "Todos";
+            const mainSeed = window.analysisSeedFilter || "Todos";
+            
+            if (indicatorLote !== mainLote) {
+                document.getElementById("analysisIndicatorLote").value = mainLote;
+            }
+            
+            // Populate seed filter based on lote
+            const seedFilterCrop = document.getElementById("analysisIndicatorCrop");
+            const seedFilterContainer = document.getElementById("analysisIndicatorCropContainer");
+            if (mainLote !== "Todos" && rawData) {
+                const seedTypes = new Set();
+                (rawData.gastosIniciales || []).forEach(item => {
+                    const itemLot = item.Lote || item.lote || item.Lote_Principal || item.lote_principal;
+                    if (isLoteMatch(itemLot, mainLote)) {
+                        const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "").trim();
+                        if (semilla && semilla !== "" && semilla !== "N/A") {
+                            seedTypes.add(semilla);
+                        }
+                    }
+                });
+                if (seedTypes.size > 0) {
+                    seedFilterContainer.classList.remove("hidden");
+                    seedFilterCrop.innerHTML = '<option value="Todos">Todas las semillas</option>' + 
+                        Array.from(seedTypes).sort().map(seed => `<option value="${seed}">${seed}</option>`).join("");
+                    if (mainSeed !== "Todos" && seedTypes.has(mainSeed)) {
+                        seedFilterCrop.value = mainSeed;
+                    }
+                } else {
+                    seedFilterContainer.classList.add("hidden");
+                    seedFilterCrop.innerHTML = '<option value="Todos">Todas las semillas</option>';
+                }
+            } else {
+                seedFilterContainer.classList.add("hidden");
+                seedFilterCrop.innerHTML = '<option value="Todos">Todas las semillas</option>';
+            }
+            
+            // Populate cycle filter
+            const cycleFilterContainer = document.getElementById("analysisIndicatorCycleContainer");
+            const cycleFilterCycle = document.getElementById("analysisIndicatorCycle");
+            if (mainLote !== "Todos" && rawData) {
+                const cycles = new Set();
+                (rawData.ciclos || []).forEach(cycle => {
+                    const cycleLot = cycle.Lote || cycle.lote || cycle.Lote_Principal || cycle.lote_principal;
+                    if (isLoteMatch(cycleLot, mainLote)) {
+                        const aliases = dashboardCycleAliases(cycle);
+                        aliases.forEach(alias => cycles.add(alias));
+                    }
+                });
+                if (cycles.size > 0) {
+                    cycleFilterContainer.classList.remove("hidden");
+                    cycleFilterCycle.innerHTML = '<option value="Todos">Todos los ciclos</option>' + 
+                        Array.from(cycles).sort().map(cycle => `<option value="${cycle}">${cycle}</option>`).join("");
+                } else {
+                    cycleFilterContainer.classList.add("hidden");
+                    cycleFilterCycle.innerHTML = '<option value="Todos">Todos los ciclos</option>';
+                }
+            } else {
+                cycleFilterContainer.classList.add("hidden");
+                cycleFilterCycle.innerHTML = '<option value="Todos">Todos los ciclos</option>';
+            }
+            
+            // Calculate indicators based on filters - use current filter values after sync
+            const finalIndicatorLote = document.getElementById("analysisIndicatorLote")?.value || "Todos";
+            const finalIndicatorCrop = document.getElementById("analysisIndicatorCrop")?.value || "Todos";
+            const finalIndicatorCycle = document.getElementById("analysisIndicatorCycle")?.value || "Todos";
+            
+            const matchesIndicatorFilters = item => {
+                const itemLot = item.Lote || item.lote || item.Lote_Principal || item.lote_principal;
+                if (!isLoteMatch(itemLot, finalIndicatorLote)) return false;
+                if (finalIndicatorCrop !== "Todos") {
+                    const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "").trim();
+                    if (semilla !== finalIndicatorCrop) return false;
+                }
+                if (finalIndicatorCycle !== "Todos") {
+                    const code = dashboardTrackingCode(item);
+                    if (!code || code !== finalIndicatorCycle) return false;
+                }
+                return true;
+            };
+            
+            const selectedExpenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(matchesIndicatorFilters);
+            const selectedSales = (rawData.ventas || []).filter(matchesIndicatorFilters);
+            
+            const totalCosts = selectedExpenses.reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
+            const totalIncome = selectedSales.reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0), 0);
+            
+            const roi = totalCosts > 0 ? ((totalIncome - totalCosts) / totalCosts * 100).toFixed(2) : 0;
+            const liabilities = 0;
+            
+            const kpiRoi = document.getElementById("analysisKpiRoi");
+            if (kpiRoi) kpiRoi.textContent = `${roi}%`;
+            
+            const kpiPasivos = document.getElementById("analysisKpiPasivos");
+            if (kpiPasivos) kpiPasivos.textContent = formatCOP(liabilities);
+            
+            const kpiInversion = document.getElementById("analysisKpiInversionVsVentas");
+            if (kpiInversion) kpiInversion.textContent = `${formatCOP(totalCosts)} vs ${formatCOP(totalIncome)}`;
         }
 
 
