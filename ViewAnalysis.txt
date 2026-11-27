@@ -54,7 +54,7 @@
 					<div class="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 dark:border-emerald-900 dark:bg-emerald-950/30">
 						<label for="inputPrecioMercadoRef" class="block text-[10px] font-bold leading-relaxed text-slate-600 dark:text-slate-300">Evalúa el margen de ganancia de tu producto con el precio actual en el mercado x unidad</label>
 						<div class="mt-2 flex items-center gap-2">
-							<input type="number" id="inputPrecioMercadoRef" oninput="renderAnalysisTracking()" min="0" step="any" placeholder="Precio por atado / unidad" class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+							<input type="text" inputmode="numeric" id="inputPrecioMercadoRef" oninput="renderAnalysisTracking()" placeholder="Precio por atado / unidad" class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
 							<button type="button" onclick="document.getElementById('inputPrecioMercadoRef').focus()" class="rounded-lg p-2 text-slate-500 transition hover:bg-white hover:text-emerald-700 dark:hover:bg-slate-800" title="Editar precio de mercado">✏️</button>
 						</div>
 					</div>
