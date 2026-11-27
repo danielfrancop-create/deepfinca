@@ -20,6 +20,12 @@
 					<label for="analysisCropFilter" class="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Filtrar por tipo de semilla</label>
 					<div id="analysisCropFilter" class="flex flex-wrap gap-2"></div>
 				</div>
+				<div id="analysisCycleFilterContainer" class="hidden w-full sm:w-auto">
+					<label for="analysisCycleFilter" class="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Filtrar por ciclo</label>
+					<select id="analysisCycleFilter" onchange="renderAnalysisTracking()" class="block min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+						<option value="Todos">Todos los ciclos</option>
+					</select>
+				</div>
 			</div>
 		</div>
 	</section>
@@ -104,6 +110,94 @@
 		<div id="dashboardCycleComparisonContent" class="hidden p-3 sm:p-4">
 			<p id="dashboardCycleComparisonScope" class="mb-3 text-[10px] text-slate-500">Histórico de todos los lotes</p>
 			<div id="dashboardCycleComparisonRows" class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3"></div>
+		</div>
+	</section>
+
+	<section class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+		<button type="button" onclick="toggleDashboardSection('analysisDashboardExtraMetrics', this)" aria-expanded="false" aria-controls="analysisDashboardExtraMetrics" class="w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+			<div>
+				<span class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">Indicadores complementarios</span>
+				<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">KPIs contextualizados al lote, semilla y ciclo seleccionados</p>
+			</div>
+			<span class="flex shrink-0 items-center gap-2 text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400"><span data-dashboard-toggle-label>Mostrar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
+		</button>
+		<div id="analysisDashboardExtraMetrics" class="hidden p-3 sm:p-5">
+			<div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-5">
+				<div class="w-full">
+					<label for="analysisIndicatorLote" class="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Lote</label>
+					<select id="analysisIndicatorLote" onchange="renderAnalysisIndicators()" class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+						<option value="Todos">Todos</option>
+						<option value="Lote 1">Lote 1</option><option value="Lote 2">Lote 2</option><option value="Lote 3">Lote 3</option><option value="Lote 4">Lote 4</option>
+						<option value="Lote 5">Lote 5</option><option value="Lote 6">Lote 6</option><option value="Lote 7">Lote 7</option><option value="Lote 8">Lote 8</option>
+						<option value="Lote 9">Lote 9</option><option value="Lote 10">Lote 10</option><option value="Lote 11">Lote 11</option><option value="Lote 12">Lote 12</option>
+						<option value="Lote 13">Lote 13</option><option value="Lote 14">Lote 14</option><option value="Lote 15">Lote 15</option><option value="Lote 16">Lote 16</option>
+					</select>
+				</div>
+				<div id="analysisIndicatorCropContainer" class="hidden w-full">
+					<label for="analysisIndicatorCrop" class="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Semilla</label>
+					<select id="analysisIndicatorCrop" onchange="renderAnalysisIndicators()" class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+						<option value="Todos">Todas</option>
+					</select>
+				</div>
+				<div id="analysisIndicatorCycleContainer" class="hidden w-full">
+					<label for="analysisIndicatorCycle" class="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Ciclo</label>
+					<select id="analysisIndicatorCycle" onchange="renderAnalysisIndicators()" class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+						<option value="Todos">Todos</option>
+					</select>
+				</div>
+			</div>
+			<div class="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+				<div class="bg-white rounded-2xl p-3 sm:p-6 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition duration-200">
+					<div class="flex justify-between items-start">
+						<div>
+							<span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Margen ROI</span>
+							<h2 class="text-xl sm:text-2xl font-extrabold text-slate-950 dark:text-white mt-1" id="analysisKpiRoi">0%</h2>
+						</div>
+						<span class="p-2.5 bg-teal-50 dark:bg-teal-950 rounded-xl text-teal-600 dark:text-teal-400">
+							<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path>
+							</svg>
+						</span>
+					</div>
+					<div class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 pt-2 border-t border-slate-50 dark:border-slate-800">
+						Retorno sobre inversión
+					</div>
+				</div>
+
+				<div class="bg-white rounded-2xl p-3 sm:p-6 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition duration-200">
+					<div class="flex justify-between items-start">
+						<div>
+							<span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pasivos Activos</span>
+							<h2 class="text-xl sm:text-2xl font-extrabold text-rose-600 mt-1" id="analysisKpiPasivos">$0</h2>
+						</div>
+						<span class="p-2.5 bg-rose-50 dark:bg-rose-950 rounded-xl text-rose-600 dark:text-rose-400">
+							<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+							</svg>
+						</span>
+					</div>
+					<div class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 pt-2 border-t border-slate-50 dark:border-slate-800">
+						Total deuda por pagar
+					</div>
+				</div>
+
+				<div class="bg-white rounded-2xl p-3 sm:p-6 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition duration-200">
+					<div class="flex justify-between items-start">
+						<div>
+							<span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Invertido vs Egresado</span>
+							<h2 class="text-xs sm:text-sm font-extrabold text-slate-950 dark:text-white mt-1" id="analysisKpiInversionVsVentas">$0 vs $0</h2>
+						</div>
+						<span class="p-2.5 bg-violet-50 dark:bg-violet-950 rounded-xl text-violet-600 dark:text-violet-400">
+							<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path>
+							</svg>
+						</span>
+					</div>
+					<div class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 pt-2 border-t border-slate-50 dark:border-slate-800">
+						Total Costos vs Ventas
+					</div>
+				</div>
+			</div>
 		</div>
 	</section>
 </div>
