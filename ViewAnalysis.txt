@@ -5,15 +5,21 @@
 				<h2 class="text-xl font-extrabold text-slate-900 dark:text-white sm:text-2xl">Análisis y Seguimiento de Lotes</h2>
 				<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Inventario, bitácora y resultados comparativos por lote.</p>
 			</div>
-			<div class="w-full sm:w-64">
-				<label for="analysisLoteSelector" class="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Lote para el análisis</label>
-				<select id="analysisLoteSelector" onchange="renderAnalysisTracking()" class="block min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-					<option value="Todos">Todos los lotes</option>
-					<option value="Lote 1">Lote 1</option><option value="Lote 2">Lote 2</option><option value="Lote 3">Lote 3</option><option value="Lote 4">Lote 4</option>
-					<option value="Lote 5">Lote 5</option><option value="Lote 6">Lote 6</option><option value="Lote 7">Lote 7</option><option value="Lote 8">Lote 8</option>
-					<option value="Lote 9">Lote 9</option><option value="Lote 10">Lote 10</option><option value="Lote 11">Lote 11</option><option value="Lote 12">Lote 12</option>
-					<option value="Lote 13">Lote 13</option><option value="Lote 14">Lote 14</option><option value="Lote 15">Lote 15</option><option value="Lote 16">Lote 16</option>
-				</select>
+			<div class="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:items-end">
+				<div class="w-full sm:w-64">
+					<label for="analysisLoteSelector" class="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Lote para el análisis</label>
+					<select id="analysisLoteSelector" onchange="renderAnalysisTracking()" class="block min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+						<option value="Todos">Todos los lotes</option>
+						<option value="Lote 1">Lote 1</option><option value="Lote 2">Lote 2</option><option value="Lote 3">Lote 3</option><option value="Lote 4">Lote 4</option>
+						<option value="Lote 5">Lote 5</option><option value="Lote 6">Lote 6</option><option value="Lote 7">Lote 7</option><option value="Lote 8">Lote 8</option>
+						<option value="Lote 9">Lote 9</option><option value="Lote 10">Lote 10</option><option value="Lote 11">Lote 11</option><option value="Lote 12">Lote 12</option>
+						<option value="Lote 13">Lote 13</option><option value="Lote 14">Lote 14</option><option value="Lote 15">Lote 15</option><option value="Lote 16">Lote 16</option>
+					</select>
+				</div>
+				<div id="analysisCropFilterContainer" class="hidden w-full sm:w-auto">
+					<label for="analysisCropFilter" class="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Filtrar por cultivo</label>
+					<div id="analysisCropFilter" class="flex flex-wrap gap-2"></div>
+				</div>
 			</div>
 		</div>
 	</section>
