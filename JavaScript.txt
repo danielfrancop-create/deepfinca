@@ -589,6 +589,59 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             renderDashboardInsights(selector?.value || "Todos", false);
         }
 
+        // Convierte "$ 1.250.000,50" (es-CO) o un número en un número puro (1250000.5).
+        function parseCurrency(value) {
+            if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+            const str = String(value == null ? '' : value).trim();
+            if (!str) return 0;
+            const cleaned = str.replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, '');
+            const parsed = parseFloat(cleaned);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        // Formatea para mostrar en el input: "$ 1.250.000" y decimales solo si el usuario escribe coma.
+        function formatCurrencyInput(value) {
+            let str;
+            if (typeof value === 'number') {
+                if (!Number.isFinite(value) || value === 0) return '';
+                str = String(Math.round(value * 100) / 100).replace('.', ',');
+            } else {
+                str = String(value == null ? '' : value);
+            }
+            const commaIdx = str.indexOf(',');
+            const hasComma = commaIdx !== -1;
+            let intPart = (hasComma ? str.slice(0, commaIdx) : str).replace(/\D/g, '');
+            const decPart = hasComma ? str.slice(commaIdx + 1).replace(/\D/g, '').slice(0, 2) : '';
+            if (!intPart && !hasComma) return '';
+            intPart = (intPart.replace(/^0+(?=\d)/, '') || '0').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            return `$ ${intPart}${hasComma ? ',' + decPart : ''}`;
+        }
+
+        function setupCurrencyInputListener(inputId) {
+            const input = document.getElementById(inputId);
+            if (!input || input.dataset.currencyBound === '1') return;
+            input.dataset.currencyBound = '1';
+
+            input.addEventListener('input', function() {
+                const raw = this.value;
+                const significant = raw.slice(0, this.selectionStart).replace(/[^\d,]/g, '').length;
+                const formatted = formatCurrencyInput(raw);
+                if (formatted === raw) return;
+                this.value = formatted;
+                let pos = 0, seen = 0;
+                while (pos < formatted.length && seen < significant) {
+                    if (/[\d,]/.test(formatted[pos])) seen++;
+                    pos++;
+                }
+                if (formatted) pos = Math.max(pos, 2);
+                this.setSelectionRange(pos, pos);
+            });
+
+            input.addEventListener('blur', function() {
+                this.value = formatCurrencyInput(this.value);
+            });
+        }
+
         function formatCOP(val) {
             const num = Math.round(Number(val) || 0);
             const isNegative = num < 0;
@@ -597,7 +650,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 minimumFractionDigits: 0,
                 maximumFractionDigits: 0
             });
-            return `${isNegative ? '-' : ''}$${formatted}`;
+            return `${isNegative ? '-' : ''}$ ${formatted}`;
         }
 
         function updateLoteSummaryMetrics(loteId, calcGastos, calcUnidades, calcPrecioVenta) {
@@ -614,7 +667,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             }
 
             const inputPrecio = document.getElementById("inputPrecioMercadoRef");
-            const parsedPrecio = inputPrecio ? Number(inputPrecio.value) : 0;
+            const parsedPrecio = inputPrecio ? parseCurrency(inputPrecio.value) : 0;
             const precioRef = Number.isFinite(parsedPrecio) && parsedPrecio > 0 ? parsedPrecio : 0;
             const hasMarketPrice = precioRef > 0;
 
@@ -2640,14 +2693,16 @@ function updateConfigHeader() {
             if (!qtyEl || !unitEl || !totalEl) return;
 
             const qty = parseDecimal(qtyEl.value) || 1;
-            const unit = parseDecimal(unitEl.value);
-            const total = parseDecimal(totalEl.value);
+            const unit = parseCurrency(unitEl.value);
+            const total = parseCurrency(totalEl.value);
 
             if (triggerSource === 'unitario') {
-                totalEl.value = Math.round((qty * unit) * 100) / 100;
+                const newTotal = Math.round((qty * unit) * 100) / 100;
+                totalEl.value = formatCurrencyInput(newTotal);
             } else if (triggerSource === 'total') {
                 if (qty > 0) {
-                    unitEl.value = Math.round((total / qty) * 100) / 100;
+                    const newUnit = Math.round((total / qty) * 100) / 100;
+                    unitEl.value = formatCurrencyInput(newUnit);
                 }
             }
         }
@@ -2760,8 +2815,8 @@ function updateConfigHeader() {
 
                 const cantidad = parseDecimal(document.getElementById("posCantidadInicial").value) || 1;
                 const unidad = document.getElementById("posUnidadMedidaInicial").value || "Unidades";
-                const unitario = parseDecimal(document.getElementById("posCostoUnitarioInicial").value);
-                const costo = parseDecimal(document.getElementById("posCostoInicial").value) || (cantidad * unitario);
+                const unitario = parseCurrency(document.getElementById("posCostoUnitarioInicial").value);
+                const costo = parseCurrency(document.getElementById("posCostoInicial").value) || (cantidad * unitario);
                 
                 const radios = document.getElementsByName("posEstadoPagoInicial");
                 let estadoPago = "PAGADO";
@@ -2866,8 +2921,8 @@ function updateConfigHeader() {
     const insumo = document.getElementById("posInsumo").value;
     const cantidad = parseDecimal(document.getElementById("posCantidadDesarrollo").value) || 1;
     const unidad = document.getElementById("posUnidadMedidaDesarrollo").value || "Bultos";
-    const unitario = parseDecimal(document.getElementById("posCostoUnitarioDesarrollo").value);
-    const costo = parseDecimal(document.getElementById("posCostoDesarrollo").value) || (cantidad * unitario);
+    const unitario = parseCurrency(document.getElementById("posCostoUnitarioDesarrollo").value);
+    const costo = parseCurrency(document.getElementById("posCostoDesarrollo").value) || (cantidad * unitario);
     const isProrrateo = (insumo === "Fertilizantes" || insumo === "Pesticidas");
     
     const radios = document.getElementsByName("posEstadoPagoDesarrollo");
@@ -2988,8 +3043,8 @@ function updateConfigHeader() {
 
     const cantidad = parseDecimal(document.getElementById("posUnidadesVenta").value) || 1;
     const unidad = document.getElementById("posUnidadMedidaVenta").value || "Atados";
-    const unitario = parseDecimal(document.getElementById("posPrecioUnitarioVenta").value);
-    const ingreso = parseDecimal(document.getElementById("posIngresoVenta").value) || (cantidad * unitario);
+    const unitario = parseCurrency(document.getElementById("posPrecioUnitarioVenta").value);
+    const ingreso = parseCurrency(document.getElementById("posIngresoVenta").value) || (cantidad * unitario);
     
     const radios = document.getElementsByName("posEstadoPagoVenta");
     let estadoPago = "PAGADO";
@@ -4506,296 +4561,6 @@ function updateConfigHeader() {
             }
         }
 
-        function exportToPDF() {
-            const { jsPDF } = window.jspdf;
-            // 'l' specifies Landscape layout to fit more columns beautifully
-            const doc = new jsPDF('l', 'pt', 'a4');
-
-            // Gather the same lot, cycle, and movement filters used by the transaction table.
-            const selectedLote = document.getElementById("searchTrackingCode")?.value || "Todos";
-            const selectedCiclo = document.getElementById("filterCiclo")?.value || "Todos";
-            const filterType = document.getElementById("filterMovimiento")?.value || "Todos";
-
-            let allTx = [];
-
-            // 1. Gastos Iniciales
-            if (rawData && rawData.gastosIniciales) {
-                (rawData.gastosIniciales || []).forEach(item => {
-                    const tercero = String(item.Cliente_Deudor_Proveedor || item.cliente_deudor_proveedor || item.Proveedor || item.proveedor || item.Tercero || item.tercero || "").trim();
-                    const nota = String(item.Notas || item.notas || "").trim();
-                    let detalleStr = "-";
-                    if (tercero && nota && nota !== "-" && nota.toLowerCase() !== tercero.toLowerCase()) {
-                        detalleStr = `${tercero} - ${nota}`;
-                    } else if (tercero) {
-                        detalleStr = tercero;
-                    } else if (nota) {
-                        detalleStr = nota;
-                    }
-
-                    allTx.push({
-                        lote: item.Lote || item.lote || "Sin Registrar",
-                        tipo: "Gasto Inicial",
-                        concepto: item.Cultivo_Semilla || item.cultivo_semilla || "Por Definir",
-                        monto: Number(item.Costo_Total_COP || item.costo_total_cop) || 0,
-                        fecha: item.Fecha || item.fecha || "-",
-                        codigo: (item.Codigo_Seguimiento || item.codigo_seguimiento || "-").trim().toUpperCase(),
-                        detalles: detalleStr
-                    });
-                });
-            }
-
-            // 2. Gastos Desarrollo
-            if (rawData && rawData.gastosDesarrollo) {
-                (rawData.gastosDesarrollo || []).forEach(item => {
-                    const tercero = String(item.Cliente_Deudor_Proveedor || item.cliente_deudor_proveedor || item.Proveedor || item.proveedor || item.Tercero || item.tercero || "").trim();
-                    const nota = String(item.Detalle || item.detalle || item.Notas || item.notas || "").trim();
-                    let detalleStr = "-";
-                    if (tercero && nota && nota !== "-" && nota.toLowerCase() !== tercero.toLowerCase()) {
-                        detalleStr = `${tercero} - ${nota}`;
-                    } else if (tercero) {
-                        detalleStr = tercero;
-                    } else if (nota) {
-                        detalleStr = nota;
-                    }
-
-                    allTx.push({
-                        lote: item.Lote || item.lote || "Sin Registrar",
-                        tipo: "Gasto Desarrollo",
-                        concepto: item.Tipo_Insumo || item.tipo_insumo || "Otros",
-                        monto: Number(item.Costo_Total_COP || item.costo_total_cop) || 0,
-                        fecha: item.Fecha || item.fecha || "-",
-                        codigo: (item.Codigo_Seguimiento || item.codigo_seguimiento || "-").trim().toUpperCase(),
-                        detalles: detalleStr
-                    });
-                });
-            }
-
-            // 3. Ventas
-            if (rawData && rawData.ventas) {
-                (rawData.ventas || []).forEach(item => {
-                    const tercero = String(item.Cliente_Deudor_Proveedor || item.cliente_deudor_proveedor || item.Comprador || item.comprador || item.Cliente || item.cliente || item.Tercero || item.tercero || "").trim();
-                    const nota = String(item.Detalle || item.detalle || item.Notas || item.notas || "").trim();
-                    let detalleStr = "-";
-                    if (tercero && nota && nota !== "-" && nota.toLowerCase() !== tercero.toLowerCase()) {
-                        detalleStr = `${tercero} - ${nota}`;
-                    } else if (tercero) {
-                        detalleStr = tercero;
-                    } else if (nota) {
-                        detalleStr = nota;
-                    }
-
-                    allTx.push({
-                        lote: item.Lote || item.lote || "Sin Registrar",
-                        tipo: "Venta",
-                        concepto: item.Producto_Vendido || item.producto_vendido || "Otros",
-                        monto: Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0,
-                        fecha: item.Fecha || item.fecha || "-",
-                        codigo: (item.Codigo_Seguimiento || item.codigo_seguimiento || "-").trim().toUpperCase(),
-                        detalles: detalleStr
-                    });
-                });
-            }
-
-            const cycleByTrackingCode = new Map();
-            (rawData?.ciclos || []).forEach(cycle => {
-                const generalCode = String(cycle.Codigo_General || cycle.codigo_general || "").trim().toUpperCase();
-                const cycleCodes = [
-                    generalCode,
-                    cycle.Codigo_Inicial || cycle.codigo_inicial,
-                    cycle.Codigo_Desarrollo || cycle.codigo_desarrollo,
-                    cycle.Codigo_Ventas || cycle.codigo_ventas
-                ].map(code => String(code || "").trim().toUpperCase()).filter(Boolean);
-                cycleCodes.forEach(code => cycleByTrackingCode.set(code, cycle));
-            });
-
-            allTx.forEach(tx => {
-                tx.cycle = cycleByTrackingCode.get(tx.codigo) || null;
-                tx.groupCode = String(tx.cycle?.Codigo_General || tx.cycle?.codigo_general || tx.codigo || "-").trim().toUpperCase();
-            });
-
-            // Apply the same active filters as the transaction table.
-            const lotFiltered = allTx.filter(tx => isLoteMatch(tx.lote, selectedLote));
-            let filtered = lotFiltered.slice();
-            if (selectedCiclo && selectedCiclo !== "Todos") {
-                const targetCycle = selectedCiclo.trim().toUpperCase();
-                filtered = filtered.filter(tx => tx.codigo === targetCycle || tx.groupCode === targetCycle);
-            }
-
-            if (filterType !== "Todos") {
-                const mapType = { "Inicial": "Gasto Inicial", "Desarrollo": "Gasto Desarrollo", "Venta": "Venta" };
-                filtered = filtered.filter(tx => tx.tipo === mapType[filterType]);
-            }
-
-            const transactionsByCode = new Map();
-            filtered.forEach(tx => {
-                if (!transactionsByCode.has(tx.groupCode)) transactionsByCode.set(tx.groupCode, []);
-                transactionsByCode.get(tx.groupCode).push(tx);
-            });
-            const getTransactionDateValue = value => {
-                const dateText = String(value || "").trim();
-                if (!dateText || dateText === "-") return null;
-
-                const isoDate = dateText.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-                if (isoDate) return Date.UTC(Number(isoDate[1]), Number(isoDate[2]) - 1, Number(isoDate[3]));
-
-                const localDate = dateText.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})/);
-                if (localDate) return Date.UTC(Number(localDate[3]), Number(localDate[2]) - 1, Number(localDate[1]));
-
-                const parsedDate = Date.parse(dateText);
-                return Number.isNaN(parsedDate) ? null : parsedDate;
-            };
-            transactionsByCode.forEach(items => items.sort((a, b) => {
-                const dateA = getTransactionDateValue(a.fecha);
-                const dateB = getTransactionDateValue(b.fecha);
-                if (dateA === null && dateB === null) return 0;
-                if (dateA === null) return 1;
-                if (dateB === null) return -1;
-                return dateA - dateB;
-            }));
-
-            // 1. PDF Title / Header Decoration (Landscape width = 842, margin = 40, width = 762)
-            doc.setFillColor(6, 78, 59); // Emerald 900
-            doc.rect(40, 40, 762, 60, 'F');
-
-            doc.setTextColor(255, 255, 255);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(18);
-            doc.text("FINCA LOS SAUCES", 60, 65);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.text("Registro de Transacciones Detallado (Código de Seguimiento)", 60, 83);
-
-            // 2. Metadata Section (Landscape alignment)
-            doc.setTextColor(51, 65, 85);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10);
-            doc.text("Filtros Aplicados:", 40, 130);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`Lote: ${selectedLote}`, 40, 145);
-            doc.text(`Tipo Movimiento: ${filterType === 'Todos' ? 'Todos los Tipos' : filterType}`, 40, 160);
-            doc.text("Agrupado por código de seguimiento", 40, 175);
-
-            doc.setFont('helvetica', 'bold');
-            doc.text("Reporte Generado:", 580, 130);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`Fecha: ${new Date().toLocaleDateString('es-CO')}`, 580, 145);
-            doc.text(`Total Registros: ${filtered.length}`, 580, 160);
-
-            // 3. Render one transaction block per tracking code
-            const columns = [
-                { header: 'Lote', dataKey: 'lote' },
-                { header: 'Tipo Movimiento', dataKey: 'tipo' },
-                { header: 'Concepto / Ítem', dataKey: 'concepto' },
-                { header: 'Monto (COP)', dataKey: 'monto' },
-                { header: 'Fecha', dataKey: 'fecha' },
-                { header: 'Código de Seguimiento', dataKey: 'codigo' },
-                { header: 'Tercero / Detalles', dataKey: 'detalles' }
-            ];
-            const pageHeight = doc.internal.pageSize.getHeight();
-            const groupEntries = Array.from(transactionsByCode.entries()).sort(([codeA], [codeB]) => codeA.localeCompare(codeB));
-            let currentY = 200;
-
-            groupEntries.forEach(([groupCode, groupItems], groupIndex) => {
-                if (currentY > pageHeight - 80) {
-                    doc.addPage();
-                    currentY = 50;
-                }
-
-                doc.setFillColor(226, 232, 240);
-                doc.rect(40, currentY - 14, 762, 22, 'F');
-                doc.setTextColor(15, 23, 42);
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(10);
-                doc.text(`Código de Seguimiento: ${groupCode === "-" ? "Sin Código" : groupCode}`, 48, currentY + 1);
-
-                const rows = groupItems.map(tx => ({
-                    lote: tx.lote,
-                    tipo: tx.tipo,
-                    concepto: tx.concepto,
-                    monto: formatCOP(tx.monto),
-                    fecha: tx.fecha,
-                    codigo: tx.codigo === "-" ? "Sin Código" : tx.codigo,
-                    detalles: tx.detalles
-                }));
-
-                doc.autoTable({
-                    columns: columns,
-                    body: rows,
-                    startY: currentY + 10,
-                    margin: { left: 40, right: 40 },
-                    styles: {
-                        font: 'helvetica',
-                        fontSize: 9,
-                        cellPadding: 6,
-                        lineColor: [226, 232, 240],
-                        lineWidth: 0.5
-                    },
-                    headStyles: {
-                        fillColor: [5, 150, 105],
-                        textColor: [255, 255, 255],
-                        fontStyle: 'bold'
-                    },
-                    alternateRowStyles: {
-                        fillColor: [248, 250, 252]
-                    },
-                    columnStyles: {
-                        monto: { halign: 'right' },
-                        fecha: { halign: 'center' },
-                        lote: { halign: 'center' },
-                        codigo: { halign: 'center' }
-                    },
-                    didParseCell: data => {
-                        if (data.section !== 'body') return;
-                        const isSale = data.row.raw.tipo === 'Venta';
-                        if (isSale) {
-                            data.cell.styles.fillColor = [220, 252, 231];
-                            data.cell.styles.textColor = [6, 78, 59];
-                            data.cell.styles.fontStyle = 'bold';
-                        } else if (data.column.dataKey === 'monto') {
-                            data.cell.styles.textColor = [185, 28, 28];
-                            data.cell.styles.fontStyle = 'bold';
-                        }
-                    }
-                });
-
-                const groupFinancials = lotFiltered.filter(tx => tx.groupCode === groupCode);
-                const cycle = groupItems.find(tx => tx.cycle)?.cycle || groupFinancials.find(tx => tx.cycle)?.cycle;
-                const cycleInProgress = cycle && String(cycle.Estado || cycle.estado || '').trim().toUpperCase() === 'EN PROCESO';
-                const hasSale = groupFinancials.some(tx => tx.tipo === 'Venta');
-                if (hasSale && !cycleInProgress) {
-                    const income = groupFinancials.filter(tx => tx.tipo === 'Venta').reduce((sum, tx) => sum + tx.monto, 0);
-                    const expenses = groupFinancials.filter(tx => tx.tipo !== 'Venta').reduce((sum, tx) => sum + tx.monto, 0);
-                    const profit = income - expenses;
-                    currentY = doc.lastAutoTable.finalY + 22;
-                    if (currentY > pageHeight - 35) {
-                        doc.addPage();
-                        currentY = 50;
-                    }
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(10);
-                    doc.setTextColor(profit < 0 ? 185 : 6, profit < 0 ? 28 : 78, profit < 0 ? 28 : 59);
-                    doc.text(`Ganancia neta del ciclo: ${formatCOP(profit)}`, 40, currentY);
-                }
-
-                currentY = doc.lastAutoTable.finalY + 38;
-                if (groupIndex < groupEntries.length - 1 && currentY > pageHeight - 60) {
-                    doc.addPage();
-                    currentY = 50;
-                }
-            });
-
-            if (groupEntries.length === 0) {
-                doc.setTextColor(100, 116, 139);
-                doc.setFont('helvetica', 'italic');
-                doc.setFontSize(10);
-                doc.text("No hay transacciones para los filtros seleccionados.", 40, 220);
-            }
-
-            // Save the document
-            const filename = `Transacciones_Finca_Los_Sauces_${new Date().toISOString().split('T')[0]}.pdf`;
-            doc.save(filename);
-        }
-
         function exportDashboardToPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('l', 'pt', 'a4'); // Landscape A4
@@ -6233,6 +5998,15 @@ function updateConfigHeader() {
                    setupLightboxInteractions();
                    updatePendingSyncBadge();
                    checkCurrentUserRole();
+                   
+                   const currencyInputIds = [
+                       'posCostoUnitarioInicial', 'posCostoInicial',
+                       'posCostoUnitarioDesarrollo', 'posCostoDesarrollo',
+                       'posPrecioUnitarioVenta', 'posIngresoVenta',
+                       'inputPrecioMercadoRef'
+                   ];
+                   currencyInputIds.forEach(id => setupCurrencyInputListener(id));
+                   
                    if (navigator.onLine) syncOfflineData(true);
                }
 function enviarDatosGoogleSheets(tipo, record) {
