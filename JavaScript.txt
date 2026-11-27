@@ -743,6 +743,193 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             renderAllAnalysisBlocks();
         }
 
+        function updateSummaryLoteSelection() {
+            const loteSelector = document.getElementById("summaryLoteSelector");
+            const selectedLote = loteSelector?.value || "Todos";
+            window.summaryState = window.summaryState || { lote: "Todos", ciclo: "Todos" };
+            window.summaryState.lote = selectedLote;
+
+            const cycleFilterContainer = document.getElementById("summaryCycleFilterContainer");
+            const cycleFilterSelect = document.getElementById("summaryCycleFilter");
+            
+            if (selectedLote !== "Todos" && rawData) {
+                const cycles = new Set();
+                (rawData.ciclos || []).forEach(cycle => {
+                    const cycleLot = cycle.Lote || cycle.lote || cycle.Lote_Principal || cycle.lote_principal;
+                    if (isLoteMatch(cycleLot, selectedLote)) {
+                        const aliases = dashboardCycleAliases(cycle);
+                        aliases.forEach(alias => cycles.add(alias));
+                    }
+                });
+                
+                if (cycles.size > 0) {
+                    cycleFilterContainer.classList.remove("hidden");
+                    cycleFilterSelect.innerHTML = '<option value="Todos">Todos los ciclos</option>' + 
+                        Array.from(cycles).sort().map(cycle => `<option value="${cycle}">${cycle}</option>`).join("");
+                    cycleFilterSelect.value = window.summaryState.ciclo;
+                } else {
+                    cycleFilterContainer.classList.add("hidden");
+                    cycleFilterSelect.innerHTML = '<option value="Todos">Todos los ciclos</option>';
+                    window.summaryState.ciclo = "Todos";
+                }
+            } else {
+                cycleFilterContainer.classList.add("hidden");
+                cycleFilterSelect.innerHTML = '<option value="Todos">Todos los ciclos</option>';
+                window.summaryState.ciclo = "Todos";
+            }
+
+            updateSummaryMetricsDisplay();
+        }
+
+        function updateSummaryCycleSelection() {
+            const cycleSelector = document.getElementById("summaryCycleFilter");
+            const selectedCycle = cycleSelector?.value || "Todos";
+            window.summaryState = window.summaryState || { lote: "Todos", ciclo: "Todos" };
+            window.summaryState.ciclo = selectedCycle;
+            updateSummaryMetricsDisplay();
+        }
+
+        function updateSummaryMetricsDisplay() {
+            if (!rawData) return;
+            
+            const lote = window.summaryState?.lote || "Todos";
+            const ciclo = window.summaryState?.ciclo || "Todos";
+
+            const matchesSummaryFilters = item => {
+                const itemLot = item.Lote || item.lote || item.Lote_Principal || item.lote_principal;
+                if (!isLoteMatch(itemLot, lote)) return false;
+                if (ciclo !== "Todos") {
+                    const code = dashboardTrackingCode(item);
+                    if (!code || code !== ciclo) return false;
+                }
+                return true;
+            };
+
+            const selectedExpenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(matchesSummaryFilters);
+            const selectedSales = (rawData.ventas || []).filter(matchesSummaryFilters);
+
+            const totalCosts = selectedExpenses.reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
+            const totalIncome = selectedSales.reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0), 0);
+            const totalUnidades = selectedSales.reduce((sum, item) => sum + (Number(item.Unidades_Cosechadas || item.unidades_cosechadas) || 0), 0);
+
+            const utilidadNeta = totalIncome - totalCosts;
+
+            const kpiUtilidadNetaEl = document.getElementById("kpiUtilidadNeta");
+            if (kpiUtilidadNetaEl) kpiUtilidadNetaEl.textContent = formatCOP(utilidadNeta);
+
+            const iconContainer = document.getElementById("kpiUtilidadIconContainer");
+            if (iconContainer) {
+                if (utilidadNeta >= 0) {
+                    iconContainer.className = "p-2.5 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-xl";
+                } else {
+                    iconContainer.className = "p-2.5 bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 rounded-xl";
+                }
+            }
+
+            updateLoteSummaryMetricsWithRealCosts(lote, totalCosts, totalUnidades, totalUnidades > 0 ? totalIncome / totalUnidades : 0);
+        }
+
+        function updateLoteSummaryMetricsWithRealCosts(loteId, calcGastos, calcUnidades, precioPromedioVenta) {
+            const currentLote = loteId || "Todos";
+            
+            const cardTitleEl = document.getElementById("kpiResumenLoteTitulo");
+            if (cardTitleEl) {
+                if (currentLote && currentLote !== "Todos") {
+                    cardTitleEl.textContent = `Resumen de Lote [${currentLote}]`;
+                } else {
+                    cardTitleEl.textContent = "Resumen de Lote";
+                }
+            }
+
+            const inputPrecio = document.getElementById("inputPrecioMercadoRef");
+            const parsedPrecio = inputPrecio ? parseCurrency(inputPrecio.value) : 0;
+            const precioRef = Number.isFinite(parsedPrecio) && parsedPrecio > 0 ? parsedPrecio : 0;
+            const hasMarketPrice = precioRef > 0;
+
+            const cuEl = document.getElementById("kpiCostoUnitario");
+            const sideCuEl = document.getElementById("kpiSideCostoUnitario");
+            const badgeTipoEl = document.getElementById("kpiTipoProduccionBadge");
+            const badgeStatusEl = document.getElementById("kpiStatusRentabilidadBadge");
+            const margenValEl = document.getElementById("kpiMargenUnitarioVal");
+            const pctValEl = document.getElementById("kpiPctRentabilidadVal");
+            const projectedUnitsSubtextEl = document.getElementById("kpiUnidadesProyectadasSubtext");
+
+            let totalCost = calcGastos !== undefined ? calcGastos : 0;
+            let qty = calcUnidades !== undefined ? calcUnidades : 0;
+
+            const unitCost = qty > 0 ? (totalCost / qty) : 0;
+            const unitMargin = hasMarketPrice ? precioRef - unitCost : 0;
+            const pctRentabilidad = hasMarketPrice ? ((precioRef - unitCost) / precioRef) * 100 : null;
+
+            let healthColor = "NEUTRO";
+            if (hasMarketPrice && unitCost > precioRef) {
+                healthColor = "ROJO";
+            } else if (hasMarketPrice && pctRentabilidad >= 0 && pctRentabilidad <= 15) {
+                healthColor = "AMARILLO";
+            } else if (hasMarketPrice && pctRentabilidad < 0) {
+                healthColor = "ROJO";
+            } else if (hasMarketPrice) {
+                healthColor = "VERDE";
+            }
+
+            let unidadMedida = "Atados";
+            
+            if (rawData) {
+                const vts = (rawData.ventas || []).filter(item => isLoteMatch(item.Lote || item.lote, currentLote));
+                const inis = (rawData.gastosIniciales || []).filter(item => isLoteMatch(item.Lote || item.lote, currentLote));
+                if (vts.length > 0 && (vts[0].Unidad_Medida || vts[0].unidad_medida)) {
+                    unidadMedida = vts[0].Unidad_Medida || vts[0].unidad_medida;
+                } else if (inis.length > 0 && (inis[0].Unidad_Medida || inis[0].unidad_medida)) {
+                    unidadMedida = inis[0].Unidad_Medida || inis[0].unidad_medida;
+                }
+            }
+
+            let unidadSingular = unidadMedida.trim();
+            if (unidadSingular.toLowerCase() === "atados") unidadSingular = "Atado";
+            else if (unidadSingular.toLowerCase() === "bultos") unidadSingular = "Bulto";
+            else if (unidadSingular.toLowerCase() === "unidades") unidadSingular = "Unidad";
+            else if (unidadSingular.endsWith("s") && unidadSingular.length > 3) unidadSingular = unidadSingular.slice(0, -1);
+
+            if (cuEl) cuEl.textContent = unitCost > 0 ? `${formatCOP(unitCost)} / ${unidadSingular}` : `$0 / ${unidadSingular}`;
+            if (sideCuEl) sideCuEl.textContent = `${formatCOP(unitCost)} / ${unidadSingular}`;
+
+            if (projectedUnitsSubtextEl) {
+                projectedUnitsSubtextEl.textContent = `Unidades Reales: ${Math.round(qty).toLocaleString('es-CO')} ${unidadSingular}${qty !== 1 ? 's' : ''}`;
+            }
+            
+            if (badgeTipoEl) {
+                badgeTipoEl.textContent = "(Basado en costos operativos reales)";
+                badgeTipoEl.className = "mt-0.5 block text-[10px] font-semibold text-slate-500 dark:text-slate-400";
+            }
+
+            if (badgeStatusEl) {
+                let badgeText = "Margen pendiente";
+                let badgeClass = "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
+                if (healthColor === "VERDE") {
+                    badgeText = "Margen favorable";
+                    badgeClass = "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400";
+                } else if (healthColor === "AMARILLO") {
+                    badgeText = "Margen ajustado";
+                    badgeClass = "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300";
+                } else if (healthColor === "ROJO") {
+                    badgeText = "Precio bajo costo";
+                    badgeClass = "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-400";
+                }
+                badgeStatusEl.textContent = badgeText;
+                badgeStatusEl.className = `mt-1 inline-flex items-center rounded-lg px-2 py-1 text-[10px] font-bold ${badgeClass}`;
+            }
+
+            if (margenValEl) {
+                margenValEl.textContent = hasMarketPrice ? formatCOP(unitMargin) : "—";
+                margenValEl.className = !hasMarketPrice ? "text-slate-500 dark:text-slate-400 font-extrabold" : (unitMargin >= 0 ? "text-emerald-600 dark:text-emerald-400 font-extrabold" : "text-rose-600 dark:text-rose-400 font-extrabold");
+            }
+
+            if (pctValEl) {
+                pctValEl.textContent = hasMarketPrice ? `${pctRentabilidad.toFixed(1)}%` : "Ingresa precio";
+                pctValEl.className = !hasMarketPrice ? "mt-1 block text-lg font-extrabold text-slate-500 dark:text-slate-400" : `mt-1 block text-lg font-extrabold ${healthColor === "ROJO" ? "text-rose-600" : (healthColor === "AMARILLO" ? "text-amber-600" : "text-emerald-600")}`;
+            }
+        }
+
         function renderAllAnalysisBlocks() {
             renderDashboardInsights(window.analysisState.lote, false);
             renderAnalysisIndicators();
@@ -1986,6 +2173,11 @@ function updateConfigHeader() {
             if (!rawData.aportesMetas) rawData.aportesMetas = [];
             updateConfigHeader();
             applyFilters();
+            const summarySelector = document.getElementById("summaryLoteSelector");
+            if (summarySelector) {
+                window.summaryState = { lote: summarySelector.value || "Todos", ciclo: "Todos" };
+                updateSummaryLoteSelection();
+            }
             showLoader(false);
         }
 
@@ -3394,7 +3586,9 @@ function updateConfigHeader() {
                 document.getElementById("loteSelector"),
                 document.getElementById("filterLote"),
                 document.getElementById("cashflowLoteSelector"),
-                document.getElementById("dashboardMobileLoteSelector")
+                document.getElementById("dashboardMobileLoteSelector"),
+                document.getElementById("summaryLoteSelector"),
+                document.getElementById("analysisLoteSelector")
             ];
 
             let optionsHTML = '<option value="Todos">Todos los Lotes</option>';
@@ -6238,6 +6432,7 @@ function updateConfigHeader() {
         }
 
                function initApp() {
+                   window.summaryState = { lote: "Todos", ciclo: "Todos" };
                    moveDashboardSectionsToEnd();
                    applyViewOnlyPermissions();
                    populateLoteDropdowns();
