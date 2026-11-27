@@ -1119,13 +1119,20 @@ function updateConfigHeader() {
 
             container.classList.remove("hidden");
             const previousVal = cicloSelect.value;
-            const cycleCodesSet = new Set();
+            const cycleCodesMap = new Map();
 
             if (rawData && rawData.ciclos) {
                 (rawData.ciclos || []).forEach(c => {
                     if (isLoteMatch(c.Lote || c.lote || c.Lote_Principal || c.lote_principal, selectedLote)) {
                         const code = String(c.Codigo_General || c.codigo_general || c.Codigo_Inicial || c.codigo_inicial || "").trim().toUpperCase();
-                        if (code) cycleCodesSet.add(code);
+                        const fechaInicio = c.Fecha_Inicio || c.fecha_inicio || "";
+                        const cultivo = c.Cultivo || c.cultivo || "";
+                        if (code) {
+                            cycleCodesMap.set(code, {
+                                cultivo: cultivo,
+                                fechaInicio: fechaInicio
+                            });
+                        }
                     }
                 });
             }
@@ -1136,15 +1143,24 @@ function updateConfigHeader() {
                     (rawData[key] || []).forEach(item => {
                         if (isLoteMatch(item.Lote || item.lote, selectedLote)) {
                             const code = String(item.Codigo_Seguimiento || item.codigo_seguimiento || item.Codigo_General || item.codigo_general || "").trim().toUpperCase();
-                            if (code && code !== "-" && code !== "SIN CÓDIGO") cycleCodesSet.add(code);
+                            if (code && code !== "-" && code !== "SIN CÓDIGO" && !cycleCodesMap.has(code)) {
+                                cycleCodesMap.set(code, {
+                                    cultivo: "",
+                                    fechaInicio: item.Fecha || item.fecha || ""
+                                });
+                            }
                         }
                     });
                 }
             });
 
             let optionsHTML = '<option value="Todos">Todos los Ciclos (Histórico General)</option>';
-            Array.from(cycleCodesSet).sort().forEach(code => {
-                optionsHTML += `<option value="${code}">${code}</option>`;
+            Array.from(cycleCodesMap.entries()).sort().forEach(([code, info]) => {
+                // Create a readable label showing the cycle number and other details
+                const dateLabel = info.fechaInicio ? ` (${info.fechaInicio})` : '';
+                const cultivoLabel = info.cultivo ? ` - ${info.cultivo}` : '';
+                const displayLabel = `${code}${cultivoLabel}${dateLabel}`;
+                optionsHTML += `<option value="${code}">${displayLabel}</option>`;
             });
 
             cicloSelect.innerHTML = optionsHTML;
@@ -2352,6 +2368,39 @@ function updateConfigHeader() {
             }
         }
 
+        function calculateNextCycleNumber(lote, cultivo, allCycles) {
+            const cleanCultivo = cultivo.replace(/\s+/g, "").toUpperCase();
+            const year = new Date().getFullYear();
+            const basePattern = `INI-${lote.replace(/\s+/g, "").toUpperCase()}-${cleanCultivo}-${year}`;
+            
+            // Buscar ciclos con el patrón base (con o sin sufijo -C)
+            const matchingCycles = (allCycles || []).filter(cycle => {
+                const code = cycle.Codigo_General || cycle.codigo_general || '';
+                return code.startsWith(basePattern);
+            });
+            
+            if (matchingCycles.length === 0) return 1;
+            
+            // Buscar el número más alto en registros existentes
+            let maxNum = 0;
+            matchingCycles.forEach(cycle => {
+                const code = cycle.Codigo_General || cycle.codigo_general || '';
+                const match = code.match(/-C(\d+)$/);
+                if (match) {
+                    const num = parseInt(match[1], 10);
+                    maxNum = Math.max(maxNum, num);
+                }
+            });
+            
+            // Si no hay registros con sufijo, significa que son antiguos (pre-C1)
+            // En ese caso, el siguiente es C02 (reservamos C01 para los antiguos)
+            if (maxNum === 0 && matchingCycles.length > 0) {
+                return 2;
+            }
+            
+            return maxNum + 1;
+        }
+
         function startLoteCycle() {
             const lote = document.getElementById("posLote").value;
             const cultivo = document.getElementById("cycleCultivo").value;
@@ -2374,17 +2423,17 @@ function updateConfigHeader() {
 
             showLoader(true, "Iniciando ciclo de cultivo...");
 
-            // Calcular número de ciclo para el lote
-            const lotCyclesCount = (rawData.ciclos || []).filter(item => String(item.Lote || item.lote).trim() === lote).length;
-            const cycleNum = lotCyclesCount + 1;
+            // Calcular número de ciclo usando la nueva función helper
+            const cycleNum = calculateNextCycleNumber(lote, cultivo, rawData.ciclos || []);
             const cycleSuffix = String(cycleNum).padStart(2, '0');
 
             const cleanLote = lote.replace(/\s+/g, "").toUpperCase();
             const cleanCultivo = cultivo.replace(/\s+/g, "").toUpperCase();
             const year = new Date().getFullYear();
 
-            // Generar un único código de seguimiento para el ciclo del lote (INI-<LOTE>-<CULTIVO>-<YEAR>)
-            const singleCycleCode = `INI-${cleanLote}-${cleanCultivo}-${year}`;
+            // Generar un único código de seguimiento para el ciclo del lote (INI-<LOTE>-<CULTIVO>-<YEAR>-C<NUM>)
+            // El sufijo -C<NUM> garantiza IDs únicos aunque se siembre la misma semilla múltiples veces
+            const singleCycleCode = `INI-${cleanLote}-${cleanCultivo}-${year}-C${cycleSuffix}`;
 
             const codigoGeneral = singleCycleCode;
             const codigoInicial = singleCycleCode;
@@ -6214,4 +6263,3 @@ function enviarDatosGoogleSheets(tipo, record) {
             alert(error.message || `Error al guardar ${tipo}.`);
         });
 }
-
