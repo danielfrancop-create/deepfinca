@@ -793,7 +793,6 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 comparisonRows.innerHTML = closedWithSale.length ? closedWithSale.map(cycle => `<article class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3"><div class="mb-2 flex flex-wrap items-center justify-between gap-1"><strong class="text-xs font-extrabold text-slate-800 dark:text-white">${escapeDashboardHTML(cycle.lot)} · ${escapeDashboardHTML(cycle.code)}</strong><span class="text-[10px] text-slate-500">${escapeDashboardHTML(cycle.date)}</span></div><div class="grid grid-cols-3 gap-2 text-[10px]"><div><span class="block text-slate-500">Gastos</span><strong class="text-rose-700 dark:text-rose-400">${formatCOP(cycle.costs)}</strong></div><div><span class="block text-slate-500">Ingresos</span><strong class="text-emerald-700 dark:text-emerald-400">${formatCOP(cycle.income)}</strong></div><div><span class="block text-slate-500">Ganancia</span><strong class="${cycle.profit >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}">${formatCOP(cycle.profit)}</strong></div></div></article>`).join("") : '<p class="col-span-full rounded-lg bg-slate-50 dark:bg-slate-800/60 p-3 text-xs text-slate-500">No hay ciclos cerrados con ventas para comparar.</p>';
                 if (comparisonScope) comparisonScope.textContent = lot === "Todos" ? "Histórico de todos los lotes" : `Histórico de ${lot}`;
             }
-        }
 
         // Centralized analysis state
         window.analysisState = {
