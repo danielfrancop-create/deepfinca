@@ -17,7 +17,7 @@
 					</select>
 				</div>
 				<div id="analysisCropFilterContainer" class="hidden w-full sm:w-auto">
-					<label for="analysisCropFilter" class="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Filtrar por cultivo</label>
+					<label for="analysisCropFilter" class="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Filtrar por tipo de semilla</label>
 					<div id="analysisCropFilter" class="flex flex-wrap gap-2"></div>
 				</div>
 			</div>
