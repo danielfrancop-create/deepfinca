@@ -2548,6 +2548,44 @@ function updateConfigHeader() {
             updateLoteCycleSummaryCard();
         }
 
+        function clearPOSVentaFormOnly() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            const ventaFieldsToClear = [
+                "posPrecioUnitarioVenta", "posIngresoVenta", "posComprador"
+            ];
+            ventaFieldsToClear.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = "";
+            });
+
+            const ventaNumberFields = ["posUnidadesVenta"];
+            ventaNumberFields.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = "1";
+            });
+
+            const productoSelect = document.getElementById("posProducto");
+            if (productoSelect && productoSelect.options && productoSelect.options.length > 0) {
+                productoSelect.selectedIndex = 0;
+            }
+
+            const unidadVentaSelect = document.getElementById("posUnidadMedidaVenta");
+            if (unidadVentaSelect && unidadVentaSelect.value !== "Arrobas (@)") {
+                unidadVentaSelect.value = "Arrobas (@)";
+            }
+
+            const estadoPagoVenta = document.querySelector('input[name="posEstadoPagoVenta"][value="PAGADO"]');
+            if (estadoPagoVenta) estadoPagoVenta.checked = true;
+
+            togglePOSDueDate('venta');
+
+            const fechaVencVenta = document.getElementById("posFechaVencimientoVenta");
+            if (fechaVencVenta) fechaVencVenta.value = today;
+
+            hidePOSAlert();
+        }
+
         function showPOSAlert(msg, type) {
             const alertDiv = document.getElementById("posAlert");
             const alertMsg = document.getElementById("posAlertMsg");
@@ -2661,9 +2699,26 @@ function updateConfigHeader() {
             }
         }
 
+        function setPOSSubmitButtonState(isLoading) {
+            const btn = document.getElementById("posSubmitBtn");
+            const btnText = document.getElementById("posSubmitBtnText");
+            if (!btn || !btnText) return;
+            
+            if (isLoading) {
+                btn.disabled = true;
+                btn.classList.add("opacity-70");
+                btnText.textContent = "Guardando...";
+            } else {
+                btn.disabled = false;
+                btn.classList.remove("opacity-70");
+                btnText.textContent = "Registrar Información";
+            }
+        }
+
                 function handlePOSSubmit(event) {
                     event.preventDefault();
                     hidePOSAlert();
+                    setPOSSubmitButtonState(true);
 
                     if (currentUserRole === 'visitor') {
                 showPOSAlert("Tu perfil de usuario es de SOLO LECTURA. No tienes permisos para registrar o modificar datos.", "error");
@@ -2684,6 +2739,7 @@ function updateConfigHeader() {
 
             if (!lote || !fecha) {
                 showPOSAlert("Por favor, completa los campos requeridos (*).", "error");
+                setPOSSubmitButtonState(false);
                 return;
             }
 
@@ -2697,6 +2753,7 @@ function updateConfigHeader() {
                     if (activeCrop && cultivo !== activeCrop) {
                         showLoader(false);
                         showPOSAlert(`⚠️ ALERTA DE INCOMPATIBILIDAD DE CULTIVO: El ${lote} tiene un ciclo activo registrado para "${activeCrop}". No se permite registrar información para un cultivo diferente ("${cultivo}"). Debes seleccionar "${activeCrop}" o finalizar el ciclo activo para cambiar de cultivo.`, "error");
+                        setPOSSubmitButtonState(false);
                         return;
                     }
                 }
@@ -2717,6 +2774,7 @@ function updateConfigHeader() {
                 if (!cultivo || costo <= 0) {
                     showLoader(false);
                     showPOSAlert("Por favor, selecciona un cultivo e ingresa un costo válido mayor a cero.", "error");
+                    setPOSSubmitButtonState(false);
                     return;
                 }
 
@@ -2767,7 +2825,8 @@ function updateConfigHeader() {
                 };
                 const encolarGastoInicial = () => enqueueOfflineRecord("gastosIniciales", record).then(() => {
                     mostrarGastoInicial();
-                    alert("Registro guardado localmente, pendiente de sincronización.");
+                    showPOSAlert("Registro guardado localmente, pendiente de sincronización.", "success");
+                    setPOSSubmitButtonState(false);
                 }).catch(error => {
                     if (newCycle) {
                         const cycleIndex = rawData.ciclos.indexOf(newCycle);
@@ -2775,6 +2834,7 @@ function updateConfigHeader() {
                     }
                     showLoader(false);
                     showPOSAlert("No se pudo guardar el registro pendiente: " + error.message, "error");
+                    setPOSSubmitButtonState(false);
                 });
                 ensureRecordId(record);
                 if (!navigator.onLine) {
@@ -2795,7 +2855,8 @@ function updateConfigHeader() {
                     }
                 }
                 mostrarGastoInicial();
-                alert("¡Información registrada con éxito!");
+                showPOSAlert("¡Información registrada con éxito!", "success");
+                setPOSSubmitButtonState(false);
                 }).catch(err => {
                     console.error("No se confirmó el guardado:", err);
                     encolarGastoInicial();
@@ -2820,12 +2881,14 @@ function updateConfigHeader() {
     if (!insumo || costo <= 0) {
         showLoader(false);
         showPOSAlert("Por favor, selecciona un tipo de insumo e ingresa un costo válido mayor a cero.", "error");
+        setPOSSubmitButtonState(false);
         return;
     }
 
     if (!isProrrateo && !lote) {
         showLoader(false);
         showPOSAlert("Por favor, selecciona un Lote Destino para este gasto.", "error");
+        setPOSSubmitButtonState(false);
         return;
     }
 
@@ -2873,10 +2936,12 @@ function updateConfigHeader() {
             applyFilters();
             showLoader(false);
             clearPOSForm();
-            alert("Registro guardado localmente, pendiente de sincronización.");
+            showPOSAlert("Registro guardado localmente, pendiente de sincronización.", "success");
+            setPOSSubmitButtonState(false);
         }).catch(error => {
             showLoader(false);
             showPOSAlert("No se pudo guardar el registro pendiente: " + error.message, "error");
+            setPOSSubmitButtonState(false);
         });
     ensureRecordId(record);
     if (!navigator.onLine) {
@@ -2887,11 +2952,12 @@ function updateConfigHeader() {
     callAppsScript("guardarRegistro", ["gastosDesarrollo", record]).then(response => {
             record.synced = true;
             record.pendingSync = false;
+            updateLocalProrrateoRecords();
+            applyFilters();
             showLoader(false);
-            if (typeof fetchAllData === 'function') fetchAllData();
-            else { updateLocalProrrateoRecords(); applyFilters(); }
+            showPOSAlert(isProrrateo ? `¡Gasto prorrateado exitosamente entre ${response.numLotes || 'los'} lotes activos!` : "¡Información registrada con éxito!", "success");
             clearPOSForm();
-            alert(isProrrateo ? `¡Gasto prorrateado exitosamente entre ${response.numLotes || 'los'} lotes activos!` : "¡Información registrada con éxito!");
+            setPOSSubmitButtonState(false);
         }).catch(err => {
             console.error("No se confirmó el guardado:", err);
             encolarGastoDesarrollo();
@@ -2915,6 +2981,7 @@ function updateConfigHeader() {
         if (!isProductCompatible) {
             showLoader(false);
             showPOSAlert(`⚠️ ALERTA DE INCOMPATIBILIDAD EN VENTAS: El ${lote} tiene un ciclo activo registrado para "${activeCrop}". El producto seleccionado ("${producto}") no corresponde a este cultivo. Por favor selecciona un producto derivado de "${activeCrop}".`, "error");
+            setPOSSubmitButtonState(false);
             return;
         }
     }
@@ -2934,6 +3001,7 @@ function updateConfigHeader() {
     if (!producto || ingreso <= 0 || !comprador) {
         showLoader(false);
         showPOSAlert("Por favor, selecciona un producto, ingresa un ingreso válido mayor a cero y especifica el comprador.", "error");
+        setPOSSubmitButtonState(false);
         return;
     }
 
@@ -2963,19 +3031,26 @@ function updateConfigHeader() {
         applyFilters();
         refreshCycleViews();
         showLoader(false);
-        clearPOSForm();
+        
+        if (record.cerrarCiclo) {
+            clearPOSForm();
+        } else {
+            clearPOSVentaFormOnly();
+        }
     };
 
     const encolarVenta = async () => {
         try {
             await enqueueOfflineRecord("ventas", record);
             guardarVentaLocal();
-            alert(record.cerrarCiclo
+            showPOSAlert(record.cerrarCiclo
                 ? "Venta guardada en el dispositivo. El ciclo se cerrará al sincronizar."
-                : "Venta guardada en el dispositivo. Se sincronizará al recuperar conexión.");
+                : "Venta guardada en el dispositivo. Se sincronizará al recuperar conexión.", "success");
+            setPOSSubmitButtonState(false);
         } catch (err) {
             showLoader(false);
             showPOSAlert("No se pudo guardar la venta pendiente: " + err.toString(), "error");
+            setPOSSubmitButtonState(false);
         }
     };
 
@@ -2993,12 +3068,13 @@ function updateConfigHeader() {
             if (record.cerrarCiclo && response.cicloCerrado) {
                 applyCycleClosureLocally({ codigoGeneral: trackingCode, loteReferencia: lote, fechaFin: fecha });
                 refreshCycleData();
-                alert("¡Información registrada con éxito y ciclo cerrado!");
+                showPOSAlert("¡Información registrada con éxito y ciclo cerrado!", "success");
             } else if (record.cerrarCiclo) {
                 showPOSAlert("La venta se guardó, pero el servidor no confirmó el cierre del ciclo.", "error");
             } else {
-                alert("¡Información registrada con éxito!");
+                showPOSAlert("¡Información registrada con éxito!", "success");
             }
+            setPOSSubmitButtonState(false);
         })
         .catch(err => {
             console.error("No se confirmó el guardado de la venta:", err);
