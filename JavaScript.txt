@@ -455,7 +455,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             if (!rawData) return;
             const lot = selectedLote || document.getElementById("filterLote")?.value || "Todos";
             const selectedCycle = useDashboardFilters ? (document.getElementById("filterCiclo")?.value || "Todos") : "Todos";
-            const selectedCrop = useDashboardFilters ? (document.getElementById("filterCultivo")?.value || "Todos") : (window.analysisCropFilter || "Todos");
+            const selectedSeed = useDashboardFilters ? (document.getElementById("filterCultivo")?.value || "Todos") : (window.analysisSeedFilter || "Todos");
             const from = useDashboardFilters ? (document.getElementById("filterFechaDesde")?.value || "") : "";
             const to = useDashboardFilters ? (document.getElementById("filterFechaHasta")?.value || "") : "";
             const activeCycle = lot !== "Todos" ? dashboardCycleForLot(lot, selectedCycle) : null;
@@ -472,44 +472,47 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 if (!isLoteMatch(itemLot, lot)) return false;
                 if (from && date && date < from) return false;
                 if (to && date && date > to) return false;
-                const cultivo = getCultivoForTx(item);
-                return selectedCrop === "Todos" || cultivo.toLowerCase() === selectedCrop.toLowerCase();
+                if (selectedSeed !== "Todos") {
+                    const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "").trim();
+                    if (semilla !== selectedSeed) return false;
+                }
+                return true;
             };
             const matchesFilters = item => matchesLotFilters(item) && cycleMatches(item);
             const matchesSummaryFilters = item => matchesLotFilters(item) && (selectedCycle === "Todos" || cycleMatches(item));
 
-            // Calculate net profit independently by crop/product
-            const salesByCrop = new Map();
-            const expensesByCrop = new Map();
+            // Calculate net profit independently by seed type
+            const salesBySeed = new Map();
+            const expensesBySeed = new Map();
             
             const selectedExpenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(matchesSummaryFilters);
             const selectedSales = (rawData.ventas || []).filter(matchesSummaryFilters);
             
             selectedExpenses.forEach(item => {
-                const cultivo = getCultivoForTx(item);
-                if (!expensesByCrop.has(cultivo)) expensesByCrop.set(cultivo, 0);
-                expensesByCrop.set(cultivo, expensesByCrop.get(cultivo) + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0));
+                const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "Por Definir").trim();
+                if (!expensesBySeed.has(semilla)) expensesBySeed.set(semilla, 0);
+                expensesBySeed.set(semilla, expensesBySeed.get(semilla) + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0));
             });
             
             selectedSales.forEach(item => {
-                const cultivo = getCultivoForTx(item);
-                if (!salesByCrop.has(cultivo)) salesByCrop.set(cultivo, { income: 0, units: 0 });
-                const current = salesByCrop.get(cultivo);
+                const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "Por Definir").trim();
+                if (!salesBySeed.has(semilla)) salesBySeed.set(semilla, { income: 0, units: 0 });
+                const current = salesBySeed.get(semilla);
                 current.income += Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0;
                 current.units += Number(item.Unidades_Cosechadas || item.unidades_cosechadas) || 0;
             });
             
-            // Calculate totals considering the independent crops
+            // Calculate totals considering the independent seed types
             let selectedCosts = 0;
             let selectedIncome = 0;
             let selectedUnits = 0;
             
-            if (selectedCrop !== "Todos") {
-                selectedCosts = expensesByCrop.get(selectedCrop) || 0;
-                const cropData = salesByCrop.get(selectedCrop);
-                if (cropData) {
-                    selectedIncome = cropData.income;
-                    selectedUnits = cropData.units;
+            if (selectedSeed !== "Todos") {
+                selectedCosts = expensesBySeed.get(selectedSeed) || 0;
+                const seedData = salesBySeed.get(selectedSeed);
+                if (seedData) {
+                    selectedIncome = seedData.income;
+                    selectedUnits = seedData.units;
                 }
             } else {
                 selectedCosts = selectedExpenses.reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
@@ -521,7 +524,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             if (netProfitEl) netProfitEl.textContent = formatCOP(selectedIncome - selectedCosts);
             const netProfitIcon = document.getElementById("kpiUtilidadIconContainer");
             if (netProfitIcon) netProfitIcon.className = `p-2.5 rounded-xl ${selectedIncome >= selectedCosts ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" : "bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400"}`;
-            updateLoteSummaryMetrics(lot, selectedCosts, selectedUnits, selectedUnits > 0 ? selectedIncome / selectedUnits : 0, selectedCrop);
+            updateLoteSummaryMetrics(lot, selectedCosts, selectedUnits, selectedUnits > 0 ? selectedIncome / selectedUnits : 0, selectedSeed);
 
             const statusBadge = document.getElementById("dashboardCycleStatusBadge");
             if (statusBadge) {
@@ -611,16 +614,18 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                     const expenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(item => {
                         if (!isLoteMatch(item.Lote || item.lote || item.Lote_Principal, cycleLot)) return false;
                         if (!aliases.includes(dashboardTrackingCode(item))) return false;
-                        if (selectedCrop !== "Todos") {
-                            return getCultivoForTx(item).toLowerCase() === selectedCrop.toLowerCase();
+                        if (selectedSeed !== "Todos") {
+                            const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "Por Definir").trim();
+                            return semilla === selectedSeed;
                         }
                         return true;
                     });
                     const sales = (rawData.ventas || []).filter(item => {
                         if (!isLoteMatch(item.Lote || item.lote || item.Lote_Principal, cycleLot)) return false;
                         if (!aliases.includes(dashboardTrackingCode(item))) return false;
-                        if (selectedCrop !== "Todos") {
-                            return getCultivoForTx(item).toLowerCase() === selectedCrop.toLowerCase();
+                        if (selectedSeed !== "Todos") {
+                            const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "Por Definir").trim();
+                            return semilla === selectedSeed;
                         }
                         return true;
                     });
@@ -637,45 +642,55 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             const selector = document.getElementById("analysisLoteSelector");
             const selectedLote = selector?.value || "Todos";
             
-            // Show/hide crop filter based on lote selection
-            const cropFilterContainer = document.getElementById("analysisCropFilterContainer");
-            const cropFilterDiv = document.getElementById("analysisCropFilter");
+            // Show/hide seed type filter based on lote selection
+            const seedFilterContainer = document.getElementById("analysisCropFilterContainer");
+            const seedFilterDiv = document.getElementById("analysisCropFilter");
             
             if (selectedLote !== "Todos" && rawData) {
-                // Get unique crops for this lote
-                const crops = new Set();
-                const allItems = [
-                    ...(rawData.gastosIniciales || []),
-                    ...(rawData.gastosDesarrollo || []),
-                    ...(rawData.ventas || [])
-                ];
-                allItems.forEach(item => {
+                // Get unique seed types from initial expenses for this lote
+                const seedTypes = new Set();
+                const iniItems = (rawData.gastosIniciales || []);
+                iniItems.forEach(item => {
                     const itemLot = item.Lote || item.lote || item.Lote_Principal || item.lote_principal;
                     if (isLoteMatch(itemLot, selectedLote)) {
-                        const cultivo = getCultivoForTx(item);
-                        if (cultivo && cultivo !== "N/A") crops.add(cultivo);
+                        const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "").trim();
+                        if (semilla && semilla !== "" && semilla !== "N/A") {
+                            seedTypes.add(semilla);
+                        }
                     }
                 });
                 
-                if (crops.size > 1) {
-                    cropFilterContainer.classList.remove("hidden");
-                    const cropsArray = Array.from(crops).sort();
-                    cropFilterDiv.innerHTML = cropsArray.map(crop => 
-                        `<button type="button" onclick="setAnalysisCropFilter('${crop.replace(/'/g, "\\'")}'); renderAnalysisTracking()" class="px-3 py-2 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60">${escapeDashboardHTML(crop)}</button>`
-                    ).join("");
+                // Reset filter if currently selected seed doesn't exist in this lot
+                if (window.analysisSeedFilter && !seedTypes.has(window.analysisSeedFilter)) {
+                    window.analysisSeedFilter = null;
+                }
+                
+                if (seedTypes.size > 0) {
+                    seedFilterContainer.classList.remove("hidden");
+                    const seedTypesArray = Array.from(seedTypes).sort();
+                    const isAnyFilterActive = window.analysisSeedFilter !== null && window.analysisSeedFilter !== undefined;
+                    seedFilterDiv.innerHTML = seedTypesArray.map(seed => {
+                        const isActive = window.analysisSeedFilter === seed;
+                        const activeClass = isActive ? "bg-emerald-500 text-white dark:bg-emerald-600 dark:text-white" : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60";
+                        return `<button type="button" onclick="setAnalysisSeedFilter('${seed.replace(/'/g, "\\'")}'); renderAnalysisTracking()" class="px-3 py-2 rounded-lg text-xs font-bold transition ${activeClass}">${escapeDashboardHTML(seed)}</button>`;
+                    }).join("");
+                    
+                    if (isAnyFilterActive) {
+                        seedFilterDiv.innerHTML += `<button type="button" onclick="setAnalysisSeedFilter(null); renderAnalysisTracking()" class="px-3 py-2 rounded-lg text-xs font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition">Ver Todos</button>`;
+                    }
                 } else {
-                    cropFilterContainer.classList.add("hidden");
+                    seedFilterContainer.classList.add("hidden");
                 }
             } else {
-                cropFilterContainer.classList.add("hidden");
+                seedFilterContainer.classList.add("hidden");
+                window.analysisSeedFilter = null;
             }
             
             renderDashboardInsights(selectedLote, false);
         }
 
-        function setAnalysisCropFilter(crop) {
-            if (!window.analysisCropFilter) window.analysisCropFilter = null;
-            window.analysisCropFilter = window.analysisCropFilter === crop ? null : crop;
+        function setAnalysisSeedFilter(seed) {
+            window.analysisSeedFilter = seed;
         }
 
 
