@@ -22,7 +22,7 @@
 				</div>
 				<div id="analysisCycleFilterContainer" class="hidden w-full sm:w-auto">
 					<label for="analysisCycleFilter" class="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Filtrar por ciclo</label>
-					<select id="analysisCycleFilter" onchange="setAnalysisCiclo(this.value); renderAnalysisTracking()" class="block min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+					<select id="analysisCycleFilter" onchange="setAnalysisCiclo(this.value)" class="block min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
 						<option value="Todos">Todos los ciclos</option>
 					</select>
 				</div>
