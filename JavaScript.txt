@@ -4,6 +4,14 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
         const DB_VERSION = 1;
         const STORE_NAME = 'pending_records';
 
+        // --- GLOBAL STATE VARIABLES (CONTROL DE ROLES Y PERMISOS) ---
+        let currentUserRole = "visitor";
+        let isUserActive = false;
+        let isUserRegistered = false;
+        let currentAuthenticatedEmail = "";
+        let pendingAdminSessionAction = null;
+        let rawData = null;
+
         function ensureRecordId(record) {
             if (!record.syncId) {
                 record.syncId = window.crypto && window.crypto.randomUUID
@@ -378,7 +386,6 @@ var MI_GAS_URL = "https://script.google.com/macros/s/AKfycbxZXNYHGFVSWGQOEsmOsmz
 
         const yearEl = document.getElementById('currentYear');
 if (yearEl) yearEl.textContent = new Date().getFullYear();
-        let rawData = null;
         let doughnutChartInstance = null;
 
         function toggleDashboardSection(contentId, button) {
@@ -642,8 +649,8 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             const salesBySeed = new Map();
             const expensesBySeed = new Map();
             
-            const selectedExpenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(matchesSummaryFilters);
-            const selectedSales = (rawData.ventas || []).filter(matchesSummaryFilters);
+            const selectedExpenses = [...(rawData?.gastosIniciales || []), ...(rawData?.gastosDesarrollo || [])].filter(matchesSummaryFilters);
+            const selectedSales = (rawData?.ventas || []).filter(matchesSummaryFilters);
             
             selectedExpenses.forEach(item => {
                 const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "Por Definir").trim();
@@ -5745,11 +5752,6 @@ function updateConfigHeader() {
             });
         }
         // --- CONTROL DE ROLES Y PERMISOS DE USUARIO ---
-        let currentUserRole = "visitor";
-        let isUserActive = false;
-        let isUserRegistered = false;
-        let currentAuthenticatedEmail = "";
-        let pendingAdminSessionAction = null;
 
         function getAppSessionToken() {
             try { return sessionStorage.getItem("fincaAppSessionToken") || ""; }
