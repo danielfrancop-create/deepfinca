@@ -57,70 +57,6 @@
             </div>
         </section>
 
-        <section class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-            <button type="button" onclick="toggleDashboardSection('dashboardExtraMetrics', this)" aria-expanded="false" aria-controls="dashboardExtraMetrics" class="w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
-                <span class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">Indicadores complementarios</span>
-                <span class="flex shrink-0 items-center gap-2 text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400"><span data-dashboard-toggle-label>Mostrar</span><svg class="h-5 w-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg></span>
-            </button>
-            <div id="dashboardExtraMetrics" class="hidden p-3 sm:p-5">
-                <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
-            <!-- Tarjeta 3: Margen ROI (%) -->
-            <div class="bg-white rounded-2xl p-3 sm:p-6 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition duration-200">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Margen ROI</span>
-                        <h2 class="text-xl sm:text-2xl font-extrabold text-slate-950 dark:text-white mt-1" id="kpiRoi">0%</h2>
-                    </div>
-                    <span class="p-2.5 bg-teal-50 dark:bg-teal-950 rounded-xl text-teal-600 dark:text-teal-400">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path>
-                        </svg>
-                    </span>
-                </div>
-                <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 pt-2 border-t border-slate-50 dark:border-slate-800">
-                    Retorno sobre inversión
-                </div>
-            </div>
-
-            <!-- Tarjeta 4: Deuda / Pasivos Activos -->
-            <div class="bg-white rounded-2xl p-3 sm:p-6 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition duration-200">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pasivos Activos</span>
-                        <h2 class="text-xl sm:text-2xl font-extrabold text-rose-600 mt-1" id="kpiPasivos">$0</h2>
-                    </div>
-                    <span class="p-2.5 bg-rose-50 dark:bg-rose-950 rounded-xl text-rose-600 dark:text-rose-400">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                        </svg>
-                    </span>
-                </div>
-                <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 pt-2 border-t border-slate-50 dark:border-slate-800">
-                    Total deuda por pagar
-                </div>
-            </div>
-
-            <!-- Tarjeta 5: Total Invertido vs. Total Cosechado -->
-            <div class="bg-white rounded-2xl p-3 sm:p-6 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800 flex flex-col justify-between hover:shadow-md transition duration-200">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Invertido vs Egresado</span>
-                        <h2 class="text-xs sm:text-sm font-extrabold text-slate-950 dark:text-white mt-1" id="kpiInversionVsVentas">$0 vs $0</h2>
-                    </div>
-                    <span class="p-2.5 bg-violet-50 dark:bg-violet-950 rounded-xl text-violet-600 dark:text-violet-400">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path>
-                        </svg>
-                    </span>
-                </div>
-                <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-4 pt-2 border-t border-slate-50 dark:border-slate-800">
-                    Total Costos vs Ventas
-                </div>
-            </div>
-                </div>
-            </div>
-        </section>
-
         <section id="dashboardChartsSection" class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
             <button type="button" onclick="toggleDashboardSection('dashboardChartsContent', this)" aria-expanded="true" aria-controls="dashboardChartsContent" class="w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
                 <span class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">Gráficos del Dashboard</span>
@@ -214,13 +150,6 @@
                             <option value="Venta">Ventas</option>
                         </select>
                     </div>
-                    <!-- Botón Descargar PDF -->
-                    <button type="button" onclick="exportToPDF()" class="flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white py-2 px-4 rounded-xl font-bold text-xs shadow-sm transition duration-150 ease-in-out cursor-pointer w-full sm:w-auto border border-rose-500/20">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        <span>Descargar PDF</span>
-                    </button>
                 </div>
             </div>
             <!-- Tabla de Transacciones -->
