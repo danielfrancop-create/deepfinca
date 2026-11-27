@@ -455,7 +455,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             if (!rawData) return;
             const lot = selectedLote || document.getElementById("filterLote")?.value || "Todos";
             const selectedCycle = useDashboardFilters ? (document.getElementById("filterCiclo")?.value || "Todos") : "Todos";
-            const selectedCrop = useDashboardFilters ? (document.getElementById("filterCultivo")?.value || "Todos") : "Todos";
+            const selectedCrop = useDashboardFilters ? (document.getElementById("filterCultivo")?.value || "Todos") : (window.analysisCropFilter || "Todos");
             const from = useDashboardFilters ? (document.getElementById("filterFechaDesde")?.value || "") : "";
             const to = useDashboardFilters ? (document.getElementById("filterFechaHasta")?.value || "") : "";
             const activeCycle = lot !== "Todos" ? dashboardCycleForLot(lot, selectedCycle) : null;
@@ -472,21 +472,56 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 if (!isLoteMatch(itemLot, lot)) return false;
                 if (from && date && date < from) return false;
                 if (to && date && date > to) return false;
-                return selectedCrop === "Todos" || getCultivoForTx(item).toLowerCase().includes(selectedCrop.toLowerCase());
+                const cultivo = getCultivoForTx(item);
+                return selectedCrop === "Todos" || cultivo.toLowerCase() === selectedCrop.toLowerCase();
             };
             const matchesFilters = item => matchesLotFilters(item) && cycleMatches(item);
             const matchesSummaryFilters = item => matchesLotFilters(item) && (selectedCycle === "Todos" || cycleMatches(item));
 
+            // Calculate net profit independently by crop/product
+            const salesByCrop = new Map();
+            const expensesByCrop = new Map();
+            
             const selectedExpenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(matchesSummaryFilters);
             const selectedSales = (rawData.ventas || []).filter(matchesSummaryFilters);
-            const selectedCosts = selectedExpenses.reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
-            const selectedIncome = selectedSales.reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0), 0);
-            const selectedUnits = selectedSales.reduce((sum, item) => sum + (Number(item.Unidades_Cosechadas || item.unidades_cosechadas) || 0), 0);
+            
+            selectedExpenses.forEach(item => {
+                const cultivo = getCultivoForTx(item);
+                if (!expensesByCrop.has(cultivo)) expensesByCrop.set(cultivo, 0);
+                expensesByCrop.set(cultivo, expensesByCrop.get(cultivo) + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0));
+            });
+            
+            selectedSales.forEach(item => {
+                const cultivo = getCultivoForTx(item);
+                if (!salesByCrop.has(cultivo)) salesByCrop.set(cultivo, { income: 0, units: 0 });
+                const current = salesByCrop.get(cultivo);
+                current.income += Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0;
+                current.units += Number(item.Unidades_Cosechadas || item.unidades_cosechadas) || 0;
+            });
+            
+            // Calculate totals considering the independent crops
+            let selectedCosts = 0;
+            let selectedIncome = 0;
+            let selectedUnits = 0;
+            
+            if (selectedCrop !== "Todos") {
+                selectedCosts = expensesByCrop.get(selectedCrop) || 0;
+                const cropData = salesByCrop.get(selectedCrop);
+                if (cropData) {
+                    selectedIncome = cropData.income;
+                    selectedUnits = cropData.units;
+                }
+            } else {
+                selectedCosts = selectedExpenses.reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
+                selectedIncome = selectedSales.reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0), 0);
+                selectedUnits = selectedSales.reduce((sum, item) => sum + (Number(item.Unidades_Cosechadas || item.unidades_cosechadas) || 0), 0);
+            }
+            
             const netProfitEl = document.getElementById("kpiUtilidadNeta");
             if (netProfitEl) netProfitEl.textContent = formatCOP(selectedIncome - selectedCosts);
             const netProfitIcon = document.getElementById("kpiUtilidadIconContainer");
             if (netProfitIcon) netProfitIcon.className = `p-2.5 rounded-xl ${selectedIncome >= selectedCosts ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" : "bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400"}`;
-            updateLoteSummaryMetrics(lot, selectedCosts, selectedUnits, selectedUnits > 0 ? selectedIncome / selectedUnits : 0);
+            updateLoteSummaryMetrics(lot, selectedCosts, selectedUnits, selectedUnits > 0 ? selectedIncome / selectedUnits : 0, selectedCrop);
 
             const statusBadge = document.getElementById("dashboardCycleStatusBadge");
             if (statusBadge) {
@@ -573,8 +608,22 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 }).map(cycle => {
                     const cycleLot = cycle.Lote || cycle.lote || cycle.Lote_Principal || cycle.lote_principal || "Lote";
                     const aliases = dashboardCycleAliases(cycle);
-                    const expenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(item => isLoteMatch(item.Lote || item.lote || item.Lote_Principal, cycleLot) && aliases.includes(dashboardTrackingCode(item)));
-                    const sales = (rawData.ventas || []).filter(item => isLoteMatch(item.Lote || item.lote || item.Lote_Principal, cycleLot) && aliases.includes(dashboardTrackingCode(item)));
+                    const expenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(item => {
+                        if (!isLoteMatch(item.Lote || item.lote || item.Lote_Principal, cycleLot)) return false;
+                        if (!aliases.includes(dashboardTrackingCode(item))) return false;
+                        if (selectedCrop !== "Todos") {
+                            return getCultivoForTx(item).toLowerCase() === selectedCrop.toLowerCase();
+                        }
+                        return true;
+                    });
+                    const sales = (rawData.ventas || []).filter(item => {
+                        if (!isLoteMatch(item.Lote || item.lote || item.Lote_Principal, cycleLot)) return false;
+                        if (!aliases.includes(dashboardTrackingCode(item))) return false;
+                        if (selectedCrop !== "Todos") {
+                            return getCultivoForTx(item).toLowerCase() === selectedCrop.toLowerCase();
+                        }
+                        return true;
+                    });
                     const costs = expenses.reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
                     const income = sales.reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0), 0);
                     return { lot: cycleLot, code: aliases[0], date: cycle.Fecha_Fin || cycle.fecha_fin || cycle.Fecha_Inicio || cycle.fecha_inicio || "", costs, income, profit: income - costs };
@@ -586,8 +635,49 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
 
         function renderAnalysisTracking() {
             const selector = document.getElementById("analysisLoteSelector");
-            renderDashboardInsights(selector?.value || "Todos", false);
+            const selectedLote = selector?.value || "Todos";
+            
+            // Show/hide crop filter based on lote selection
+            const cropFilterContainer = document.getElementById("analysisCropFilterContainer");
+            const cropFilterDiv = document.getElementById("analysisCropFilter");
+            
+            if (selectedLote !== "Todos" && rawData) {
+                // Get unique crops for this lote
+                const crops = new Set();
+                const allItems = [
+                    ...(rawData.gastosIniciales || []),
+                    ...(rawData.gastosDesarrollo || []),
+                    ...(rawData.ventas || [])
+                ];
+                allItems.forEach(item => {
+                    const itemLot = item.Lote || item.lote || item.Lote_Principal || item.lote_principal;
+                    if (isLoteMatch(itemLot, selectedLote)) {
+                        const cultivo = getCultivoForTx(item);
+                        if (cultivo && cultivo !== "N/A") crops.add(cultivo);
+                    }
+                });
+                
+                if (crops.size > 1) {
+                    cropFilterContainer.classList.remove("hidden");
+                    const cropsArray = Array.from(crops).sort();
+                    cropFilterDiv.innerHTML = cropsArray.map(crop => 
+                        `<button type="button" onclick="setAnalysisCropFilter('${crop.replace(/'/g, "\\'")}'); renderAnalysisTracking()" class="px-3 py-2 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60">${escapeDashboardHTML(crop)}</button>`
+                    ).join("");
+                } else {
+                    cropFilterContainer.classList.add("hidden");
+                }
+            } else {
+                cropFilterContainer.classList.add("hidden");
+            }
+            
+            renderDashboardInsights(selectedLote, false);
         }
+
+        function setAnalysisCropFilter(crop) {
+            if (!window.analysisCropFilter) window.analysisCropFilter = null;
+            window.analysisCropFilter = window.analysisCropFilter === crop ? null : crop;
+        }
+
 
         // Convierte "$ 1.250.000,50" (es-CO) o un número en un número puro (1250000.5).
         function parseCurrency(value) {
@@ -653,14 +743,15 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             return `${isNegative ? '-' : ''}$ ${formatted}`;
         }
 
-        function updateLoteSummaryMetrics(loteId, calcGastos, calcUnidades, calcPrecioVenta) {
+        function updateLoteSummaryMetrics(loteId, calcGastos, calcUnidades, calcPrecioVenta, selectedCrop) {
             const currentLote = loteId || document.getElementById("filterLote")?.value || "Todos";
             
             // Dynamic title update when a specific lot is selected
             const cardTitleEl = document.getElementById("kpiResumenLoteTitulo");
             if (cardTitleEl) {
                 if (currentLote && currentLote !== "Todos") {
-                    cardTitleEl.textContent = `Resumen de Lote [${currentLote}]`;
+                    const cropLabel = selectedCrop && selectedCrop !== "Todos" ? ` [${selectedCrop}]` : "";
+                    cardTitleEl.textContent = `Resumen de Lote [${currentLote}]${cropLabel}`;
                 } else {
                     cardTitleEl.textContent = "Resumen de Lote";
                 }
