@@ -700,16 +700,17 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             const cicloSelector = document.getElementById("cycleCostCicloSelector");
             if (!cicloSelector) return;
             
-            const cycles = (rawData.ciclos || []).filter(c => isLoteMatch(c.Lote || c.lote, lote));
+            const cycles = (rawData.ciclos || []).map((c, idx) => ({ cycle: c, index: idx }))
+                .filter(({ cycle }) => isLoteMatch(cycle.Lote || cycle.lote, lote));
             
             cicloSelector.innerHTML = '<option value="">Seleccionar ciclo...</option>';
             if (cycles.length > 0) {
-                cycles.forEach(cycle => {
-                    const cycleNum = cycle.Ciclo_Numero || cycle.ciclo_numero || "?";
+                cycles.forEach(({ cycle, index }) => {
                     const cultivo = cycle.Cultivo || cycle.cultivo || "Sin cultivo";
-                    const optionText = `Ciclo ${cycleNum} - ${cultivo}`;
+                    const estado = cycle.Estado || cycle.estado || "Desconocido";
+                    const optionText = `${cultivo} (${estado})`;
                     const option = document.createElement("option");
-                    option.value = String(cycleNum);
+                    option.value = String(index);
                     option.textContent = optionText;
                     cicloSelector.appendChild(option);
                 });
@@ -729,12 +730,15 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             const loteSelector = document.getElementById("cycleCostLoteSelector");
             const cicloSelector = document.getElementById("cycleCostCicloSelector");
             console.log("Lote seleccionado:", loteSelector?.value);
-            console.log("Ciclo seleccionado:", cicloSelector?.value);
+            console.log("Ciclo seleccionado (índice):", cicloSelector?.value);
             console.log("Ciclos en selector:", cicloSelector?.innerHTML);
             
             if (loteSelector?.value && loteSelector.value !== "Todos") {
                 const cycles = (rawData?.ciclos || []).filter(c => isLoteMatch(c.Lote || c.lote, loteSelector.value));
                 console.log(`Ciclos encontrados para ${loteSelector.value}:`, cycles);
+                cycles.forEach((c, idx) => {
+                    console.log(`  [${idx}] ${c.Cultivo || c.cultivo} - Código: ${dashboardCycleAliases(c).join(", ")}`);
+                });
             }
         }
         
@@ -767,19 +771,21 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 return;
             }
             
-            // Find the cycle
-            const cycle = (rawData.ciclos || []).find(c => 
-                isLoteMatch(c.Lote || c.lote, selectedLote) && 
-                String(c.Ciclo_Numero || c.ciclo_numero) === String(selectedCycle)
-            );
+            // Find the cycle by index
+            const cycleIndex = parseInt(selectedCycle, 10);
+            const cycle = (rawData.ciclos || [])[cycleIndex];
             
-            if (!cycle) {
+            if (!cycle || !isLoteMatch(cycle.Lote || cycle.lote, selectedLote)) {
                 warningDiv.classList.remove("hidden");
                 warningDiv.innerHTML = '<p class="font-bold mb-1">⚠️ Ciclo no encontrado</p><p>No se pudo encontrar los datos del ciclo seleccionado.</p>';
                 detailsDiv.classList.add("hidden");
                 byProductDiv.classList.add("hidden");
                 return;
             }
+            
+            // Update scope labels with cycle info
+            const cultivo = cycle.Cultivo || cycle.cultivo || "Sin cultivo";
+            document.getElementById("analysisCycleCostCiclo").textContent = `${cultivo}`;
             
             // Get all possible aliases for this cycle (all tracking codes)
             const cycleAliases = dashboardCycleAliases(cycle);
