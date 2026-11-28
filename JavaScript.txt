@@ -664,6 +664,11 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 cycleCostLoteSelector.value = selectedLote;
                 if (selectedLote !== "Todos") {
                     populateCyclesForLote(selectedLote);
+                    // Auto-select first cycle if available
+                    const cicloSelector = document.getElementById("cycleCostCicloSelector");
+                    if (cicloSelector && cicloSelector.options.length > 1) {
+                        cicloSelector.value = cicloSelector.options[1].value;
+                    }
                 } else {
                     const cicloSelector = document.getElementById("cycleCostCicloSelector");
                     if (cicloSelector) {
@@ -683,15 +688,25 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
         function updateCycleCostAndProfit() {
             const loteSelector = document.getElementById("cycleCostLoteSelector");
             const cicloSelector = document.getElementById("cycleCostCicloSelector");
+            const analysisLoteSelector = document.getElementById("analysisLoteSelector");
+            
+            // Sync with main analysis lote selector
+            if (analysisLoteSelector && analysisLoteSelector.value && loteSelector.value !== analysisLoteSelector.value) {
+                loteSelector.value = analysisLoteSelector.value;
+            }
             
             const selectedLote = loteSelector?.value || "Todos";
             const selectedCiclo = cicloSelector?.value || "";
             
             if (selectedLote && selectedLote !== "Todos") {
                 populateCyclesForLote(selectedLote);
+                // Auto-select first cycle if none is selected
+                if (!selectedCiclo && cicloSelector.options.length > 1) {
+                    cicloSelector.value = cicloSelector.options[1].value;
+                }
             }
             
-            renderCycleCostAndProfit(selectedLote, selectedCiclo);
+            renderCycleCostAndProfit(selectedLote, cicloSelector?.value || "");
         }
         
         function populateCyclesForLote(lote) {
@@ -737,7 +752,23 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 const cycles = (rawData?.ciclos || []).filter(c => isLoteMatch(c.Lote || c.lote, loteSelector.value));
                 console.log(`Ciclos encontrados para ${loteSelector.value}:`, cycles);
                 cycles.forEach((c, idx) => {
-                    console.log(`  [${idx}] ${c.Cultivo || c.cultivo} - Código: ${dashboardCycleAliases(c).join(", ")}`);
+                    const aliases = dashboardCycleAliases(c);
+                    console.log(`  [${idx}] ${c.Cultivo || c.cultivo} - Código: ${aliases.join(", ")}`);
+                    
+                    // Debug: Check which expenses match this cycle
+                    const matchesCycle = item => {
+                        const itemLote = item.Lote || item.lote || item.Lote_Principal || item.lote_principal;
+                        if (!isLoteMatch(itemLote, loteSelector.value)) return false;
+                        if (aliases.length === 0) return true;
+                        const itemCode = dashboardTrackingCode(item);
+                        return aliases.includes(itemCode);
+                    };
+                    
+                    const cycleExpenses = [...(rawData?.gastosIniciales || []), ...(rawData?.gastosDesarrollo || [])].filter(matchesCycle);
+                    const cycleSales = (rawData?.ventas || []).filter(matchesCycle);
+                    console.log(`    Gastos encontrados: ${cycleExpenses.length}, Ventas encontradas: ${cycleSales.length}`);
+                    console.log(`    Costo total: $${cycleExpenses.reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0).toLocaleString('es-CO')}`);
+                    console.log(`    Ingreso total: $${cycleSales.reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0), 0).toLocaleString('es-CO')}`);
                 });
             }
         }
@@ -780,6 +811,10 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 warningDiv.innerHTML = '<p class="font-bold mb-1">⚠️ Ciclo no encontrado</p><p>No se pudo encontrar los datos del ciclo seleccionado.</p>';
                 detailsDiv.classList.add("hidden");
                 byProductDiv.classList.add("hidden");
+                document.getElementById("analysisCycleSalePrice").textContent = "-";
+                document.getElementById("analysisCycleProfit").textContent = "-";
+                document.getElementById("analysisCycleMargin").textContent = "-";
+                document.getElementById("analysisCycleCostForProfit").textContent = "-";
                 return;
             }
             
@@ -803,22 +838,19 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 return cycleAliases.includes(itemCode);
             };
             
-            const expenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(matchesCycle);
+            // Filter initial and development expenses separately
+            const initialExpenses = (rawData.gastosIniciales || []).filter(matchesCycle);
+            const developmentExpenses = (rawData.gastosDesarrollo || []).filter(matchesCycle);
+            const allExpenses = [...initialExpenses, ...developmentExpenses];
             const sales = (rawData.ventas || []).filter(matchesCycle);
             
             // Calculate costs by type
-            const iniCost = expenses
-                .filter(e => e.Tipo_Gasto === "Inicial" || String(e.tipo_gasto || "").toLowerCase() === "inicial")
-                .reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
-            
-            const devCost = expenses
-                .filter(e => e.Tipo_Gasto === "Desarrollo" || String(e.tipo_gasto || "").toLowerCase() === "desarrollo")
-                .reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
-            
+            const iniCost = initialExpenses.reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
+            const devCost = developmentExpenses.reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
             const totalCost = iniCost + devCost;
             
             // Calculate total quantity produced
-            const totalQuantity = expenses.reduce((sum, item) => {
+            const totalQuantity = allExpenses.reduce((sum, item) => {
                 return sum + (Number(item.Cantidad || item.cantidad) || 0);
             }, 0);
             
@@ -833,7 +865,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             // Cost breakdown by product if multiple seeds
             const costByProduct = {};
             const qtyByProduct = {};
-            expenses.forEach(item => {
+            allExpenses.forEach(item => {
                 const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "Sin semilla").trim();
                 const cost = Number(item.Costo_Total_COP || item.costo_total_cop) || 0;
                 const qty = Number(item.Cantidad || item.cantidad) || 0;
@@ -886,6 +918,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 // Show "no sale" warning
                 warningDiv.classList.remove("hidden");
                 warningDiv.innerHTML = '<p class="font-bold mb-1">⚠️ Sin venta registrada</p><p>Este ciclo aún no tiene venta registrada. Complete la venta para ver el resultado económico.</p>';
+                profitDiv.classList.add("hidden");
                 document.getElementById("analysisCycleSalePrice").textContent = "-";
                 document.getElementById("analysisCycleProfit").textContent = "-";
                 document.getElementById("analysisCycleMargin").textContent = "-";
