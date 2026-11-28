@@ -690,20 +690,36 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             const cicloSelector = document.getElementById("cycleCostCicloSelector");
             const analysisLoteSelector = document.getElementById("analysisLoteSelector");
             
-            // Sync with main analysis lote selector
-            if (analysisLoteSelector && analysisLoteSelector.value && loteSelector.value !== analysisLoteSelector.value) {
-                loteSelector.value = analysisLoteSelector.value;
-            }
-            
+            const previousLote = window.cycleCostState?.lastLote;
             const selectedLote = loteSelector?.value || "Todos";
             const selectedCiclo = cicloSelector?.value || "";
             
-            if (selectedLote && selectedLote !== "Todos") {
-                populateCyclesForLote(selectedLote);
-                // Auto-select first cycle if none is selected
-                if (!selectedCiclo && cicloSelector.options.length > 1) {
+            window.cycleCostState = window.cycleCostState || { lastLote: null, lastCiclo: null };
+            
+            // Sync with main analysis lote selector if changed externally
+            if (analysisLoteSelector && analysisLoteSelector.value && loteSelector.value !== analysisLoteSelector.value) {
+                loteSelector.value = analysisLoteSelector.value;
+                window.cycleCostState.lastLote = analysisLoteSelector.value;
+                populateCyclesForLote(analysisLoteSelector.value);
+                if (cicloSelector.options.length > 1) {
                     cicloSelector.value = cicloSelector.options[1].value;
+                    window.cycleCostState.lastCiclo = cicloSelector.options[1].value;
                 }
+            } else if (selectedLote !== previousLote && selectedLote !== "Todos") {
+                // Repopulate cycles only when lote actually changed
+                populateCyclesForLote(selectedLote);
+                window.cycleCostState.lastLote = selectedLote;
+                // Auto-select first cycle if none is selected
+                if (cicloSelector.options.length > 1) {
+                    cicloSelector.value = cicloSelector.options[1].value;
+                    window.cycleCostState.lastCiclo = cicloSelector.options[1].value;
+                } else {
+                    window.cycleCostState.lastCiclo = "";
+                }
+            } else {
+                // Update state tracking
+                window.cycleCostState.lastLote = selectedLote;
+                window.cycleCostState.lastCiclo = selectedCiclo;
             }
             
             renderCycleCostAndProfit(selectedLote, cicloSelector?.value || "");
@@ -723,10 +739,12 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 cycles.forEach(({ cycle, index }) => {
                     const cultivo = cycle.Cultivo || cycle.cultivo || "Sin cultivo";
                     const estado = cycle.Estado || cycle.estado || "Desconocido";
+                    const cycleCode = cycle.Codigo_General || cycle.codigo_general || `cycle_${index}`;
                     const optionText = `${cultivo} (${estado})`;
                     const option = document.createElement("option");
-                    option.value = String(index);
+                    option.value = cycleCode;
                     option.textContent = optionText;
+                    option.dataset.cycleIndex = index;
                     cicloSelector.appendChild(option);
                 });
             } else {
@@ -773,15 +791,15 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             }
         }
         
-        function renderCycleCostAndProfit(lote, cycleNum) {
+        function renderCycleCostAndProfit(lote, cycleCode) {
             if (!rawData) return;
             
             const selectedLote = lote || "Todos";
-            const selectedCycle = cycleNum || "";
+            const selectedCycleCode = cycleCode || "";
             
             // Update scope labels
             document.getElementById("analysisCycleCostLote").textContent = selectedLote;
-            document.getElementById("analysisCycleCostCiclo").textContent = selectedCycle ? `Ciclo ${selectedCycle}` : "Sin seleccionar";
+            document.getElementById("analysisCycleCostCiclo").textContent = selectedCycleCode ? selectedCycleCode : "Sin seleccionar";
             
             // Hide all sections by default
             const warningDiv = document.getElementById("analysisCycleNoSaleWarning");
@@ -790,7 +808,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             const byProductDiv = document.getElementById("analysisCycleCostByProduct");
             
             // If no lote or no cycle selected, show empty state
-            if (!selectedLote || selectedLote === "Todos" || !selectedCycle) {
+            if (!selectedLote || selectedLote === "Todos" || !selectedCycleCode) {
                 detailsDiv.classList.add("hidden");
                 byProductDiv.classList.add("hidden");
                 warningDiv.classList.remove("hidden");
@@ -802,11 +820,13 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 return;
             }
             
-            // Find the cycle by index
-            const cycleIndex = parseInt(selectedCycle, 10);
-            const cycle = (rawData.ciclos || [])[cycleIndex];
+            // Find the cycle by código (not by array index)
+            const cycle = (rawData.ciclos || []).find(c => {
+                const cycleCode = c.Codigo_General || c.codigo_general;
+                return cycleCode === selectedCycleCode && isLoteMatch(c.Lote || c.lote, selectedLote);
+            });
             
-            if (!cycle || !isLoteMatch(cycle.Lote || cycle.lote, selectedLote)) {
+            if (!cycle) {
                 warningDiv.classList.remove("hidden");
                 warningDiv.innerHTML = '<p class="font-bold mb-1">⚠️ Ciclo no encontrado</p><p>No se pudo encontrar los datos del ciclo seleccionado.</p>';
                 detailsDiv.classList.add("hidden");
@@ -856,17 +876,17 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             
             const costPerUnit = totalQuantity > 0 ? totalCost / totalQuantity : 0;
             
-            // Format and display costs
-            document.getElementById("analysisCycleCostIni").textContent = "$" + iniCost.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            document.getElementById("analysisCycleCostDesarrollo").textContent = "$" + devCost.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            document.getElementById("analysisCycleCostTotal").textContent = "$" + totalCost.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            document.getElementById("analysisCycleCostForProfit").textContent = "$" + totalCost.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            // Format and display costs with consistent formatCOP function
+            document.getElementById("analysisCycleCostIni").textContent = formatCOP(iniCost);
+            document.getElementById("analysisCycleCostDesarrollo").textContent = formatCOP(devCost);
+            document.getElementById("analysisCycleCostTotal").textContent = formatCOP(totalCost);
+            document.getElementById("analysisCycleCostForProfit").textContent = formatCOP(totalCost);
             
             // Cost breakdown by product if multiple seeds
             const costByProduct = {};
             const qtyByProduct = {};
             allExpenses.forEach(item => {
-                const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "Sin semilla").trim();
+                const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || item.Tipo_Insumo || item.tipo_insumo || "Sin semilla").trim();
                 const cost = Number(item.Costo_Total_COP || item.costo_total_cop) || 0;
                 const qty = Number(item.Cantidad || item.cantidad) || 0;
                 costByProduct[semilla] = (costByProduct[semilla] || 0) + cost;
@@ -878,7 +898,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                     .map(([semilla, cost]) => {
                         const qty = qtyByProduct[semilla] || 0;
                         const costPerUnitProduct = qty > 0 ? cost / qty : 0;
-                        return `<div class="mb-2"><div class="flex justify-between items-center py-1"><span>${escapeDashboardHTML(semilla)}:</span> <span class="font-bold">$${cost.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div><div class="text-[11px] text-slate-500 dark:text-slate-500 flex justify-between"><span>Cantidad: ${qty} Unidad(es)</span><span>Costo/Unidad: $${costPerUnitProduct.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div></div>`;
+                        return `<div class="mb-2"><div class="flex justify-between items-center py-1"><span>${escapeDashboardHTML(semilla)}:</span> <span class="font-bold">${formatCOP(cost)}</span></div><div class="text-[11px] text-slate-500 dark:text-slate-500 flex justify-between"><span>Cantidad: ${qty} Unidad(es)</span><span>Costo/Unidad: ${formatCOP(costPerUnitProduct)}</span></div></div>`;
                     })
                     .join("");
                 byProductDiv.classList.remove("hidden");
@@ -893,26 +913,29 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 costPerUnitElement.className = "text-xs text-slate-600 dark:text-slate-500 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 costo-por-unidad";
                 detailsDiv.appendChild(costPerUnitElement);
             }
-            costPerUnitElement.innerHTML = `<div class="flex justify-between items-center"><span>Costo por Unidad Producida:</span><span class="font-bold">$${costPerUnit.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
+            costPerUnitElement.innerHTML = `<div class="flex justify-between items-center"><span>Costo por Unidad Producida:</span><span class="font-bold">${formatCOP(costPerUnit)}</span></div>`;
             
             detailsDiv.classList.remove("hidden");
             
             // Calculate sales and profit
             const totalSale = sales.reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0), 0);
             
-            if (totalSale > 0) {
+            // Check if there's a sale registered (regardless of amount)
+            const hasSale = sales.length > 0;
+            
+            if (hasSale) {
                 // Show profit calculation
                 warningDiv.classList.add("hidden");
                 profitDiv.classList.remove("hidden");
                 
                 const profit = totalSale - totalCost;
-                const margin = totalCost > 0 ? ((profit / totalCost) * 100).toFixed(2) : 0;
+                const margin = totalSale > 0 ? ((profit / totalSale) * 100).toFixed(2) : 0;
                 
                 const profitColor = profit >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400";
                 const profitSign = profit >= 0 ? "+" : "";
                 
-                document.getElementById("analysisCycleSalePrice").textContent = "$" + totalSale.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                document.getElementById("analysisCycleProfit").innerHTML = `<span class="${profitColor}">${profitSign}$${profit.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`;
+                document.getElementById("analysisCycleSalePrice").textContent = formatCOP(totalSale);
+                document.getElementById("analysisCycleProfit").innerHTML = `<span class="${profitColor}">${profitSign}${formatCOP(profit)}</span>`;
                 document.getElementById("analysisCycleMargin").innerHTML = `<span class="${profitColor}">${profitSign}${margin}%</span>`;
             } else {
                 // Show "no sale" warning
