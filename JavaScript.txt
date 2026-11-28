@@ -406,6 +406,10 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                     if (doughnutChartInstance) doughnutChartInstance.resize();
                 });
             }
+            
+            if (isOpening && contentId === "analysisCycleCostContent") {
+                updateCycleCostAndProfit();
+            }
         }
 
         function moveDashboardSectionsToEnd() {
@@ -658,10 +662,22 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             const cycleCostLoteSelector = document.getElementById("cycleCostLoteSelector");
             if (cycleCostLoteSelector) {
                 cycleCostLoteSelector.value = selectedLote;
-                populateCyclesForLote(selectedLote);
+                if (selectedLote !== "Todos") {
+                    populateCyclesForLote(selectedLote);
+                } else {
+                    const cicloSelector = document.getElementById("cycleCostCicloSelector");
+                    if (cicloSelector) {
+                        cicloSelector.innerHTML = '<option value="">Seleccionar ciclo...</option>';
+                    }
+                }
             }
             
             renderAllAnalysisBlocks();
+            
+            // Initialize cycle cost and profit block when analysis view is loaded
+            if (document.getElementById("analysisCycleCostContent") && !document.getElementById("analysisCycleCostContent").classList.contains("hidden")) {
+                updateCycleCostAndProfit();
+            }
         }
 
         function updateCycleCostAndProfit() {
@@ -679,9 +695,11 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
         }
         
         function populateCyclesForLote(lote) {
-            if (!rawData || !rawData.ciclos) return;
+            if (!rawData || !rawData.ciclos || !lote || lote === "Todos") return;
             
             const cicloSelector = document.getElementById("cycleCostCicloSelector");
+            if (!cicloSelector) return;
+            
             const cycles = (rawData.ciclos || []).filter(c => isLoteMatch(c.Lote || c.lote, lote));
             
             cicloSelector.innerHTML = '<option value="">Seleccionar ciclo...</option>';
@@ -697,6 +715,26 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 });
             } else {
                 cicloSelector.innerHTML = '<option value="">Sin ciclos para este lote</option>';
+            }
+        }
+        
+        function debugCycleCostAndProfit() {
+            console.log("=== DEBUG: Bloque Costo y Ganancia ===");
+            console.log("rawData:", rawData);
+            console.log("rawData.ciclos:", rawData?.ciclos);
+            console.log("rawData.gastosIniciales:", rawData?.gastosIniciales?.length, "registros");
+            console.log("rawData.gastosDesarrollo:", rawData?.gastosDesarrollo?.length, "registros");
+            console.log("rawData.ventas:", rawData?.ventas?.length, "registros");
+            
+            const loteSelector = document.getElementById("cycleCostLoteSelector");
+            const cicloSelector = document.getElementById("cycleCostCicloSelector");
+            console.log("Lote seleccionado:", loteSelector?.value);
+            console.log("Ciclo seleccionado:", cicloSelector?.value);
+            console.log("Ciclos en selector:", cicloSelector?.innerHTML);
+            
+            if (loteSelector?.value && loteSelector.value !== "Todos") {
+                const cycles = (rawData?.ciclos || []).filter(c => isLoteMatch(c.Lote || c.lote, loteSelector.value));
+                console.log(`Ciclos encontrados para ${loteSelector.value}:`, cycles);
             }
         }
         
@@ -743,12 +781,20 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 return;
             }
             
+            // Get all possible aliases for this cycle (all tracking codes)
+            const cycleAliases = dashboardCycleAliases(cycle);
+            
             // Filter expenses and sales for this specific lote and cycle
-            const cycleTrackingCode = cycle.Codigo_General || cycle.codigo_general || "";
             const matchesCycle = item => {
                 const itemLote = item.Lote || item.lote || item.Lote_Principal || item.lote_principal;
-                const itemCode = item.Codigo_Seguimiento || item.codigo_seguimiento || item.Codigo_Desarrollo || item.codigo_desarrollo || item.Codigo_General || item.codigo_general || "";
-                return isLoteMatch(itemLote, selectedLote) && (cycleTrackingCode.trim() === "" || itemCode.includes(cycleTrackingCode));
+                if (!isLoteMatch(itemLote, selectedLote)) return false;
+                
+                // If no aliases defined, match by lote only
+                if (cycleAliases.length === 0) return true;
+                
+                // Check if item's tracking code is in the cycle's aliases
+                const itemCode = dashboardTrackingCode(item);
+                return cycleAliases.includes(itemCode);
             };
             
             const expenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(matchesCycle);
