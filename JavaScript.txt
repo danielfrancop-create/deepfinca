@@ -898,7 +898,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             }
             
             if (badgeTipoEl) {
-                badgeTipoEl.textContent = "(Basado en costos operativos reales)";
+                badgeTipoEl.textContent = "(Datos reales)";
                 badgeTipoEl.className = "mt-0.5 block text-[10px] font-semibold text-slate-500 dark:text-slate-400";
             }
 
@@ -1044,7 +1044,6 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
         function updateLoteSummaryMetrics(loteId, calcGastos, calcUnidades, calcPrecioVenta, selectedCrop) {
             const currentLote = loteId || document.getElementById("filterLote")?.value || "Todos";
             
-            // Dynamic title update when a specific lot is selected
             const cardTitleEl = document.getElementById("kpiResumenLoteTitulo");
             if (cardTitleEl) {
                 if (currentLote && currentLote !== "Todos") {
@@ -1068,29 +1067,13 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             const pctValEl = document.getElementById("kpiPctRentabilidadVal");
             const projectedUnitsSubtextEl = document.getElementById("kpiUnidadesProyectadasSubtext");
 
-            // Calculate metrics based on current filter state
             let totalCost = calcGastos !== undefined ? calcGastos : 0;
             let qty = calcUnidades !== undefined ? calcUnidades : 0;
-            let isEstimated = false;
 
-            if (qty <= 0) {
-                // If real harvest = 0, calculate projected quantity from gastosIniciales * 2.8
-                isEstimated = true;
-                const iniRecords = (rawData?.gastosIniciales || []).filter(item => isLoteMatch(item.Lote || item.lote, currentLote));
-                const seedQty = iniRecords.reduce((sum, item) => sum + (Number(item.Cantidad || item.cantidad) || 0), 0);
-                qty = seedQty > 0 ? seedQty * 2.8 : 0;
-            }
-
-            // Division-by-Zero safeguard: Controlled return
             const unitCost = qty > 0 ? (totalCost / qty) : 0;
             const unitMargin = hasMarketPrice ? precioRef - unitCost : 0;
-            // Formula: %R = ((PrecioMercado - CU) / PrecioMercado) * 100
             const pctRentabilidad = hasMarketPrice ? ((precioRef - unitCost) / precioRef) * 100 : null;
 
-            // Health Status Color Rules:
-            // 🟢 Verde: %R > 15% (Margen saludable)
-            // 🟡 Amarillo: 0% <= %R <= 15% (Margen en riesgo)
-            // 🔴 Rojo: CU > P_mercado (%R < 0%) (Pérdida / Operando por debajo del costo)
             let healthColor = "NEUTRO";
             if (hasMarketPrice && unitCost > precioRef) {
                 healthColor = "ROJO";
@@ -1102,7 +1085,6 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 healthColor = "VERDE";
             }
 
-            // Detect dynamic unit of measure from active crop / lot records
             let unidadMedida = "Atados";
             
             if (rawData) {
@@ -1115,7 +1097,6 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
                 }
             }
 
-            // Standardize singular form for UI display (e.g. "Atados" -> "Atado", "Bultos" -> "Bulto", "Kg" -> "Kg")
             let unidadSingular = unidadMedida.trim();
             if (unidadSingular.toLowerCase() === "atados") unidadSingular = "Atado";
             else if (unidadSingular.toLowerCase() === "bultos") unidadSingular = "Bulto";
@@ -1126,11 +1107,11 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             if (sideCuEl) sideCuEl.textContent = `${formatCOP(unitCost)} / ${unidadSingular}`;
 
             if (projectedUnitsSubtextEl) {
-                projectedUnitsSubtextEl.textContent = `Unidades Proyectadas: ${Math.round(qty).toLocaleString('es-CO')} ${unidadSingular}${qty !== 1 ? 's' : ''}`;
+                projectedUnitsSubtextEl.textContent = `Unidades Reales: ${Math.round(qty).toLocaleString('es-CO')} ${unidadSingular}${qty !== 1 ? 's' : ''}`;
             }
             
             if (badgeTipoEl) {
-                badgeTipoEl.textContent = isEstimated ? "(Basado en estimación)" : "(Basado en cosecha real)";
+                badgeTipoEl.textContent = "(Datos reales)";
                 badgeTipoEl.className = "mt-0.5 block text-[10px] font-semibold text-slate-500 dark:text-slate-400";
             }
 
