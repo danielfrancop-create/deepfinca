@@ -743,6 +743,105 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             renderAllAnalysisBlocks();
         }
 
+        function renderCycleCostAndProfit() {
+            if (!rawData) return;
+            
+            const selectedLote = window.analysisState.lote || "Todos";
+            const selectedCycle = window.analysisState.ciclo || "Todos";
+            const selectedSemilla = window.analysisState.semilla || "Todos";
+            
+            // Update scope labels
+            document.getElementById("analysisCycleCostLote").textContent = selectedLote;
+            document.getElementById("analysisCycleCostCiclo").textContent = selectedCycle;
+            
+            // Hide the warning by default
+            const warningDiv = document.getElementById("analysisCycleNoSaleWarning");
+            const profitDiv = document.getElementById("analysisCycleProfitStatus");
+            const detailsDiv = document.getElementById("analysisCycleCostDetails");
+            const byProductDiv = document.getElementById("analysisCycleCostByProduct");
+            
+            warningDiv.classList.add("hidden");
+            profitDiv.classList.remove("hidden");
+            detailsDiv.classList.remove("hidden");
+            
+            // Collect all matching expenses and sales
+            const matchesFilters = item => {
+                const itemLot = item.Lote || item.lote || item.Lote_Principal || item.lote_principal;
+                if (!isLoteMatch(itemLot, selectedLote)) return false;
+                
+                if (selectedSemilla !== "Todos") {
+                    const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "").trim();
+                    if (semilla !== selectedSemilla) return false;
+                }
+                
+                if (selectedCycle !== "Todos") {
+                    const code = dashboardTrackingCode(item);
+                    if (!code || code !== selectedCycle) return false;
+                }
+                return true;
+            };
+            
+            const expenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(matchesFilters);
+            const sales = (rawData.ventas || []).filter(matchesFilters);
+            
+            // Calculate costs by type
+            const iniCost = expenses
+                .filter(e => e.Tipo_Gasto === "Inicial" || String(e.tipo_gasto || "").toLowerCase() === "inicial")
+                .reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
+            
+            const devCost = expenses
+                .filter(e => e.Tipo_Gasto === "Desarrollo" || String(e.tipo_gasto || "").toLowerCase() === "desarrollo")
+                .reduce((sum, item) => sum + (Number(item.Costo_Total_COP || item.costo_total_cop) || 0), 0);
+            
+            const totalCost = iniCost + devCost;
+            
+            // Format and display costs
+            document.getElementById("analysisCycleCostIni").textContent = "$" + iniCost.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById("analysisCycleCostDesarrollo").textContent = "$" + devCost.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById("analysisCycleCostTotal").textContent = "$" + totalCost.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById("analysisCycleCostForProfit").textContent = "$" + totalCost.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            
+            // Cost breakdown by product if multiple seeds
+            const costByProduct = {};
+            expenses.forEach(item => {
+                const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "Sin semilla").trim();
+                const cost = Number(item.Costo_Total_COP || item.costo_total_cop) || 0;
+                costByProduct[semilla] = (costByProduct[semilla] || 0) + cost;
+            });
+            
+            if (Object.keys(costByProduct).length > 1) {
+                byProductDiv.innerHTML = Object.entries(costByProduct)
+                    .map(([semilla, cost]) => `<div class="flex justify-between items-center py-1"><span>${escapeDashboardHTML(semilla)}:</span> <span class="font-bold">$${cost.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`)
+                    .join("");
+                byProductDiv.classList.remove("hidden");
+            } else {
+                byProductDiv.classList.add("hidden");
+            }
+            
+            // Calculate sales and profit
+            const totalSale = sales.reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0), 0);
+            
+            if (totalSale > 0) {
+                // Show profit calculation
+                warningDiv.classList.add("hidden");
+                const profit = totalSale - totalCost;
+                const margin = totalCost > 0 ? ((profit / totalCost) * 100).toFixed(2) : 0;
+                
+                const profitColor = profit >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400";
+                const profitSign = profit >= 0 ? "+" : "";
+                
+                document.getElementById("analysisCycleSalePrice").textContent = "$" + totalSale.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById("analysisCycleProfit").innerHTML = `<span class="${profitColor}">${profitSign}$${profit.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`;
+                document.getElementById("analysisCycleMargin").innerHTML = `<span class="${profitColor}">${profitSign}${margin}%</span>`;
+            } else {
+                // Show "no sale" warning
+                warningDiv.classList.remove("hidden");
+                document.getElementById("analysisCycleSalePrice").textContent = "-";
+                document.getElementById("analysisCycleProfit").textContent = "-";
+                document.getElementById("analysisCycleMargin").textContent = "-";
+            }
+        }
+
         function updateSummaryLoteSelection() {
             const loteSelector = document.getElementById("summaryLoteSelector");
             const selectedLote = loteSelector?.value || "Todos";
@@ -933,6 +1032,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
         function renderAllAnalysisBlocks() {
             renderDashboardInsights(window.analysisState.lote, false);
             renderAnalysisIndicators();
+            renderCycleCostAndProfit();
         }
 
         function renderAnalysisIndicators() {
