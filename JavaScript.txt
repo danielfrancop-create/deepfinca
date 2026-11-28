@@ -461,8 +461,8 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
         function renderDashboardInsights(selectedLote, useDashboardFilters = true) {
             if (!rawData) return;
             const lot = window.analysisState.lote || selectedLote || document.getElementById("filterLote")?.value || "Todos";
-            const selectedCycle = useDashboardFilters ? (document.getElementById("filterCiclo")?.value || "Todos") : (window.analysisState.ciclo || "Todos");
-            const selectedSeed = useDashboardFilters ? (document.getElementById("filterCultivo")?.value || "Todos") : (window.analysisState.semilla || "Todos");
+            const selectedCycle = useDashboardFilters ? (document.getElementById("filterCiclo")?.value || "Todos") : "Todos";
+            const selectedSeed = useDashboardFilters ? (document.getElementById("filterCultivo")?.value || "Todos") : "Todos";
             const from = useDashboardFilters ? (document.getElementById("filterFechaDesde")?.value || "") : "";
             const to = useDashboardFilters ? (document.getElementById("filterFechaHasta")?.value || "") : "";
             const activeCycle = lot !== "Todos" ? dashboardCycleForLot(lot, selectedCycle) : null;
@@ -647,9 +647,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
 
         // Centralized analysis state
         window.analysisState = {
-            lote: "Todos",
-            semilla: "Todos",
-            ciclo: "Todos"
+            lote: "Todos"
         };
 
         function renderAnalysisTracking() {
@@ -657,132 +655,104 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             const selectedLote = selector?.value || "Todos";
             window.analysisState.lote = selectedLote;
             
-            // Show/hide seed type filter based on lote selection
-            const seedFilterContainer = document.getElementById("analysisCropFilterContainer");
-            const seedFilterDiv = document.getElementById("analysisCropFilter");
-            
-            // Show/hide cycle filter based on lote selection
-            const cycleFilterContainer = document.getElementById("analysisCycleFilterContainer");
-            const cycleFilterSelect = document.getElementById("analysisCycleFilter");
-            
-            if (selectedLote !== "Todos" && rawData) {
-                // Get unique seed types from initial expenses for this lote
-                const seedTypes = new Set();
-                const iniItems = (rawData.gastosIniciales || []);
-                iniItems.forEach(item => {
-                    const itemLot = item.Lote || item.lote || item.Lote_Principal || item.lote_principal;
-                    if (isLoteMatch(itemLot, selectedLote)) {
-                        const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "").trim();
-                        if (semilla && semilla !== "" && semilla !== "N/A") {
-                            seedTypes.add(semilla);
-                        }
-                    }
-                });
-                
-                // Reset filter if currently selected seed doesn't exist in this lot
-                if (window.analysisState.semilla !== "Todos" && !seedTypes.has(window.analysisState.semilla)) {
-                    window.analysisState.semilla = "Todos";
-                }
-                
-                if (seedTypes.size > 0) {
-                    seedFilterContainer.classList.remove("hidden");
-                    const seedTypesArray = Array.from(seedTypes).sort();
-                    const isAnyFilterActive = window.analysisState.semilla !== "Todos";
-                    seedFilterDiv.innerHTML = seedTypesArray.map(seed => {
-                        const isActive = window.analysisState.semilla === seed;
-                        const activeClass = isActive ? "bg-emerald-500 text-white dark:bg-emerald-600 dark:text-white" : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60";
-                        return `<button type="button" onclick="setAnalysisSemilla('${seed.replace(/'/g, "\\'")}'); " class="px-3 py-2 rounded-lg text-xs font-bold transition ${activeClass}">${escapeDashboardHTML(seed)}</button>`;
-                    }).join("");
-                    
-                    if (isAnyFilterActive) {
-                        seedFilterDiv.innerHTML += `<button type="button" onclick="setAnalysisSemilla('Todos')" class="px-3 py-2 rounded-lg text-xs font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition">Ver Todos</button>`;
-                    }
-                } else {
-                    seedFilterContainer.classList.add("hidden");
-                    window.analysisState.semilla = "Todos";
-                }
-                
-                // Populate cycle filter
-                const cycles = new Set();
-                (rawData.ciclos || []).forEach(cycle => {
-                    const cycleLot = cycle.Lote || cycle.lote || cycle.Lote_Principal || cycle.lote_principal;
-                    if (isLoteMatch(cycleLot, selectedLote)) {
-                        const aliases = dashboardCycleAliases(cycle);
-                        aliases.forEach(alias => cycles.add(alias));
-                    }
-                });
-                
-                if (cycles.size > 0) {
-                    cycleFilterContainer.classList.remove("hidden");
-                    cycleFilterSelect.innerHTML = '<option value="Todos">Todos los ciclos</option>' + 
-                        Array.from(cycles).sort().map(cycle => `<option value="${cycle}">${cycle}</option>`).join("");
-                    cycleFilterSelect.value = window.analysisState.ciclo;
-                } else {
-                    cycleFilterContainer.classList.add("hidden");
-                    cycleFilterSelect.innerHTML = '<option value="Todos">Todos los ciclos</option>';
-                    window.analysisState.ciclo = "Todos";
-                }
-            } else {
-                seedFilterContainer.classList.add("hidden");
-                cycleFilterContainer.classList.add("hidden");
-                window.analysisState.semilla = "Todos";
-                window.analysisState.ciclo = "Todos";
-                cycleFilterSelect.innerHTML = '<option value="Todos">Todos los ciclos</option>';
+            const cycleCostLoteSelector = document.getElementById("cycleCostLoteSelector");
+            if (cycleCostLoteSelector) {
+                cycleCostLoteSelector.value = selectedLote;
+                populateCyclesForLote(selectedLote);
             }
             
             renderAllAnalysisBlocks();
         }
 
-        function setAnalysisSemilla(semilla) {
-            window.analysisState.semilla = semilla;
-            renderAllAnalysisBlocks();
+        function updateCycleCostAndProfit() {
+            const loteSelector = document.getElementById("cycleCostLoteSelector");
+            const cicloSelector = document.getElementById("cycleCostCicloSelector");
+            
+            const selectedLote = loteSelector?.value || "Todos";
+            const selectedCiclo = cicloSelector?.value || "";
+            
+            if (selectedLote && selectedLote !== "Todos") {
+                populateCyclesForLote(selectedLote);
+            }
+            
+            renderCycleCostAndProfit(selectedLote, selectedCiclo);
         }
-
-        function setAnalysisCiclo(ciclo) {
-            window.analysisState.ciclo = ciclo;
-            renderAllAnalysisBlocks();
+        
+        function populateCyclesForLote(lote) {
+            if (!rawData || !rawData.ciclos) return;
+            
+            const cicloSelector = document.getElementById("cycleCostCicloSelector");
+            const cycles = (rawData.ciclos || []).filter(c => isLoteMatch(c.Lote || c.lote, lote));
+            
+            cicloSelector.innerHTML = '<option value="">Seleccionar ciclo...</option>';
+            if (cycles.length > 0) {
+                cycles.forEach(cycle => {
+                    const cycleNum = cycle.Ciclo_Numero || cycle.ciclo_numero || "?";
+                    const cultivo = cycle.Cultivo || cycle.cultivo || "Sin cultivo";
+                    const optionText = `Ciclo ${cycleNum} - ${cultivo}`;
+                    const option = document.createElement("option");
+                    option.value = String(cycleNum);
+                    option.textContent = optionText;
+                    cicloSelector.appendChild(option);
+                });
+            } else {
+                cicloSelector.innerHTML = '<option value="">Sin ciclos para este lote</option>';
+            }
         }
-
-        function renderCycleCostAndProfit() {
+        
+        function renderCycleCostAndProfit(lote, cycleNum) {
             if (!rawData) return;
             
-            const selectedLote = window.analysisState.lote || "Todos";
-            const selectedCycle = window.analysisState.ciclo || "Todos";
-            const selectedSemilla = window.analysisState.semilla || "Todos";
+            const selectedLote = lote || "Todos";
+            const selectedCycle = cycleNum || "";
             
             // Update scope labels
             document.getElementById("analysisCycleCostLote").textContent = selectedLote;
-            document.getElementById("analysisCycleCostCiclo").textContent = selectedCycle;
+            document.getElementById("analysisCycleCostCiclo").textContent = selectedCycle ? `Ciclo ${selectedCycle}` : "Sin seleccionar";
             
-            // Hide the warning by default
+            // Hide all sections by default
             const warningDiv = document.getElementById("analysisCycleNoSaleWarning");
             const profitDiv = document.getElementById("analysisCycleProfitStatus");
             const detailsDiv = document.getElementById("analysisCycleCostDetails");
             const byProductDiv = document.getElementById("analysisCycleCostByProduct");
             
-            warningDiv.classList.add("hidden");
-            profitDiv.classList.remove("hidden");
-            detailsDiv.classList.remove("hidden");
+            // If no lote or no cycle selected, show empty state
+            if (!selectedLote || selectedLote === "Todos" || !selectedCycle) {
+                detailsDiv.classList.add("hidden");
+                byProductDiv.classList.add("hidden");
+                warningDiv.classList.remove("hidden");
+                warningDiv.innerHTML = '<p class="font-bold mb-1">⚠️ Selección incompleta</p><p>Por favor selecciona un lote y un ciclo específicos para ver el análisis de costos y ganancias.</p>';
+                document.getElementById("analysisCycleSalePrice").textContent = "-";
+                document.getElementById("analysisCycleProfit").textContent = "-";
+                document.getElementById("analysisCycleMargin").textContent = "-";
+                document.getElementById("analysisCycleCostForProfit").textContent = "-";
+                return;
+            }
             
-            // Collect all matching expenses and sales
-            const matchesFilters = item => {
-                const itemLot = item.Lote || item.lote || item.Lote_Principal || item.lote_principal;
-                if (!isLoteMatch(itemLot, selectedLote)) return false;
-                
-                if (selectedSemilla !== "Todos") {
-                    const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "").trim();
-                    if (semilla !== selectedSemilla) return false;
-                }
-                
-                if (selectedCycle !== "Todos") {
-                    const code = dashboardTrackingCode(item);
-                    if (!code || code !== selectedCycle) return false;
-                }
-                return true;
+            // Find the cycle
+            const cycle = (rawData.ciclos || []).find(c => 
+                isLoteMatch(c.Lote || c.lote, selectedLote) && 
+                String(c.Ciclo_Numero || c.ciclo_numero) === String(selectedCycle)
+            );
+            
+            if (!cycle) {
+                warningDiv.classList.remove("hidden");
+                warningDiv.innerHTML = '<p class="font-bold mb-1">⚠️ Ciclo no encontrado</p><p>No se pudo encontrar los datos del ciclo seleccionado.</p>';
+                detailsDiv.classList.add("hidden");
+                byProductDiv.classList.add("hidden");
+                return;
+            }
+            
+            // Filter expenses and sales for this specific lote and cycle
+            const cycleTrackingCode = cycle.Codigo_General || cycle.codigo_general || "";
+            const matchesCycle = item => {
+                const itemLote = item.Lote || item.lote || item.Lote_Principal || item.lote_principal;
+                const itemCode = item.Codigo_Seguimiento || item.codigo_seguimiento || item.Codigo_Desarrollo || item.codigo_desarrollo || item.Codigo_General || item.codigo_general || "";
+                return isLoteMatch(itemLote, selectedLote) && (cycleTrackingCode.trim() === "" || itemCode.includes(cycleTrackingCode));
             };
             
-            const expenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(matchesFilters);
-            const sales = (rawData.ventas || []).filter(matchesFilters);
+            const expenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(matchesCycle);
+            const sales = (rawData.ventas || []).filter(matchesCycle);
             
             // Calculate costs by type
             const iniCost = expenses
@@ -795,6 +765,13 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             
             const totalCost = iniCost + devCost;
             
+            // Calculate total quantity produced
+            const totalQuantity = expenses.reduce((sum, item) => {
+                return sum + (Number(item.Cantidad || item.cantidad) || 0);
+            }, 0);
+            
+            const costPerUnit = totalQuantity > 0 ? totalCost / totalQuantity : 0;
+            
             // Format and display costs
             document.getElementById("analysisCycleCostIni").textContent = "$" + iniCost.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             document.getElementById("analysisCycleCostDesarrollo").textContent = "$" + devCost.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -803,20 +780,38 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             
             // Cost breakdown by product if multiple seeds
             const costByProduct = {};
+            const qtyByProduct = {};
             expenses.forEach(item => {
                 const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "Sin semilla").trim();
                 const cost = Number(item.Costo_Total_COP || item.costo_total_cop) || 0;
+                const qty = Number(item.Cantidad || item.cantidad) || 0;
                 costByProduct[semilla] = (costByProduct[semilla] || 0) + cost;
+                qtyByProduct[semilla] = (qtyByProduct[semilla] || 0) + qty;
             });
             
             if (Object.keys(costByProduct).length > 1) {
                 byProductDiv.innerHTML = Object.entries(costByProduct)
-                    .map(([semilla, cost]) => `<div class="flex justify-between items-center py-1"><span>${escapeDashboardHTML(semilla)}:</span> <span class="font-bold">$${cost.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`)
+                    .map(([semilla, cost]) => {
+                        const qty = qtyByProduct[semilla] || 0;
+                        const costPerUnitProduct = qty > 0 ? cost / qty : 0;
+                        return `<div class="mb-2"><div class="flex justify-between items-center py-1"><span>${escapeDashboardHTML(semilla)}:</span> <span class="font-bold">$${cost.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div><div class="text-[11px] text-slate-500 dark:text-slate-500 flex justify-between"><span>Cantidad: ${qty} Unidad(es)</span><span>Costo/Unidad: $${costPerUnitProduct.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div></div>`;
+                    })
                     .join("");
                 byProductDiv.classList.remove("hidden");
             } else {
                 byProductDiv.classList.add("hidden");
             }
+            
+            // Show cost per unit in details section
+            let costPerUnitElement = detailsDiv.querySelector(".costo-por-unidad");
+            if (!costPerUnitElement) {
+                costPerUnitElement = document.createElement("div");
+                costPerUnitElement.className = "text-xs text-slate-600 dark:text-slate-500 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 costo-por-unidad";
+                detailsDiv.appendChild(costPerUnitElement);
+            }
+            costPerUnitElement.innerHTML = `<div class="flex justify-between items-center"><span>Costo por Unidad Producida:</span><span class="font-bold">$${costPerUnit.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
+            
+            detailsDiv.classList.remove("hidden");
             
             // Calculate sales and profit
             const totalSale = sales.reduce((sum, item) => sum + (Number(item.Ingreso_Total_COP || item.ingreso_total_cop) || 0), 0);
@@ -824,6 +819,8 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             if (totalSale > 0) {
                 // Show profit calculation
                 warningDiv.classList.add("hidden");
+                profitDiv.classList.remove("hidden");
+                
                 const profit = totalSale - totalCost;
                 const margin = totalCost > 0 ? ((profit / totalCost) * 100).toFixed(2) : 0;
                 
@@ -836,6 +833,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
             } else {
                 // Show "no sale" warning
                 warningDiv.classList.remove("hidden");
+                warningDiv.innerHTML = '<p class="font-bold mb-1">⚠️ Sin venta registrada</p><p>Este ciclo aún no tiene venta registrada. Complete la venta para ver el resultado económico.</p>';
                 document.getElementById("analysisCycleSalePrice").textContent = "-";
                 document.getElementById("analysisCycleProfit").textContent = "-";
                 document.getElementById("analysisCycleMargin").textContent = "-";
@@ -1032,29 +1030,16 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
         function renderAllAnalysisBlocks() {
             renderDashboardInsights(window.analysisState.lote, false);
             renderAnalysisIndicators();
-            renderCycleCostAndProfit();
         }
 
         function renderAnalysisIndicators() {
             if (!rawData) return;
             
-            // Read from centralized state
             const finalIndicatorLote = window.analysisState.lote || "Todos";
-            const finalIndicatorCrop = window.analysisState.semilla || "Todos";
-            const finalIndicatorCycle = window.analysisState.ciclo || "Todos";
             
             const matchesIndicatorFilters = item => {
                 const itemLot = item.Lote || item.lote || item.Lote_Principal || item.lote_principal;
-                if (!isLoteMatch(itemLot, finalIndicatorLote)) return false;
-                if (finalIndicatorCrop !== "Todos") {
-                    const semilla = String(item.Cultivo_Semilla || item.cultivo_semilla || "").trim();
-                    if (semilla !== finalIndicatorCrop) return false;
-                }
-                if (finalIndicatorCycle !== "Todos") {
-                    const code = dashboardTrackingCode(item);
-                    if (!code || code !== finalIndicatorCycle) return false;
-                }
-                return true;
+                return isLoteMatch(itemLot, finalIndicatorLote);
             };
             
             const selectedExpenses = [...(rawData.gastosIniciales || []), ...(rawData.gastosDesarrollo || [])].filter(matchesIndicatorFilters);
